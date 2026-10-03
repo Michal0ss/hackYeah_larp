@@ -4,6 +4,7 @@ import Content
 import Contracts
 import Health
 import Insights
+import Onboarding
 import Plan
 
 /// The one place where real implementations replace the sample ones.
@@ -43,6 +44,8 @@ struct AppServices {
     var healthAuthorization: HealthAuthorizing
     /// Backend first, then the bundled template on the phone (Maciek's PlanGenerator); the plan carries a notice saying why.
     var planGenerator: PlanGenerating
+    /// The weekly plan and the sessions finished in each week, kept on the phone (Maciek's PlanStore). `plan` reads it.
+    let planStore: PlanStore
 
     init() {
         recovery = healthKit
@@ -53,5 +56,8 @@ struct AppServices {
                                                       technique: localHistory, catalog: ContentRepository.shared)
         recommendationText = RecommendationTexter(fetcher: BackendRecommendationFetcher(api: api), hasConsent: { [consent] in consent.isGranted })
         planGenerator = PlanGenerator(backend: api, catalog: ContentRepository.shared)
+        // The first launch after the update starts from the plan saved by onboarding.
+        planStore = PlanStore(fileURL: PlanStore.defaultFileURL(), bootstrap: { FileOnboardingStorage.default.load()?.plan })
+        plan = planStore
     }
 }
