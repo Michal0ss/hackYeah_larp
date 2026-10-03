@@ -473,7 +473,6 @@
           "aiMode": {
             "enum": [
               "mock",
-              "anthropic",
               "gemini"
             ],
             "title": "Aimode",

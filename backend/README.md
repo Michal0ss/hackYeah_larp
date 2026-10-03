@@ -13,19 +13,37 @@ make install      # venv + pinned dependencies
 make dev          # http://localhost:8000  (docs: /docs)
 ```
 
-Works with no key: without a model key the AI is an offline mock (plans come from templates, chat
-returns canned answers and even asks for tools, so the app side can be built offline). To use the real model:
-`export GEMINI_API_KEY=...` (Google Gemini, the team's choice; never commit it). `ANTHROPIC_API_KEY` still works
-as the alternative provider; with both set, Gemini wins unless `FORMA_AI_MODE=anthropic`. To force the mock even
-when a key is in your shell: `FORMA_AI_MODE=mock make dev`. Models: `FORMA_COACH_MODEL`, `FORMA_PLAN_MODEL`,
-`FORMA_TEXT_MODEL` (defaults per provider in `app/config.py`).
+Works with no key: without `GEMINI_API_KEY` the AI is an offline mock (plans come from templates, chat
+returns canned answers and even asks for tools, so the app side can be built offline). To use the real model
+(Google Gemini): `export GEMINI_API_KEY=...` or put it in `backend/.env` (git-ignored; never commit it). To force
+the mock even when a key is set: `FORMA_AI_MODE=mock make dev`.
 
-Use a Gemini key from a **paid** (billing-enabled) Google AI project with a budget limit: on the free tier Google
-may use prompts to improve its products, and coach prompts carry health summaries.
+Use a key from a **paid** (billing-enabled) Google AI project with a budget limit. On the free tier Google may use
+prompts to improve its products (coach prompts carry health summaries) and the quota is tiny: 20 requests per
+day per model, after which every call answers 429.
+
+### Models and what happens when Gemini misbehaves
+
+`FORMA_COACH_MODEL`, `FORMA_PLAN_MODEL` and `FORMA_TEXT_MODEL` (default `gemini-3.5-flash`) pick the model;
+`FORMA_FALLBACK_MODELS` (comma-separated) lists the ones that take over. See what a key can use with
+`.venv/bin/python evals/run_ai_evals.py --list-models`.
+
+- A call moves to the next model on 404 (retired), 429 (quota), 5xx, timeout or connection error. A chat stream
+  moves on only while nothing was sent to the app yet.
+- A model that answered 429 or 404 is skipped for 5 min or 1 h, so following requests do not wait for the same
+  failure again. With every model cooling down the first one is tried anyway.
+- When no model works: plans and texts are answered from templates (`warnings: ["ai_unavailable"]`), the chat
+  answers `503 ai_unavailable` (or an `error` event in a stream) and the app shows its retry message.
+- Plans and texts have deadlines (`plan_deadline_seconds`, `text_deadline_seconds`); one request to one model is
+  capped by `ai_timeout_seconds`. Thinking is kept low, and token limits are generous because thinking tokens
+  count against them.
+
+`make test` runs the unit tests (no network, no key): they use a fake Gemini client. `make evals` checks the real
+model (needs a key and quota).
 
 From the iPhone use the Mac's address (`http://<mac-ip>:8000`); plain HTTP needs an ATS exception in debug builds.
 
-`make check` is what CI runs: lint, content validation and "openapi.json is up to date".
+`make check` is what CI runs: lint, unit tests, content validation and "openapi.json is up to date".
 
 ## Endpoints
 
@@ -79,8 +97,8 @@ app/middleware.py      request id, size limit, access log, last-resort 500
 app/errors.py          error envelope
 app/schemas/           wire types (domain.py mirrors Packages/Core/Sources/Contracts)
 app/content/store.py   loads + validates content/, content hashes as versions
-app/ai/gateway.py      gateway interface, Anthropic gateway and the offline MockGateway
-app/ai/gemini.py       Gemini gateway (translates tool_use/tool_result to Gemini function calls)
+app/ai/gateway.py      gateway interface and the offline MockGateway
+app/ai/gemini.py       Gemini gateway: tool translation, model fallback, cooldown (the only code that calls Google)
 app/ai/prompts/*.md    Polish system prompts (edit wording here)
 app/ai/prompts.py      fills prompts with sanitised data
 app/ai/tools.py        coach tool definitions, consent gating
@@ -106,5 +124,5 @@ scripts/export_openapi.py
 ## Deploying
 
 `docker build -f backend/Dockerfile -t forma-backend .` from the repository root (untested here: no Docker on the
-build machine). Needs `FORMA_APP_TOKENS` and `GEMINI_API_KEY` (or `ANTHROPIC_API_KEY`) from the host's secrets, listens on `$PORT`.
+build machine). Needs `FORMA_APP_TOKENS` and `GEMINI_API_KEY` from the host's secrets, listens on `$PORT`.
 In prod the docs and the schema endpoint are off. Rate limits are in memory, so run one instance (or add Redis).

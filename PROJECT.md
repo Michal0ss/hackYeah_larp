@@ -434,11 +434,11 @@ Backend nie zapisuje rozmów ani nie loguje ich treści (tylko identyfikator ż�
 
 **Decyzja (zmieniona 2026-10-03): jeden wspólny backend.** Wcześniej planowaliśmy wersję bez własnego serwera (model wołany z telefonu). Zmieniamy to, bo klucz w aplikacji da się wyciągnąć z binarki, a serwer daje nam jedno miejsce na walidację planów, kontrolę bezpieczeństwa tekstów, limity i bramkę zgody na dane zdrowotne. Backend jest cienki i bezstanowy, więc koszt jest mały.
 
-- Klucz do modelu (`ANTHROPIC_API_KEY`) istnieje **tylko w środowisku serwera**. Nie ma go w repozytorium ani w aplikacji. Na kluczu ustawiamy **limit wydatków**.
+- Klucz do modelu (`GEMINI_API_KEY`) istnieje **tylko w środowisku serwera**. Nie ma go w repozytorium ani w aplikacji. Na kluczu ustawiamy **limit wydatków**.
 - Aplikacja zna tylko adres i token aplikacji backendu (`FORMA_API_URL`, `FORMA_API_TOKEN` w `Config/Secrets.xcconfig` poza repo). Token chroni budżet na model przed obcymi, nie jest logowaniem użytkownika. Limity zapytań działają per urządzenie (`X-Device-Id`).
 - Backend nie ma bazy i nie zapisuje ani nie loguje treści (żądań, rozmów, danych zdrowotnych).
 - Aplikację instalujemy przez Xcode na naszych telefonach (bez TestFlight i bez płatnego konta Apple Developer). W debugu telefon łączy się z backendem po HTTP w sieci lokalnej (wyjątek ATS `NSAllowsLocalNetworking`) albo po HTTPS z wdrożenia.
-- **Bez klucza wszystko działa:** serwer uruchomiony bez `ANTHROPIC_API_KEY` ma tryb atrapy (plany z szablonu, czat z gotowymi odpowiedziami), więc zespół rozwija aplikację i backend niezależnie od klucza.
+- **Bez klucza wszystko działa:** serwer uruchomiony bez `GEMINI_API_KEY` ma tryb atrapy (plany z szablonu, czat z gotowymi odpowiedziami), więc zespół rozwija aplikację i backend niezależnie od klucza.
 
 **Hosting i baza (decyzja 2026-10-03): na razie backend działa lokalnie, na laptopie (`make dev`), bez hostingu i bez bazy. Docelowo backend na Vercelu, baza na Supabase (Postgres).** Po przejściu na Vercel uruchamia ten sam kod FastAPI jako funkcję bezserwerową (klucz do modelu i `FORMA_APP_TOKENS` w zmiennych środowiskowych projektu Vercel). Supabase to jedyna baza i służy do rzeczy, których bezserwerowy backend nie utrzyma w pamięci: wspólne limity zapytań i liczniki zużycia modelu (same metadane, bez treści), a potem konta i synchronizacja planu oraz wyników. **Do bazy nie trafiają: wideo, treść rozmów, historia zdrowia i surowe dane zdrowotne** (zasady prywatności bez zmian). Klucz `service_role` Supabase tylko w środowisku Vercela.
 

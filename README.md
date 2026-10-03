@@ -60,7 +60,7 @@ cd Packages/Core && swift test
 ## Zasady
 
 - Zgodność: Xcode 26, cel wdrożenia iOS 17. Szkło (Liquid Glass) na iOS 26, na starszych system-owe rozmycie przez `#available`.
-- Klucz do modelu tylko na serwerze (`ANTHROPIC_API_KEY`), w aplikacji wyłącznie adres i token backendu (`Config/Secrets.xcconfig`, poza repo). Wideo i obrazy nie opuszczają telefonu.
+- Klucz do modelu tylko na serwerze (`GEMINI_API_KEY`), w aplikacji wyłącznie adres i token backendu (`Config/Secrets.xcconfig`, poza repo). Wideo i obrazy nie opuszczają telefonu.
 - Dane przykładowe zawsze oznaczone w interfejsie jako „Dane przykładowe".
 - Teksty zdrowotne: „sygnał", „warto rozważyć konsultację", nigdy diagnoza.
 - Reszta zasad: sekcja 11.2 w [PROJECT.md](PROJECT.md).

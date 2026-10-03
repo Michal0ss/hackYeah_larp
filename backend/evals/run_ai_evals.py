@@ -1,7 +1,7 @@
 """Checks plan generation and the coach chat against the real model (owner: Maciek).
 
     cd backend
-    export GEMINI_API_KEY=...            # or ANTHROPIC_API_KEY; never commit it
+    export GEMINI_API_KEY=...            # never commit it
     .venv/bin/python evals/run_ai_evals.py                 # everything
     .venv/bin/python evals/run_ai_evals.py --only plans --repeats 3
     .venv/bin/python evals/run_ai_evals.py --only chat --show
@@ -249,7 +249,7 @@ SCENARIOS = [
     Scenario(
         "train_legs_today_consent",
         ["Czy mogę dziś ćwiczyć nogi?"],
-        expect_any_tool={"get_today_recommendation", "get_current_plan", "get_recovery_summary"},
+        # today's recommendation is already in the context, so answering without a tool is fine
         must_match=r"lzej|lekk|mniej|3 seri|zmodyfik",
     ),
     Scenario(
@@ -392,9 +392,12 @@ async def run_scenario(sc: Scenario, content: ContentStore, gateway, settings, c
         problems.append("missing_expected_content")
     if sc.must_not_match and re.search(sc.must_not_match, folded):
         problems.append("forbidden_content")
-    unsafe = [p for p in check_generated_text(answer or "-", max_total=10_000) if p == "unsafe_phrase"]
-    if unsafe:
-        problems.append("unsafe_phrase(check manually: 'nie diagnozuję' also matches)")
+    # "nie diagnozuję" is exactly what the coach should say; the pattern for generated copy would flag it.
+    checked = re.sub(r"nie\s+diagnozuj\w*", "", fold(answer))
+    if "unsafe_phrase" in check_generated_text(checked or "-", max_total=10_000):
+        problems.append("unsafe_phrase")
+    if re.search(r"\b[a-z]+_[a-z_]+\b", answer):
+        problems.append("exercise_id_shown_to_user")
     return ChatRun(sc.name, not problems, problems, tools_called, time.perf_counter() - started, counter.take(), answer)
 
 
@@ -419,7 +422,7 @@ async def main() -> int:
 
     settings = Settings()
     if settings.effective_ai_mode == "mock":
-        print("No model key in the environment (GEMINI_API_KEY / ANTHROPIC_API_KEY): nothing to evaluate.")
+        print("No model key in the environment (GEMINI_API_KEY): nothing to evaluate.")
         return 2
     # Backend logs go to the "forma" logger (no propagation). Count tokens there, print only warnings.
     logger = logging.getLogger(LOGGER_NAME)
@@ -435,9 +438,6 @@ async def main() -> int:
     content = ContentStore.load(settings.content_dir)
     gateway = build_gateway(settings)
     if args.list_models:
-        if gateway.mode != "gemini":
-            print("--list-models works with GEMINI_API_KEY only")
-            return 2
         async for model in await gateway._client.aio.models.list():
             if "generateContent" in (model.supported_actions or []):
                 print(model.name.removeprefix("models/"), "-", model.display_name)

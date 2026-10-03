@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
 from app import __version__
-from app.ai.gateway import AIGateway, AnthropicGateway, MockGateway
+from app.ai.gateway import AIGateway, MockGateway
 from app.ai.gemini import GeminiGateway
 from app.config import Settings
 from app.content.store import ContentStore
@@ -37,10 +37,11 @@ Backend of the Forma app. Stateless: no database, no stored videos, no stored he
 def build_gateway(settings: Settings) -> AIGateway:
     if settings.effective_ai_mode == "gemini":
         assert settings.gemini_api_key is not None
-        return GeminiGateway(settings.gemini_api_key.get_secret_value(), timeout=settings.ai_timeout_seconds)
-    if settings.effective_ai_mode == "anthropic":
-        assert settings.anthropic_api_key is not None
-        return AnthropicGateway(settings.anthropic_api_key.get_secret_value(), timeout=settings.ai_timeout_seconds)
+        return GeminiGateway(
+            settings.gemini_api_key.get_secret_value(),
+            timeout=settings.ai_timeout_seconds,
+            fallback_models=settings.fallback_models,
+        )
     return MockGateway(delay=0.015 if settings.env == "dev" else 0.0)
 
 
