@@ -169,10 +169,16 @@ final class VoiceChatController {
 
     private func activateSessionIfNeeded() {
         guard !sessionActive else { return }
+        #if targetEnvironment(simulator)
+        // Activating a playAndRecord session can block the main thread for good in the simulator (no audio device).
+        sessionActive = true
+        return
+        #else
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
         try? session.setActive(true)
         sessionActive = true
+        #endif
     }
 
     /// Call when leaving the coach screen: stops everything and gives the audio session back.
@@ -182,7 +188,9 @@ final class VoiceChatController {
         reader.stop()
         state = .idle
         guard sessionActive else { return }
+        #if !targetEnvironment(simulator)
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        #endif
         sessionActive = false
     }
 }

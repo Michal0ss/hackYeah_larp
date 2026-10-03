@@ -16,6 +16,9 @@ final class WorkoutModel {
     /// Set once the workout is saved (the session is marked as done).
     private(set) var saved = false
 
+    /// Exercises the user chose to do without the camera: they are typed in like the rest.
+    private(set) var videoSkipped: Set<String> = []
+
     private let store: AppStore
     private let startExercise: Int
 
@@ -32,8 +35,23 @@ final class WorkoutModel {
 
     /// Exercises with a target tempo that the live coach can follow go through the camera; the rest are typed in.
     func isLive(_ planned: PlannedExercise) -> Bool {
+        canAnalyse(planned) && !videoSkipped.contains(planned.exerciseId)
+    }
+
+    /// The camera could follow this exercise (a target tempo and a movement the live coach knows).
+    func canAnalyse(_ planned: PlannedExercise) -> Bool {
         guard planned.tempo != nil, let exercise = exercise(planned) else { return false }
         return MovementKind.kind(for: exercise) != nil
+    }
+
+    /// Every exercise of the workout the camera could follow is already skipped.
+    var allVideoSkipped: Bool { session.exercises.allSatisfy { !canAnalyse($0) || videoSkipped.contains($0.exerciseId) } }
+
+    func skipVideo(_ planned: PlannedExercise) { videoSkipped.insert(planned.exerciseId) }
+
+    /// The overview button: no camera for the whole workout (or back to the camera).
+    func setVideoSkippedForAll(_ skipped: Bool) {
+        videoSkipped = skipped ? Set(session.exercises.filter(canAnalyse).map(\.exerciseId)) : []
     }
 
     func isTimed(_ planned: PlannedExercise) -> Bool { exercise(planned)?.timed ?? false }
@@ -112,6 +130,23 @@ final class WorkoutModel {
     var totalReps: Int { run.sets.compactMap(\.reps).reduce(0, +) }
 
     // MARK: the coach
+
+    /// The exercises still to do (from the one the workout starts at) as the guide describes them.
+    private func guideEntry(_ planned: PlannedExercise) -> WorkoutGuide.Entry {
+        WorkoutGuide.Entry(name: exercise(planned)?.name ?? planned.exerciseId, planned: planned,
+                           timed: isTimed(planned), live: isLive(planned))
+    }
+
+    /// "Przeprowadź mnie przez trening": the whole session as one question to the coach.
+    var guideQuestion: String {
+        WorkoutGuide.sessionQuestion(title: session.title,
+                                     entries: session.exercises.dropFirst(startExercise).map(guideEntry))
+    }
+
+    /// "Wytłumacz to ćwiczenie": the exercise being done.
+    var explainQuestion: String? {
+        run.currentExercise.map { WorkoutGuide.exerciseQuestion(guideEntry($0)) }
+    }
 
     /// What the coach is told when asked from the screen the user is on.
     func coachContext(screen: WorkoutScreen) -> WorkoutContext {

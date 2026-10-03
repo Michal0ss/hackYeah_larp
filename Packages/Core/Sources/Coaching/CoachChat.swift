@@ -97,7 +97,8 @@ public struct CoachChat: Sendable {
         case .today, .plan:
             return starterQuestions
         case .liveSet:
-            return ["Co znaczy to tempo?", "Jak oddychać przy tym ćwiczeniu?", "Boli mnie w trakcie serii"]
+            return [WorkoutGuide.explainExerciseQuestion, "Co znaczy to tempo?", "Jak oddychać przy tym ćwiczeniu?",
+                    "Boli mnie w trakcie serii"]
         case .setSummary:
             var questions = ["Co poprawić w następnej serii?"]
             if hasNotes { questions.append("Dlaczego ta uwaga?") }

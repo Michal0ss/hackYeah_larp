@@ -28,6 +28,8 @@ struct LiveSetView: View {
     var onFinished: ((SetSummary) -> Void)?
     /// Set by the workout runner: a way to ask the coach before the set starts.
     var onAskCoach: (() -> Void)?
+    /// Set by the workout runner: do this exercise without the camera (the result is typed in).
+    var onSkipVideo: (() -> Void)?
 
     @Environment(AppStore.self) private var store
     @State private var session: LiveSetSession
@@ -36,12 +38,14 @@ struct LiveSetView: View {
 
     init(exercise: ExerciseItem, spec: TempoSpec, setIndex: Int, totalSets: Int,
          onNextSet: @escaping () -> Void, onClose: @escaping () -> Void,
-         onFinished: ((SetSummary) -> Void)? = nil, onAskCoach: (() -> Void)? = nil) {
+         onFinished: ((SetSummary) -> Void)? = nil, onAskCoach: (() -> Void)? = nil,
+         onSkipVideo: (() -> Void)? = nil) {
         self.totalSets = totalSets
         self.onNextSet = onNextSet
         self.onClose = onClose
         self.onFinished = onFinished
         self.onAskCoach = onAskCoach
+        self.onSkipVideo = onSkipVideo
         _session = State(initialValue: LiveSetSession(exercise: exercise, spec: spec, setIndex: setIndex))
     }
 
@@ -246,6 +250,12 @@ struct LiveSetView: View {
             if let onAskCoach {
                 Button(action: onAskCoach) {
                     Label("Zapytaj trenera", systemImage: "bubble.left.and.text.bubble.right").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.formaGlass)
+            }
+            if let onSkipVideo {
+                Button(action: onSkipVideo) {
+                    Label("Pomiń analizę wideo", systemImage: "video.slash").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.formaGlass)
             }
