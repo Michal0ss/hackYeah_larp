@@ -71,6 +71,19 @@ final class TrainingLogTests: XCTestCase {
         XCTAssertEqual(log.sets(forSession: session).map(\.setIndex), [1, 2])
     }
 
+    func testRemovingTheSetsOfOneSessionLeavesTheOthers() {
+        let url = file()
+        let log = TrainingLogStore(fileURL: url)
+        let other = UUID()
+        log.record(set(index: 1))
+        log.record(set(index: 2))
+        log.record(LoggedSet(sessionId: other, exerciseId: "x", setIndex: 1))
+        XCTAssertEqual(log.removeSets(forSession: session), 2)
+        XCTAssertEqual(log.sets.map(\.sessionId), [other])
+        XCTAssertEqual(TrainingLogStore(fileURL: url).sets.count, 1, "and it reached the disk")
+        XCTAssertEqual(log.removeSets(forSession: session), 0)
+    }
+
     func testTheLogIsCapped() {
         let log = TrainingLogStore(fileURL: nil)
         for index in 0..<(TrainingLogStore.maxSets + 10) { log.record(set(index: index + 1)) }

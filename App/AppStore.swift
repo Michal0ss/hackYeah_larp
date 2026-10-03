@@ -209,6 +209,15 @@ final class AppStore {
 
     func dismissLastEdit() { lastEdit = nil }
 
+    /// "Powtórz trening": the session is no longer done and its saved sets are deleted, so it can be done again from
+    /// scratch. The technique history of live sets (Postępy) is kept.
+    @MainActor
+    func resetWorkout(sessionId: UUID) {
+        services.planStore.removeCompletion(sessionId: sessionId)
+        services.trainingLog.removeSets(forSession: sessionId)
+        Task { await refreshRecommendation() }
+    }
+
     /// Saves the plan with the profile. Before onboarding is done nothing is written: a saved profile would make the
     /// next launch skip onboarding.
     private func persistPlan() {

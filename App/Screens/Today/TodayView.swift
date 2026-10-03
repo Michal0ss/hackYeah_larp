@@ -12,6 +12,7 @@ struct TodayView: View {
     @Environment(AppRouter.self) private var router
     @State private var showCheckIn = false
     @State private var workout: WorkoutLaunch?
+    @State private var repeating: PlannedSession?
     @State private var showProfile = false
     @State private var showCare = false
     /// Same data and rules as the Postępy tab, to show the care signal here too.
@@ -32,6 +33,7 @@ struct TodayView: View {
                         SessionCard(adjustment: adjustment, isToday: entry.isToday,
                                     restored: store.isRestored(entry.session),
                                     onStart: { workout = WorkoutLaunch(session: adjustment.session) },
+                                    onRepeat: { repeating = entry.session },
                                     onToggle: { store.toggleOriginal(entry.session) })
                     }
                     RecoveryStrip(today: store.today, checkIn: store.checkIn)
@@ -53,6 +55,19 @@ struct TodayView: View {
             if let care = careModel.care { CareView(assessment: care, simulated: careModel.careSimulated) }
         }
         .task(id: store.recommendation) { await careModel.load(services: store.services) }
+        .confirmationDialog("Powtórzyć trening?", isPresented: Binding(get: { repeating != nil }, set: { if !$0 { repeating = nil } }),
+                            titleVisibility: .visible) {
+            Button("Usuń zapisane serie i zacznij od nowa", role: .destructive) {
+                if let session = repeating {
+                    store.resetWorkout(sessionId: session.id)
+                    workout = WorkoutLaunch(session: store.adjustment(for: session).session)
+                }
+                repeating = nil
+            }
+            Button("Anuluj", role: .cancel) { repeating = nil }
+        } message: {
+            Text("Zapisane serie tej sesji (powtórzenia, ciężar, poprawki) zostaną usunięte, a sesja przestanie być wykonana.")
+        }
         .fullScreenCover(item: $workout) { launch in
             WorkoutRunnerView(session: launch.session, startExercise: launch.startExercise) { workout = nil }
         }
@@ -179,6 +194,7 @@ private struct SessionCard: View {
     let isToday: Bool
     let restored: Bool
     let onStart: () -> Void
+    let onRepeat: () -> Void
     let onToggle: () -> Void
 
     private var session: PlannedSession { adjustment.session }
@@ -224,6 +240,10 @@ private struct SessionCard: View {
                 Label("Wykonana", systemImage: "checkmark.circle.fill")
                     .formaStyle(.headline).foregroundStyle(FormaColor.goText)
                     .padding(.top, FormaSpacing.xs)
+                Button(action: onRepeat) {
+                    Label("Powtórz trening", systemImage: "arrow.counterclockwise").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.formaGlass)
             } else if session.status != .skipped {
                 Button(action: onStart) {
                     Label("Zacznij trening", systemImage: "play.fill").frame(maxWidth: .infinity)

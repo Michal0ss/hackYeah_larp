@@ -18,6 +18,7 @@ struct PlanView: View {
     @State private var editing: PlannedSession?
     @State private var addingSession = false
     @State private var logSession: PlannedSession?
+    @State private var repeating: PlannedSession?
 
     private static let dayLetters = ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"]
     private static var calendar: Calendar { TrainingPlan.calendar }
@@ -56,7 +57,8 @@ struct PlanView: View {
                                       onToggle: { store.toggleOriginal(session) }, onEdit: { editing = session },
                                       onRestore: { store.edit(.restore, sessionId: session.id) },
                                       onStartWorkout: { workout = WorkoutLaunch(session: adjustment.session) },
-                                      onShowLog: { logSession = session }) {
+                                      onShowLog: { logSession = session },
+                                      onRepeat: { repeating = session }) {
                             start($0, in: adjustment.session)
                         }
                         Button { addingSession = true } label: {
@@ -77,6 +79,19 @@ struct PlanView: View {
         .sheet(item: $editing) { SessionEditSheet(sessionId: $0.id) }
         .sheet(isPresented: $addingSession) { AddSessionSheet() }
         .sheet(item: $logSession) { WorkoutLogSheet(session: $0) }
+        .confirmationDialog("Powtórzyć trening?", isPresented: Binding(get: { repeating != nil }, set: { if !$0 { repeating = nil } }),
+                            titleVisibility: .visible) {
+            Button("Usuń zapisane serie i zacznij od nowa", role: .destructive) {
+                if let session = repeating {
+                    store.resetWorkout(sessionId: session.id)
+                    workout = WorkoutLaunch(session: store.adjustment(for: session).session)
+                }
+                repeating = nil
+            }
+            Button("Anuluj", role: .cancel) { repeating = nil }
+        } message: {
+            Text("Zapisane serie tej sesji (powtórzenia, ciężar, poprawki) zostaną usunięte, a sesja przestanie być wykonana.")
+        }
         .fullScreenCover(item: $workout) { launch in
             WorkoutRunnerView(session: launch.session, startExercise: launch.startExercise) { workout = nil }
         }
@@ -206,6 +221,7 @@ private struct SessionDetail: View {
     let onRestore: () -> Void
     let onStartWorkout: () -> Void
     let onShowLog: () -> Void
+    let onRepeat: () -> Void
     let onStart: (PlannedExercise) -> Void
 
     private var session: PlannedSession { adjustment.session }
@@ -238,6 +254,8 @@ private struct SessionDetail: View {
             } else if session.status == .done {
                 Button(action: onShowLog) { Label("Zobacz zapis treningu", systemImage: "list.bullet.clipboard").frame(maxWidth: .infinity) }
                     .buttonStyle(.formaGlass)
+                Button(action: onRepeat) { Label("Powtórz trening", systemImage: "arrow.counterclockwise").frame(maxWidth: .infinity) }
+                    .buttonStyle(.formaPrimary)
             } else {
                 Button(action: onStartWorkout) { Label("Zacznij trening", systemImage: "play.fill").frame(maxWidth: .infinity) }
                     .buttonStyle(.formaPrimary)

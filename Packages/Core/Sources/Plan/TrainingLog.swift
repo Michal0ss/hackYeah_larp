@@ -121,6 +121,16 @@ public final class TrainingLogStore: @unchecked Sendable {
         return persist()
     }
 
+    /// Removes every set of one session (the user repeats the workout from scratch). Returns how many were removed.
+    @discardableResult
+    public func removeSets(forSession sessionId: UUID) -> Int {
+        lock.lock(); defer { lock.unlock() }
+        let before = stored.count
+        stored.removeAll { $0.sessionId == sessionId }
+        if stored.count != before { persist() }
+        return before - stored.count
+    }
+
     /// Forgets everything (the user deleted all data).
     public func clear() {
         lock.lock()
