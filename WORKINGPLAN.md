@@ -193,7 +193,7 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie.
 | Seria na żywo (tempo, głos, podsumowanie) | Michał | `main` | pierwsza wersja | silnik ma testy, kamera niesprawdzona na iPhonie |
 | Onboarding | Michał | `feat/michal-onboarding` | w PR | zależy od PR kontraktowego `contracts/onboarding-profile`; ekran profilu (edycja i usuwanie historii zdrowia) jeszcze nie istnieje |
 | Seria na żywo na telefonie | Michał | `feat/michal-live-set-device` | do zrobienia | |
-| Integracja usług i przepływu | Michał | `feat/michal-integration` | w PR (część 1) | silnik reguł Wiktora zasila ekran Dziś (po starcie i po check-inie), katalog z `ContentRepository`, plan z onboardingu z backendu z lokalnym zapasem, wyniki serii zapisywane lokalnie (`LocalTechniqueHistory`) i liczone przez silnik. Check-in tylko w pamięci do czasu `feat/wiktor-checkin-store`. Zostaje: wyniki analiz Bartka, nawigacja Dziś → Plan → seria, ekran profilu |
+| Integracja usług i przepływu | Michał | `feat/michal-integration` | w PR (część 1) | silnik reguł Wiktora zasila ekran Dziś (po starcie i po check-inie), katalog z `ContentRepository`, plan z onboardingu z backendu z lokalnym zapasem, wyniki serii zapisywane lokalnie (`LocalTechniqueHistory`) i liczone przez silnik. Check-in zapisuje się na telefonie przez `CheckInStore` (Wiktor) i wraca po restarcie. Zostaje: wyniki analiz Bartka, nawigacja Dziś → Plan → seria, ekran profilu |
 | Materiały i zgłoszenie | Michał | `feat/michal-submission` | do zrobienia | |
 | Wydobycie punktów z filmu | Bartek | `feat/bartek-pose-extractor` | do zrobienia | |
 | Jakość nagrania | Bartek | `feat/bartek-quality-gate` | do zrobienia | |

@@ -70,6 +70,12 @@ final class AppStore {
 
     // MARK: Recommendation and results
 
+    /// Today's saved check-in (nil when there is none yet).
+    @MainActor
+    func loadSavedCheckIn() async {
+        checkIn = await services.checkIns.checkIns(days: 1).first
+    }
+
     /// Recomputes today's recommendation with the rule engine from the current inputs.
     @MainActor
     func refreshRecommendation() async {
@@ -85,8 +91,10 @@ final class AppStore {
     @MainActor
     func saveCheckIn(_ new: CheckIn) {
         checkIn = new
-        services.localCheckIns.add(new)
-        Task { await refreshRecommendation() }
+        Task {
+            _ = try? await services.checkInStore.save(new)
+            await refreshRecommendation()
+        }
     }
 
     /// A finished live set: stored on the phone, feeds the rule engine.
