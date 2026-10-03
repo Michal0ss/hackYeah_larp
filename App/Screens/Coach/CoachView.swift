@@ -170,6 +170,12 @@ struct CoachView: View {
             }
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
+            // Messages fade out above the field (the field itself has no background of its own).
+            .mask {
+                LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.95),
+                                       .init(color: .clear, location: 1)],
+                               startPoint: .top, endPoint: .bottom)
+            }
             // Opens at the newest message; an empty conversation starts at the top (the starter questions).
             .defaultScrollAnchor(model.messages.isEmpty ? .top : .bottom)
             .onAppear { scrollToEndSoon(proxy) }

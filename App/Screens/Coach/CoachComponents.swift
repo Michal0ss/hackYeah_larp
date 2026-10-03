@@ -232,11 +232,5 @@ struct CoachInputBar: View {
         .padding(.horizontal, FormaSpacing.screen)
         .padding(.top, FormaSpacing.l)
         .padding(.bottom, FormaSpacing.s)
-        // Messages fade out behind the field instead of showing through it.
-        .background {
-            LinearGradient(stops: [.init(color: .clear, location: 0),
-                                   .init(color: FormaColor.background.opacity(0.94), location: 0.4)],
-                           startPoint: .top, endPoint: .bottom)
-        }
     }
 }
