@@ -22,6 +22,8 @@ struct WorkoutRunnerView: View {
     @State private var model: WorkoutModel?
     @State private var confirmExit = false
     @State private var coachContext: WorkoutContext?
+    /// Set when the coach is opened by a "Przeprowadź mnie" button: asked as soon as the sheet opens.
+    @State private var guideQuestion: String?
 
     var body: some View {
         ZStack {
@@ -33,8 +35,9 @@ struct WorkoutRunnerView: View {
         .onAppear {
             if model == nil { model = WorkoutModel(session: session, store: store, startExercise: startExercise) }
         }
-        .sheet(isPresented: Binding(get: { coachContext != nil }, set: { if !$0 { coachContext = nil } })) {
-            CoachView(workout: coachContext, onClose: { coachContext = nil })
+        .sheet(isPresented: Binding(get: { coachContext != nil }, set: { if !$0 { coachContext = nil; guideQuestion = nil } })) {
+            CoachView(workout: coachContext, initialQuestion: guideQuestion,
+                      onClose: { coachContext = nil; guideQuestion = nil })
         }
         .confirmationDialog("Zakończyć trening?", isPresented: $confirmExit, titleVisibility: .visible) {
             Button("Zapisz i zakończ") { model?.endEarly() }
@@ -45,11 +48,18 @@ struct WorkoutRunnerView: View {
         }
     }
 
+    /// Opens the coach and asks `question` right away (nil: just opens it).
+    private func askCoach(_ question: String?, screen: WorkoutScreen) {
+        guideQuestion = question
+        coachContext = model?.coachContext(screen: screen)
+    }
+
     @ViewBuilder
     private func phase(_ model: WorkoutModel) -> some View {
         switch model.run.phase {
         case .overview:
-            WorkoutOverviewView(model: model, startExercise: startExercise, onStart: { model.begin() }, onClose: onClose)
+            WorkoutOverviewView(model: model, startExercise: startExercise, onStart: { model.begin() },
+                                onGuide: { askCoach(model.guideQuestion, screen: .plan) }, onClose: onClose)
         case .performing:
             performing(model)
         case .resting:
@@ -76,6 +86,7 @@ struct WorkoutRunnerView: View {
             } else {
                 ManualSetView(model: model, planned: planned, exercise: exercise,
                               onAskCoach: { coachContext = model.coachContext(screen: .liveSet) },
+                              onExplain: { askCoach(model.explainQuestion, screen: .liveSet) },
                               onClose: { confirmExit = true })
                     .id(key)
             }
@@ -92,6 +103,7 @@ private struct WorkoutOverviewView: View {
     let model: WorkoutModel
     let startExercise: Int
     let onStart: () -> Void
+    let onGuide: () -> Void
     let onClose: () -> Void
 
     var body: some View {
@@ -119,6 +131,12 @@ private struct WorkoutOverviewView: View {
                 .padding(FormaSpacing.l).frame(maxWidth: .infinity, alignment: .leading).glassCard()
                 Button(action: onStart) { Text("Zacznij trening").frame(maxWidth: .infinity) }
                     .buttonStyle(.formaPrimary)
+                Button(action: onGuide) {
+                    Label("Przeprowadź mnie przez trening", systemImage: "figure.walk.motion").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.formaGlass)
+                Text("Trener AI wyjaśni każde ćwiczenie krok po kroku, zanim zaczniesz.")
+                    .formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
             }
             .padding(.horizontal, FormaSpacing.screen)
             .padding(.top, FormaSpacing.l)

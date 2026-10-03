@@ -13,6 +13,7 @@ struct ManualSetView: View {
     let planned: PlannedExercise
     let exercise: ExerciseItem
     let onAskCoach: () -> Void
+    let onExplain: () -> Void
     let onClose: () -> Void
 
     @State private var value: Int
@@ -25,11 +26,12 @@ struct ManualSetView: View {
     @State private var reachedTarget = false
 
     init(model: WorkoutModel, planned: PlannedExercise, exercise: ExerciseItem, onAskCoach: @escaping () -> Void,
-         onClose: @escaping () -> Void) {
+         onExplain: @escaping () -> Void, onClose: @escaping () -> Void) {
         self.model = model
         self.planned = planned
         self.exercise = exercise
         self.onAskCoach = onAskCoach
+        self.onExplain = onExplain
         self.onClose = onClose
         // Start from the top of the planned range: "Zrobione" alone records what was asked for.
         _value = State(initialValue: planned.repsMax)
@@ -61,6 +63,8 @@ struct ManualSetView: View {
                         model.completeManual(reps: timed ? nil : value, seconds: timed ? value : nil, weightKg: weight)
                     } label: { Text("Zrobione").frame(maxWidth: .infinity) }
                         .buttonStyle(.formaPrimary)
+                    Button(action: onExplain) { Label("Wytłumacz to ćwiczenie", systemImage: "figure.walk.motion").frame(maxWidth: .infinity) }
+                        .buttonStyle(.formaGlass)
                     Button(action: onAskCoach) { Label("Zapytaj trenera", systemImage: "bubble.left.and.text.bubble.right").frame(maxWidth: .infinity) }
                         .buttonStyle(.formaGlass)
                     Button("Pomiń to ćwiczenie") { model.skipExercise() }

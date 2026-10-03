@@ -8,6 +8,8 @@ import SwiftUI
 struct CoachView: View {
     /// Set when the coach is opened from a workout: where the user is and what the last set was.
     var workout: WorkoutContext?
+    /// Asked once, right after the conversation loads (the "Przeprowadź mnie" buttons of a workout).
+    var initialQuestion: String?
     /// Set when shown as a sheet over a workout: adds a close button.
     var onClose: (() -> Void)?
 
@@ -16,6 +18,7 @@ struct CoachView: View {
     @State private var model: CoachViewModel?
     @State private var voice: VoiceChatController?
     @State private var confirmClear = false
+    @State private var askedInitialQuestion = false
     @FocusState private var inputFocused: Bool
 
     var body: some View {
@@ -35,6 +38,10 @@ struct CoachView: View {
             }
             model?.workout = workout
             await model?.load()
+            if let initialQuestion, !askedInitialQuestion {
+                askedInitialQuestion = true
+                model?.send(initialQuestion)
+            }
         }
         .onDisappear { voice?.endSession() }
     }

@@ -109,6 +109,23 @@ final class WorkoutModel {
 
     // MARK: the coach
 
+    /// The exercises still to do (from the one the workout starts at) as the guide describes them.
+    private func guideEntry(_ planned: PlannedExercise) -> WorkoutGuide.Entry {
+        WorkoutGuide.Entry(name: exercise(planned)?.name ?? planned.exerciseId, planned: planned,
+                           timed: isTimed(planned), live: isLive(planned))
+    }
+
+    /// "Przeprowadź mnie przez trening": the whole session as one question to the coach.
+    var guideQuestion: String {
+        WorkoutGuide.sessionQuestion(title: session.title,
+                                     entries: session.exercises.dropFirst(startExercise).map(guideEntry))
+    }
+
+    /// "Wytłumacz to ćwiczenie": the exercise being done.
+    var explainQuestion: String? {
+        run.currentExercise.map { WorkoutGuide.exerciseQuestion(guideEntry($0)) }
+    }
+
     /// What the coach is told when asked from the screen the user is on.
     func coachContext(screen: WorkoutScreen) -> WorkoutContext {
         let last = run.lastSet.flatMap { $0.liveSetId }.flatMap { liveSummaries[$0] }
