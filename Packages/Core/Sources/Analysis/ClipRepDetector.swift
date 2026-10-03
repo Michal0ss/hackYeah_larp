@@ -51,6 +51,8 @@ public enum ClipRepDetector {
         public var minProminenceSquat = 0.12
         public var minProminencePushup = 0.06
         public var minProminencePullup = 0.10
+        /// A dip moves the shoulders about as far as a squat moves the hips (0.65-0.85 torso lengths in recordings).
+        public var minProminenceDip = 0.10
         /// ... and at least this share of the typical prominence of the clip's peaks (drops jitter next to real reps).
         public var relativeProminence = 0.5
         /// A peak must be at least this wide (seconds) at half of its prominence: a tracking glitch is not a repetition.
@@ -69,6 +71,7 @@ public enum ClipRepDetector {
             case .squat: return minProminenceSquat
             case .pushup: return minProminencePushup
             case .pullup: return minProminencePullup
+            case .dip: return minProminenceDip
             }
         }
 
@@ -80,6 +83,7 @@ public enum ClipRepDetector {
             minProminenceSquat = values["minProminenceSquat"] ?? minProminenceSquat
             minProminencePushup = values["minProminencePushup"] ?? minProminencePushup
             minProminencePullup = values["minProminencePullup"] ?? minProminencePullup
+            minProminenceDip = values["minProminenceDip"] ?? minProminenceDip
             relativeProminence = values["relativeProminence"] ?? relativeProminence
             minWidthSeconds = values["minWidthSeconds"] ?? minWidthSeconds
             edgeShare = values["edgeShare"] ?? edgeShare
@@ -155,6 +159,12 @@ public enum ClipRepDetector {
                 ?? frames[samples[peak.index].frameIndex]
             let start = extremeFrame(in: frames, around: samples[leftValley].time, radius: 0.25, kind: kind, wantMin: false)
                 ?? frames[samples[leftValley].frameIndex]
+            // The arms must have been extended at the start (a dip begins from a lockout): someone still climbing onto
+            // the bars bends and straightens the arms without doing a repetition.
+            if let minStart = kind.minStartElbowForClip,
+               let startAngle = kind.primaryAngle(in: start, minConfidence: config.minConfidence), startAngle < minStart {
+                continue
+            }
             // The exercise's own joint must bend. When it cannot be measured the repetition is kept.
             if let a = kind.primaryAngle(in: start, minConfidence: config.minConfidence),
                let b = kind.primaryAngle(in: bottom, minConfidence: config.minConfidence),

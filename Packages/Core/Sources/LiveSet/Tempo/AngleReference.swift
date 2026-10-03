@@ -42,6 +42,14 @@ public struct AngleReference: Sendable, Equatable {
     /// How far above the wrists (fraction of the image height) the nose must be at the top.
     public var pullupNoseMargin = 0.02
 
+    // Dip (parallel bars, side view)
+    /// Elbow angle at the bottom at or below which the repetition has a full range (upper arm about parallel to the floor).
+    public var dipElbowBottomMax = 100.0
+    /// Elbow angle at the bottom below which the dip is flagged as very deep (more strain on the front of the shoulder).
+    public var dipElbowDeepMin = 45.0
+    /// Elbow angle at the top at or above which the arms count as locked out.
+    public var dipElbowTopMin = 155.0
+
     public init() {}
 
     public init(values: [String: Double]) {
@@ -57,6 +65,9 @@ public struct AngleReference: Sendable, Equatable {
         pullupElbowTopMax = values["pullupElbowTopMax"] ?? pullupElbowTopMax
         pullupElbowHangMin = values["pullupElbowHangMin"] ?? pullupElbowHangMin
         pullupNoseMargin = values["pullupNoseMargin"] ?? pullupNoseMargin
+        dipElbowBottomMax = values["dipElbowBottomMax"] ?? dipElbowBottomMax
+        dipElbowDeepMin = values["dipElbowDeepMin"] ?? dipElbowDeepMin
+        dipElbowTopMin = values["dipElbowTopMin"] ?? dipElbowTopMin
     }
 }
 
@@ -66,7 +77,7 @@ public extension MovementKind {
     var primaryAngleTitle: String {
         switch self {
         case .squat: return "Kąt kolana"
-        case .pushup, .pullup: return "Kąt łokcia"
+        case .pushup, .pullup, .dip: return "Kąt łokcia"
         }
     }
 
@@ -77,6 +88,7 @@ public extension MovementKind {
         case .squat: return (reference.squatKneeDeepMax - 10)...reference.squatKneeParallelMax
         case .pushup: return 60...reference.pushupElbowBottomMax
         case .pullup: return 40...reference.pullupElbowTopMax
+        case .dip: return 50...reference.dipElbowBottomMax
         }
     }
 
@@ -84,7 +96,7 @@ public extension MovementKind {
     func primaryAngle(in frame: PoseFrame, minConfidence: Double = 0.2) -> Double? {
         switch self {
         case .squat: return PoseLimbs.leg(in: frame, minConfidence: minConfidence)?.kneeAngle(in: frame)
-        case .pushup, .pullup: return PoseLimbs.arm(in: frame, minConfidence: minConfidence)?.elbowAngle(in: frame)
+        case .pushup, .pullup, .dip: return PoseLimbs.arm(in: frame, minConfidence: minConfidence)?.elbowAngle(in: frame)
         }
     }
 }

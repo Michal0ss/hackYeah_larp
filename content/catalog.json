@@ -640,6 +640,32 @@
       "pattern": "pull",
       "movementTags": [],
       "timed": false
+    },
+    {
+      "id": "dip",
+      "name": "Dipy na poręczach",
+      "muscleGroup": "Klatka, triceps, barki",
+      "equipment": "gym",
+      "level": "intermediate",
+      "summary": "Pompki na poręczach: ręce wyprostowane, zejście do ramienia mniej więcej równolegle do podłogi i powrót do pełnego wyprostu.",
+      "videoURL": null,
+      "substituteIds": [
+        "pushup",
+        "dumbbell_bench_press"
+      ],
+      "supportsAnalysis": true,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 1,
+        "concentric": 1,
+        "topPause": 0
+      },
+      "pattern": "push",
+      "movementTags": [
+        "overheadPress",
+        "loadedPushups"
+      ],
+      "timed": false
     }
   ]
 }
