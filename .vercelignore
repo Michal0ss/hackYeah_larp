@@ -1,9 +1,16 @@
-App/
-Packages/
-Config/
-Forma.xcodeproj/
-backend/.venv/
-backend/tests/
+# Only what the API needs at runtime goes to Vercel: api/, backend/app (with its prompts), content/, requirements.txt.
+# Patterns are anchored with "/" and matching is case-insensitive: a plain "App/" would also remove backend/app/.
+/App/
+/Packages/
+/Config/
+/Forma.xcodeproj/
+/scripts/
+/backend/.venv/
+/backend/tests/
+/backend/evals/
+/backend/scripts/
 **/__pycache__/
-*.md
-!backend/README.md
+/README.md
+/PROJECT.md
+/WORKINGPLAN.md
+/CLAUDE.md
