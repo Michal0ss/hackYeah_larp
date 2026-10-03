@@ -2,8 +2,8 @@ import Contracts
 import Foundation
 import LiveSet
 
-/// Checks whether a recorded squat video is good enough to score (PROJECT.md 6.2).
-/// Reuses `FramingAssessor` (visibility, size, side view) and `SquatSignal`/`PhaseTracker`
+/// Checks whether a recorded clip is good enough to score (PROJECT.md 6.2), for squat, push-up or
+/// pull-up. Reuses `FramingAssessor` (visibility, size, side view) and `SquatSignal`/`PhaseTracker`
 /// (depth signal, rep counting) from `LiveSet` instead of re-detecting any of this from scratch.
 public enum QualityGate {
     public struct Thresholds {
@@ -38,7 +38,8 @@ public enum QualityGate {
         }
     }
 
-    public static func assess(frames: [PoseFrame], thresholds: Thresholds = Thresholds()) -> QualityReport {
+    public static func assess(frames: [PoseFrame], kind: MovementKind = .squat,
+                              thresholds: Thresholds = Thresholds()) -> QualityReport {
         guard frames.count >= 2 else {
             let check = QualityCheck(id: "frames", label: "Nagranie odczytane", passed: false,
                                     hint: "Nie udało się odczytać nagrania, spróbuj ponownie")
@@ -47,16 +48,18 @@ public enum QualityGate {
 
         var tally: [String: (passed: Int, total: Int, hint: String?)] = [:]
         var overCrowdedFrames = 0
-        var signal = SquatSignal()
+        var signal = SquatSignal(kind: kind)
         var tracker = PhaseTracker()
         var completedReps = 0
 
         for frame in frames {
             let depth = signal.depth(for: frame)
-            // Size only means something while the person is close to standing: mid-squat they are
-            // naturally lower in the frame (FramingAssessor's own rule for the live set, reused here).
-            let nearStanding = (depth ?? 1) < 0.1
-            let framing = FramingAssessor.assess(frame, checkSize: nearStanding, minBodyHeight: thresholds.minBodyHeight)
+            // Size only means something while the person is close to the start: mid-rep they are
+            // naturally lower/higher in the frame (FramingAssessor's own rule for the live set,
+            // reused here).
+            let nearStart = (depth ?? 1) < 0.1
+            let framing = FramingAssessor.assess(frame, kind: kind, checkSize: nearStart,
+                                                 minBodyHeight: thresholds.minBodyHeight)
             for check in framing.checks {
                 var entry = tally[check.id] ?? (0, 0, nil)
                 entry.total += 1
@@ -80,24 +83,25 @@ public enum QualityGate {
             return QualityCheck(id: id, label: label, passed: passed, hint: passed ? nil : entry.hint)
         }
 
-        let visibleCheck = ratioCheck("full_body", label: "Cała sylwetka w kadrze")
-        let sizeCheck = ratioCheck("size", label: "Odpowiednia wielkość w kadrze")
-        let sideCheck = ratioCheck("side_view", label: "Ujęcie z boku")
+        // FramingAssessor doesn't check "size" or "side_view" for every kind (e.g. pull-up has
+        // neither) — only score a check here if frames actually fed it.
+        var checks = [ratioCheck("full_body", label: "Cała sylwetka w kadrze")]
+        if (tally["size"]?.total ?? 0) > 0 { checks.append(ratioCheck("size", label: "Odpowiednia wielkość w kadrze")) }
+        if (tally["side_view"]?.total ?? 0) > 0 { checks.append(ratioCheck("side_view", label: "Ujęcie z boku")) }
 
         let peopleOK = overCrowdedFrames <= frames.count / 10
-        let peopleCheck = QualityCheck(id: "single_person", label: "Jedna osoba w kadrze", passed: peopleOK,
-            hint: peopleOK ? nil : "W kadrze wykryłem więcej niż jedną osobę, nagraj w pustym pomieszczeniu")
+        checks.append(QualityCheck(id: "single_person", label: "Jedna osoba w kadrze", passed: peopleOK,
+            hint: peopleOK ? nil : "W kadrze wykryłem więcej niż jedną osobę, nagraj w pustym pomieszczeniu"))
 
         let repsOK = completedReps >= thresholds.minReps
-        let repsCheck = QualityCheck(id: "rep_count", label: "Co najmniej \(thresholds.minReps) powtórzenia",
-            passed: repsOK, hint: repsOK ? nil : "Zrób co najmniej \(thresholds.minReps) powtórzenia")
+        checks.append(QualityCheck(id: "rep_count", label: "Co najmniej \(thresholds.minReps) powtórzenia",
+            passed: repsOK, hint: repsOK ? nil : "Zrób co najmniej \(thresholds.minReps) powtórzenia"))
 
         let fps = estimatedFps(frames)
         let fpsOK = fps >= thresholds.minFps
-        let fpsCheck = QualityCheck(id: "fps", label: "Płynność nagrania", passed: fpsOK,
-            hint: fpsOK ? nil : "Nagranie ma za mało klatek na sekundę, spróbuj nagrać w lepszym świetle")
+        checks.append(QualityCheck(id: "fps", label: "Płynność nagrania", passed: fpsOK,
+            hint: fpsOK ? nil : "Nagranie ma za mało klatek na sekundę, spróbuj nagrać w lepszym świetle"))
 
-        let checks = [visibleCheck, sizeCheck, sideCheck, peopleCheck, repsCheck, fpsCheck]
         return QualityReport(passed: checks.allSatisfy(\.passed), checks: checks,
                             userHint: checks.first { !$0.passed }?.hint)
     }

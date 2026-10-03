@@ -2,6 +2,7 @@ import Analysis
 import Content
 import Contracts
 import Foundation
+import LiveSet
 import Observation
 
 /// Drives the six analysis screens (PROJECT.md 5.3): exercise -> framing instructions -> capture ->
@@ -21,6 +22,12 @@ final class AnalysisModel {
     private(set) var result: TechniqueResult?
     private(set) var isWorking = false
     private(set) var errorMessage: String?
+
+    /// Which live-set movement this exercise maps to; defaults to squat (shouldn't happen since
+    /// the exercise picker only lists catalog items `MovementKind.kind(for:)` can resolve).
+    var kind: MovementKind {
+        selectedExercise.flatMap(MovementKind.kind(for:)) ?? .squat
+    }
 
     var canGoBack: Bool {
         switch step {
@@ -65,10 +72,10 @@ final class AnalysisModel {
         guard let exercise = selectedExercise else { return }
         step = .processing
         Task {
-            let reps = RepAnalyzer.analyze(frames: frames)
             let weights = TechniqueScorer.Weights.from(ContentRepository.shared.numbers("scoring", "weights"))
             let thresholds = TechniqueScorer.Thresholds.from(ContentRepository.shared.numbers("scoring", "thresholds"))
-            result = TechniqueScorer.score(exerciseId: exercise.id, reps: reps, weights: weights, thresholds: thresholds)
+            result = TechniqueScorer.score(exerciseId: exercise.id, kind: kind, frames: frames,
+                                           weights: weights, thresholds: thresholds)
             step = .result
         }
     }
@@ -105,7 +112,7 @@ final class AnalysisModel {
             }.value
             frames = extracted
             let thresholds = QualityGate.Thresholds.from(ContentRepository.shared.numbers("scoring", "quality"))
-            qualityReport = QualityGate.assess(frames: extracted, thresholds: thresholds)
+            qualityReport = QualityGate.assess(frames: extracted, kind: kind, thresholds: thresholds)
         } catch {
             frames = []
             qualityReport = nil

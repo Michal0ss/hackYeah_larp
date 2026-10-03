@@ -1,7 +1,11 @@
 import Contracts
 import Foundation
+import LiveSet
 
-/// Scores a set of repetitions 0-100 (PROJECT.md 6.4) from the metrics `RepAnalyzer` produced.
+/// Scores a recorded clip 0-100. Squat uses its own weighted scorer (depth/torso/repeatability/
+/// tempo, PROJECT.md 6.4). Push-up and pull-up reuse `MovementKind.defaultAssessor` — the exact
+/// `TechniqueAssessing` the live set scores with — so a file analysis and a live set never show two
+/// different scores for the same exercise.
 public enum TechniqueScorer {
     public struct Weights {
         public var depth: Double
@@ -55,6 +59,23 @@ public enum TechniqueScorer {
     private static let lowTorsoSubstitute = "goblet_squat"
     private static let substituteThreshold = 60.0
 
+    /// Entry point for the analysis screens: picks the squat scorer or the shared live-set assessor
+    /// depending on `kind`.
+    public static func score(exerciseId: String, kind: MovementKind, frames: [PoseFrame],
+                             weights: Weights = Weights(), thresholds: Thresholds = Thresholds(),
+                             date: Date = Date(), isSimulated: Bool = false) -> TechniqueResult {
+        let analysis = RepAnalyzer.analyze(frames: frames, kind: kind)
+        guard kind == .squat else {
+            let assessment = kind.defaultAssessor.assess(bottomFrames: analysis.bottomFrames)
+            return TechniqueResult(exerciseId: exerciseId, date: date, score: assessment.score ?? 0,
+                                   componentScores: [:], findings: assessment.findings, reps: analysis.reps,
+                                   isSimulated: isSimulated)
+        }
+        return score(exerciseId: exerciseId, reps: analysis.reps, weights: weights, thresholds: thresholds,
+                    date: date, isSimulated: isSimulated)
+    }
+
+    /// Squat-only: weighted score from depth/torso/repeatability/tempo (PROJECT.md 6.4).
     public static func score(exerciseId: String, reps: [RepMetrics], weights: Weights = Weights(),
                              thresholds: Thresholds = Thresholds(), date: Date = Date(),
                              isSimulated: Bool = false) -> TechniqueResult {
