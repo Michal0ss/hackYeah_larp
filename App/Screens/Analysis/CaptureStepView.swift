@@ -91,6 +91,8 @@ struct CaptureStepView: View {
         importError = nil
         defer { isImportingFromGallery = false }
         do {
+            // Forget the selection, so picking the same clip again (after a retry) fires onChange again.
+            defer { photosItem = nil }
             guard let movie = try await item.loadTransferable(type: PickedMovie.self) else {
                 importError = "Nie udało się wczytać filmu z galerii."
                 return
