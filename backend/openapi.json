@@ -738,7 +738,8 @@
             "enum": [
               "planned",
               "done",
-              "adapted"
+              "adapted",
+              "skipped"
             ],
             "title": "Status",
             "type": "string"
@@ -868,7 +869,8 @@
             "enum": [
               "planned",
               "done",
-              "adapted"
+              "adapted",
+              "skipped"
             ],
             "title": "Status",
             "type": "string"

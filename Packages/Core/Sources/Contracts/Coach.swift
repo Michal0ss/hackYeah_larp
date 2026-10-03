@@ -13,18 +13,21 @@ public struct ChatMessage: Codable, Equatable, Sendable, Identifiable {
     public var sources: [String]
     /// Changes of the plan the coach proposed in this answer. Each is a card the user accepts or dismisses.
     public var proposals: [PlanChangeProposal]
+    /// The user's question mentioned pain or an injury: the answer comes with the "Warto rozważyć konsultację" card.
+    public var suggestsConsultation: Bool
 
     public init(id: UUID = UUID(), role: ChatRole, text: String, date: Date = Date(), sources: [String] = [],
-                proposals: [PlanChangeProposal] = []) {
+                proposals: [PlanChangeProposal] = [], suggestsConsultation: Bool = false) {
         self.id = id
         self.role = role
         self.text = text
         self.date = date
         self.sources = sources
         self.proposals = proposals
+        self.suggestsConsultation = suggestsConsultation
     }
 
-    // Conversations saved before proposals existed still decode.
+    // Conversations saved before proposals (or the consultation card) existed still decode.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
@@ -33,6 +36,7 @@ public struct ChatMessage: Codable, Equatable, Sendable, Identifiable {
         date = try c.decode(Date.self, forKey: .date)
         sources = try c.decode([String].self, forKey: .sources)
         proposals = try c.decodeIfPresent([PlanChangeProposal].self, forKey: .proposals) ?? []
+        suggestsConsultation = try c.decodeIfPresent(Bool.self, forKey: .suggestsConsultation) ?? false
     }
 }
 

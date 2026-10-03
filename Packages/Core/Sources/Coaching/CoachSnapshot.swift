@@ -35,8 +35,9 @@ public struct CoachSnapshotBuilder: CoachSnapshotProviding {
             today: weekday,
             planSource: currentPlan?.source,
             nextSession: next.map { digest($0, healthConsent: healthConsent) },
-            nextSessionIsToday: next.map { $0.weekday == weekday } ?? false,
-            week: (currentPlan?.sessions ?? []).sorted { $0.weekday < $1.weekday }
+            nextSessionIsToday: next.map { isToday($0) } ?? false,
+            // The seven days from today: each weekday once, whatever the length of the plan.
+            week: (currentPlan?.window(from: now(), calendar: calendar) ?? [])
                 .map { digest($0, healthConsent: healthConsent) },
             lastTechnique: latest.map(techniqueDigest)
         )
@@ -58,6 +59,11 @@ public struct CoachSnapshotBuilder: CoachSnapshotProviding {
         return TechniqueDigest(exerciseId: result.exerciseId, daysAgo: max(0, days), score: result.score,
                                findings: Array(findings), substituteExerciseId: result.substituteExerciseId,
                                isSimulated: result.isSimulated)
+    }
+
+    private func isToday(_ session: PlannedSession) -> Bool {
+        if let date = session.date { return calendar.isDate(date, inSameDayAs: now()) }
+        return session.weekday == isoWeekday(now())
     }
 
     private func isoWeekday(_ date: Date) -> Int {

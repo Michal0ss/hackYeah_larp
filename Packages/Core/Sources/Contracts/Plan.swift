@@ -155,12 +155,17 @@ public struct PlannedExercise: Codable, Equatable, Sendable, Identifiable {
 
 public enum SessionStatus: String, Codable, Sendable {
     case planned, done, adapted
+    /// The user (or the coach, with the user's approval) left this session out. It stays in the plan, so it can be put back.
+    case skipped
 }
 
 public struct PlannedSession: Codable, Equatable, Sendable, Identifiable {
     public var id: UUID
-    /// 1 = Monday ... 7 = Sunday.
+    /// 1 = Monday ... 7 = Sunday. For a session with a `date` it is the weekday of that date.
     public var weekday: Int
+    /// The calendar day of the session (start of that day, local time). Nil in a plain weekly pattern, which is what
+    /// the backend and the templates produce; the app turns it into dated sessions (`Plan.PlanScheduler`).
+    public var date: Date?
     public var title: String
     public var exercises: [PlannedExercise]
     public var status: SessionStatus
@@ -168,9 +173,10 @@ public struct PlannedSession: Codable, Equatable, Sendable, Identifiable {
     public var adaptationNote: String?
 
     public init(id: UUID = UUID(), weekday: Int, title: String, exercises: [PlannedExercise],
-                status: SessionStatus = .planned, adaptationNote: String? = nil) {
+                status: SessionStatus = .planned, adaptationNote: String? = nil, date: Date? = nil) {
         self.id = id
         self.weekday = weekday
+        self.date = date
         self.title = title
         self.exercises = exercises
         self.status = status
@@ -182,14 +188,60 @@ public enum PlanSource: String, Codable, Sendable {
     case ai, template
 }
 
+/// Why a plan is not the plain plan from the AI. The plan generator sets them and the screens show the first one,
+/// so the user is never left wondering why the plan came from a template.
+public enum PlanNotice: String, Codable, Sendable, Equatable {
+    /// The AI did not answer in time or the server had a problem: the plan comes from the server's template.
+    case aiUnavailable
+    /// The AI proposed a plan that failed the checks (unknown exercise, missing equipment, ...).
+    case aiInvalidPlan
+    /// No connection to the server: the plan was built on the phone from the bundled template.
+    case offline
+    /// The free text "czego unikać" cannot be read by a template; only the ticked movements were left out.
+    case avoidTextNotApplied
+
+    /// Polish text for the user.
+    public var userMessage: String {
+        switch self {
+        case .aiUnavailable: return "Trener AI był niedostępny, więc plan pochodzi z gotowego szablonu."
+        case .aiInvalidPlan: return "Plan od trenera AI nie przeszedł sprawdzenia, więc użyłem planu z szablonu."
+        case .offline: return "Brak połączenia z serwerem. Plan ułożyłem na telefonie z szablonu, możesz go później ułożyć od nowa."
+        case .avoidTextNotApplied: return "Szablon nie czyta wpisanego tekstu „czego unikać”. Pominąłem tylko zaznaczone ruchy."
+        }
+    }
+}
+
 public struct TrainingPlan: Codable, Equatable, Sendable {
     public var createdAt: Date
     public var source: PlanSource
+    /// With dates, every session of the whole plan (a few weeks); without, one weekly pattern.
     public var sessions: [PlannedSession]
+    /// Notes on how this plan came to be (empty for a normal plan). Absent in plans saved by older versions.
+    public var notices: [PlanNotice]
+    /// First day of a dated plan (start of that day) and how many weeks it runs from there. Nil for a weekly pattern.
+    public var startDate: Date?
+    public var weeks: Int?
 
-    public init(createdAt: Date, source: PlanSource, sessions: [PlannedSession]) {
+    public init(createdAt: Date, source: PlanSource, sessions: [PlannedSession], notices: [PlanNotice] = [],
+                startDate: Date? = nil, weeks: Int? = nil) {
         self.createdAt = createdAt
         self.source = source
         self.sessions = sessions
+        self.notices = notices
+        self.startDate = startDate
+        self.weeks = weeks
+    }
+
+    private enum CodingKeys: String, CodingKey { case createdAt, source, sessions, notices, startDate, weeks }
+
+    // Plans saved before `notices` existed still decode; a notice this version does not know is dropped.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        source = try c.decode(PlanSource.self, forKey: .source)
+        sessions = try c.decode([PlannedSession].self, forKey: .sessions)
+        notices = (try c.decodeIfPresent([String].self, forKey: .notices) ?? []).compactMap(PlanNotice.init(rawValue:))
+        startDate = try c.decodeIfPresent(Date.self, forKey: .startDate)
+        weeks = try c.decodeIfPresent(Int.self, forKey: .weeks)
     }
 }

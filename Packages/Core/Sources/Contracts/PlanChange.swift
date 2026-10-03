@@ -10,6 +10,8 @@ public enum PlanChangeKind: String, Codable, Sendable, CaseIterable {
     case lighterSession
     /// Move a session to a weekday without a session.
     case moveSession
+    /// Leave a session out (it stays in the plan as skipped and can be put back).
+    case skipSession
 }
 
 public enum PlanChangeStatus: String, Codable, Sendable {

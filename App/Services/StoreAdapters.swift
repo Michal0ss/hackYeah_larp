@@ -18,7 +18,7 @@ struct StorePlanProvider: PlanProviding, @unchecked Sendable {
     func currentPlan() async -> TrainingPlan? {
         let adjusted = adjusted()
         return await MainActor.run {
-            var plan = store.plan
+            var plan = store.resolvedPlan
             if adjusted { plan.sessions = plan.sessions.map { store.adjustment(for: $0).session } }
             return plan
         }
@@ -27,7 +27,10 @@ struct StorePlanProvider: PlanProviding, @unchecked Sendable {
     func todaySession() async -> PlannedSession? {
         let adjusted = adjusted()
         return await MainActor.run {
-            store.todaySession.map { adjusted ? store.adjustment(for: $0.session).session : $0.session }
+            store.todaySession.map { entry in
+                let session = store.resolvedPlan.sessions.first { $0.id == entry.session.id } ?? entry.session
+                return adjusted ? store.adjustment(for: session).session : session
+            }
         }
     }
 }
