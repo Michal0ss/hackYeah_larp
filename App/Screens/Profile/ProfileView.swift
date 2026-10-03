@@ -6,7 +6,9 @@ import Onboarding
 /// What the app knows about you, what stays on the phone, and how to delete it.
 struct ProfileView: View {
     @Environment(AppStore.self) private var store
+    @Environment(AccountStore.self) private var account
     @Environment(\.dismiss) private var dismiss
+    @State private var showLogin = false
     @State private var confirmHealth = false
     @State private var confirmAll = false
     @State private var rebuilding = false
@@ -19,6 +21,7 @@ struct ProfileView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: FormaSpacing.l) {
                     header
+                    accountCard
                     planCard
                     liveTestCard
                     healthCard
@@ -32,6 +35,7 @@ struct ProfileView: View {
             }
             .scrollIndicators(.hidden)
         }
+        .sheet(isPresented: $showLogin) { LoginView(showsClose: true) }
         .fullScreenCover(item: $liveLaunch) { launch in
             LiveSetFlow(exercise: launch.exercise, spec: launch.spec, totalSets: launch.sets) { liveLaunch = nil }
         }
@@ -63,6 +67,31 @@ struct ProfileView: View {
             .buttonStyle(.plain)
             .foregroundStyle(FormaColor.ink)
             .accessibilityLabel("Zamknij")
+        }
+    }
+
+    private var accountCard: some View {
+        card {
+            SectionLabel("Konto")
+            if let user = account.user, account.isSignedIn {
+                Text(user.displayName).formaStyle(.headline).foregroundStyle(FormaColor.ink)
+                if let email = user.email, email != user.displayName {
+                    Text(email).formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
+                }
+                Text("Wylogowanie nie usuwa danych z tego telefonu.")
+                    .formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
+                Button { Task { await account.signOut() } } label: {
+                    Label("Wyloguj", systemImage: "rectangle.portrait.and.arrow.right").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.formaGlass)
+            } else {
+                Text("Nie jesteś zalogowany. Konto pozwoli przenieść plan na inny telefon.")
+                    .formaStyle(.body).foregroundStyle(FormaColor.ink2)
+                Button { showLogin = true } label: {
+                    Label("Zaloguj się", systemImage: "person.crop.circle").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.formaGlass)
+            }
         }
     }
 
