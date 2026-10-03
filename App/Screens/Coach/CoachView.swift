@@ -85,6 +85,7 @@ struct CoachView: View {
                     }
                     ForEach(model.messages) { message in
                         CoachBubble(message: message)
+                        if message.suggestsConsultation { ConsultationCard() }
                         ForEach(message.proposals) { proposal in
                             PlanProposalCard(proposal: proposal, error: model.proposalErrors[proposal.id],
                                              onApply: { model.applyProposal(proposal.id) },

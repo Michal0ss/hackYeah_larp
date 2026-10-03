@@ -5,27 +5,40 @@ import Insights
 import LiveSet
 import Onboarding
 
-/// Week plan: a day strip, the selected session and its exercises. Built by Michał while Maciek works on the
-/// generator (his `feat/maciek-plan-coach-screens` can restyle or extend it). Marking a session done is not here yet.
+/// Plan by date: a week strip with arrows between the weeks of the plan, the selected session and its exercises.
+/// Marking a session done is not here yet (session-flow).
 struct PlanView: View {
     @Environment(AppStore.self) private var store
-    @State private var selectedWeekday: Int?
+    /// The day the user tapped; nil means today's session (or the next one).
+    @State private var selectedDate: Date?
+    /// How many weeks the strip is moved from the week of the shown session.
+    @State private var weekShift = 0
+    @State private var rebuilding = false
     @State private var liveLaunch: LiveSetLaunch?
+    @State private var editing: PlannedSession?
+    @State private var addingSession = false
 
     private static let dayLetters = ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"]
+    private static var calendar: Calendar { TrainingPlan.calendar }
 
-    private var sessions: [PlannedSession] { store.plan.sessions.sorted { $0.weekday < $1.weekday } }
+    private var plan: TrainingPlan { store.resolvedPlan }
 
-    private var todayWeekday: Int {
-        let weekday = Calendar(identifier: .iso8601).component(.weekday, from: Date())
-        return weekday == 1 ? 7 : weekday - 1
+    /// The chosen day's session, otherwise today's, otherwise the next one.
+    private var selected: PlannedSession? {
+        if let day = selectedDate, let match = plan.session(on: day) { return match }
+        return plan.sessionOnOrAfter(Date())
     }
 
-    /// The chosen day, otherwise today's session, otherwise the next one.
-    private var selected: PlannedSession? {
-        if let day = selectedWeekday, let match = sessions.first(where: { $0.weekday == day }) { return match }
-        return sessions.first { $0.weekday == todayWeekday }
-            ?? sessions.first { $0.weekday > todayWeekday } ?? sessions.first
+    /// The day the strip is built around: the shown session, or today when the plan has run out.
+    private var anchorDay: Date {
+        let base = selected?.date ?? Date()
+        return Self.calendar.date(byAdding: .weekOfYear, value: weekShift, to: base) ?? base
+    }
+
+    /// Monday to Sunday of the week on the strip.
+    private var weekDays: [Date] {
+        guard let start = Self.calendar.dateInterval(of: .weekOfYear, for: anchorDay)?.start else { return [] }
+        return (0..<7).compactMap { Self.calendar.date(byAdding: .day, value: $0, to: start) }
     }
 
     var body: some View {
@@ -34,11 +47,17 @@ struct PlanView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: FormaSpacing.l) {
                     header
+                    if store.planHasEnded { endedCard }
                     weekStrip
                     if let session = selected {
                         let adjustment = store.adjustment(for: session)
                         SessionDetail(adjustment: adjustment, restored: store.isRestored(session),
-                                      onToggle: { store.toggleOriginal(session) }) { start($0, in: adjustment.session) }
+                                      onToggle: { store.toggleOriginal(session) }, onEdit: { editing = session },
+                                      onRestore: { store.edit(.restore, sessionId: session.id) }) { start($0, in: adjustment.session) }
+                        Button { addingSession = true } label: {
+                            Label("Dodaj własną sesję", systemImage: "plus").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.formaGlass)
                     } else {
                         emptyState
                     }
@@ -49,6 +68,9 @@ struct PlanView: View {
             }
             .scrollIndicators(.hidden)
         }
+        .overlay(alignment: .bottom) { undoBar }
+        .sheet(item: $editing) { SessionEditSheet(sessionId: $0.id) }
+        .sheet(isPresented: $addingSession) { AddSessionSheet() }
         .fullScreenCover(item: $liveLaunch) { launch in
             LiveSetFlow(exercise: launch.exercise, spec: launch.spec, totalSets: launch.sets) { liveLaunch = nil }
         }
@@ -56,7 +78,7 @@ struct PlanView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.s) {
-            Text("Twój tydzień").formaStyle(.caption).foregroundStyle(FormaColor.ink3)
+            Text(weekTitle).formaStyle(.caption).foregroundStyle(FormaColor.ink3)
             Text("Plan").formaStyle(.largeTitle).foregroundStyle(FormaColor.ink)
             Text(store.plan.source == .ai ? "Plan ułożony przez trenera AI" : "Plan z gotowego szablonu")
                 .formaStyle(.subheadline).foregroundStyle(FormaColor.ink3)
@@ -70,28 +92,89 @@ struct PlanView: View {
         }
     }
 
+    /// "6–12 października", from the week on the strip.
+    private var weekTitle: String {
+        guard let first = weekDays.first, let last = weekDays.last else { return "Twój plan" }
+        let sameMonth = Self.calendar.component(.month, from: first) == Self.calendar.component(.month, from: last)
+        let from = first.formatted(sameMonth ? .dateTime.day() : .dateTime.day().month(.abbreviated))
+        return "\(from)–\(last.formatted(.dateTime.day().month(.wide)))"
+    }
+
+    private var canGoBack: Bool {
+        guard let firstSession = plan.sessions.compactMap(\.date).min(), let first = weekDays.first else { return false }
+        return first > Self.calendar.startOfDay(for: firstSession)
+    }
+
+    private var canGoForward: Bool {
+        guard let last = plan.lastSessionDate, let end = weekDays.last else { return false }
+        return end < Self.calendar.startOfDay(for: last)
+    }
+
     private var weekStrip: some View {
-        HStack(spacing: 6) {
-            ForEach(1...7, id: \.self) { day in
-                let hasSession = sessions.contains { $0.weekday == day }
-                let isSelected = selected?.weekday == day
-                Button { selectedWeekday = day } label: {
-                    VStack(spacing: 6) {
-                        Text(Self.dayLetters[day - 1])
-                            .font(.system(size: 13, weight: .bold))
-                        Circle()
-                            .fill(hasSession ? (isSelected ? FormaColor.onVolt : FormaColor.voltText) : Color.clear)
-                            .frame(width: 6, height: 6)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 56)
-                    .foregroundStyle(isSelected ? FormaColor.onVolt : (day == todayWeekday ? FormaColor.voltText : FormaColor.ink2))
-                    .background(isSelected ? FormaColor.volt : FormaColor.well, in: RoundedRectangle(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(day == todayWeekday ? FormaColor.voltText.opacity(0.5) : .clear))
-                }
-                .buttonStyle(.plain)
-                .disabled(!hasSession)
-                .accessibilityLabel("\(Self.dayLetters[day - 1])\(hasSession ? ", jest trening" : ", wolne")")
+        VStack(spacing: FormaSpacing.s) {
+            HStack(spacing: 6) {
+                Button { weekShift -= 1 } label: { Image(systemName: "chevron.left").frame(width: 24, height: 56) }
+                    .disabled(!canGoBack).accessibilityLabel("Poprzedni tydzień")
+                ForEach(Array(weekDays.enumerated()), id: \.offset) { index, day in dayCell(day, letter: Self.dayLetters[index]) }
+                Button { weekShift += 1 } label: { Image(systemName: "chevron.right").frame(width: 24, height: 56) }
+                    .disabled(!canGoForward).accessibilityLabel("Następny tydzień")
             }
+            .foregroundStyle(FormaColor.ink2)
+        }
+    }
+
+    private func dayCell(_ day: Date, letter: String) -> some View {
+        let session = plan.session(on: day)
+        let hasSession = session != nil
+        let isSelected = selected?.id == session?.id && hasSession
+        let isToday = Self.calendar.isDateInToday(day)
+        return Button { selectedDate = day; weekShift = 0 } label: {
+            VStack(spacing: 4) {
+                Text(letter).font(.system(size: 12, weight: .bold))
+                Text(day.formatted(.dateTime.day())).font(.formaNumber(15)).monospacedDigit()
+                Circle()
+                    .fill(hasSession ? (isSelected ? FormaColor.onVolt : FormaColor.voltText) : Color.clear)
+                    .frame(width: 5, height: 5)
+            }
+            .frame(maxWidth: .infinity, minHeight: 60)
+            .foregroundStyle(isSelected ? FormaColor.onVolt : (isToday ? FormaColor.voltText : FormaColor.ink2))
+            .background(isSelected ? FormaColor.volt : FormaColor.well, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(isToday ? FormaColor.voltText.opacity(0.5) : .clear))
+        }
+        .buttonStyle(.plain)
+        .disabled(!hasSession)
+        .accessibilityLabel("\(day.formatted(.dateTime.weekday(.wide).day().month(.wide)))\(hasSession ? ", jest trening" : ", wolne")")
+    }
+
+    /// The plan covers a fixed number of weeks; when they are over the next plan is one tap away.
+    private var endedCard: some View {
+        VStack(alignment: .leading, spacing: FormaSpacing.m) {
+            Text("Ten plan dobiegł końca").formaStyle(.title2).foregroundStyle(FormaColor.ink)
+            Text("Ułożymy kolejny od dziś, z tymi samymi ustawieniami.")
+                .formaStyle(.subheadline).foregroundStyle(FormaColor.ink3)
+            Button {
+                rebuilding = true
+                Task { _ = await store.rebuildPlan(); rebuilding = false; selectedDate = nil; weekShift = 0 }
+            } label: { Text(rebuilding ? "Układam…" : "Ułóż nowy plan") }
+                .buttonStyle(.formaPrimary).disabled(rebuilding)
+        }
+        .padding(FormaSpacing.xl).frame(maxWidth: .infinity, alignment: .leading).glassCard()
+    }
+
+    /// "Cofnij" for the last change made by hand.
+    @ViewBuilder
+    private var undoBar: some View {
+        if let last = store.lastEdit {
+            HStack(spacing: FormaSpacing.m) {
+                Text(last.summary).formaStyle(.subheadline).foregroundStyle(FormaColor.ink)
+                Spacer()
+                Button("Cofnij") { store.undoLastEdit() }.foregroundStyle(FormaColor.voltText).formaStyle(.subheadline)
+                Button { store.dismissLastEdit() } label: { Image(systemName: "xmark") }
+                    .foregroundStyle(FormaColor.ink3).accessibilityLabel("Ukryj")
+            }
+            .padding(FormaSpacing.l).glassCard(radius: 20)
+            .padding(.horizontal, FormaSpacing.screen).padding(.bottom, 96)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
 
@@ -113,6 +196,8 @@ private struct SessionDetail: View {
     let adjustment: PlanAdjustment
     let restored: Bool
     let onToggle: () -> Void
+    let onEdit: () -> Void
+    let onRestore: () -> Void
     let onStart: (PlannedExercise) -> Void
 
     private var session: PlannedSession { adjustment.session }
@@ -121,9 +206,12 @@ private struct SessionDetail: View {
     var body: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.m) {
             HStack {
-                SectionLabel(Self.dayNames[session.weekday - 1])
+                SectionLabel(Self.label(for: session))
                 Spacer()
-                if adapted {
+                if session.status == .skipped {
+                    Label("Pominięta", systemImage: "forward.end").font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(FormaColor.ink3)
+                } else if adapted {
                     Label(adjustment.isRestDay ? "Odpoczynek" : "Lżejsza dziś", systemImage: "slider.horizontal.3")
                         .font(.system(size: 13, weight: .bold)).foregroundStyle(FormaColor.moderateText)
                 }
@@ -137,10 +225,17 @@ private struct SessionDetail: View {
                 }
             }
             AdjustmentNote(adjustment: adjustment, restored: restored, onToggle: onToggle)
+            if session.status == .skipped {
+                Button(action: onRestore) { Text("Przywróć sesję").frame(maxWidth: .infinity) }.buttonStyle(.formaGlass)
+            } else if session.status != .done {
+                Button(action: onEdit) { Label("Edytuj sesję", systemImage: "slider.horizontal.3").frame(maxWidth: .infinity) }
+                    .buttonStyle(.formaGlass)
+            }
         }
         .padding(FormaSpacing.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
+        .opacity(session.status == .skipped ? 0.6 : 1)
     }
 
     private func row(_ item: PlannedExercise) -> some View {
@@ -179,6 +274,12 @@ private struct SessionDetail: View {
     }
 
     private static let dayNames = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"]
+
+    /// "Środa, 8 października" (the weekday alone for a session without a date).
+    private static func label(for session: PlannedSession) -> String {
+        guard let date = session.date else { return dayNames[session.weekday - 1] }
+        return date.formatted(.dateTime.weekday(.wide).day().month(.wide)).capitalized
+    }
 }
 
 #Preview {

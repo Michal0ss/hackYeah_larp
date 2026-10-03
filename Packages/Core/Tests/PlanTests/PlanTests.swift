@@ -226,6 +226,101 @@ struct FixedCatalog: ExerciseCatalogProviding {
     var exercises: [ExerciseItem] = bundledCatalog
 }
 
+final class PlanSchedulerTests: XCTestCase {
+    private var calendar: Calendar = {
+        var c = Calendar(identifier: .iso8601)
+        c.timeZone = TimeZone(identifier: "UTC")!
+        return c
+    }()
+
+    private func day(_ month: Int, _ dayOfMonth: Int) -> Date {
+        calendar.date(from: DateComponents(year: 2026, month: month, day: dayOfMonth, hour: 15))!
+    }
+
+    // SampleData.plan: Monday, Wednesday and Friday. 2026-10-05 is a Monday.
+    private func schedule(from start: Date, weeks: Int = 8) -> TrainingPlan {
+        PlanScheduler.schedule(SampleData.plan, startingOn: start, weeks: weeks, calendar: calendar)
+    }
+
+    func testEverySessionGetsItsDateAndWeekday() {
+        let plan = schedule(from: day(10, 5), weeks: 2)
+        XCTAssertEqual(plan.sessions.count, 6)
+        XCTAssertTrue(plan.isDated)
+        for session in plan.sessions {
+            XCTAssertEqual(TrainingPlan.isoWeekday(of: try! XCTUnwrap(session.date), calendar: calendar), session.weekday)
+        }
+        XCTAssertEqual(plan.chronological.compactMap(\.date).map { calendar.component(.day, from: $0) }, [5, 7, 9, 12, 14, 16])
+    }
+
+    func testThePlanStartsToday_NotInThePast() {
+        // Thursday 8.10: this week's Monday and Wednesday are over.
+        let plan = schedule(from: day(10, 8), weeks: 2)
+        XCTAssertEqual(plan.chronological.first?.date, calendar.startOfDay(for: day(10, 9)))
+        XCTAssertEqual(plan.startDate, calendar.startOfDay(for: day(10, 8)))
+    }
+
+    func testThePlanRunsForExactlyTheWeeksAsked() {
+        // Thursday 8.10 + 2 weeks = up to and including Wednesday 21.10.
+        let plan = schedule(from: day(10, 8), weeks: 2)
+        XCTAssertEqual(plan.chronological.compactMap(\.date).map { calendar.component(.day, from: $0) }, [9, 12, 14, 16, 19, 21])
+        XCTAssertEqual(plan.weeks, 2)
+        XCTAssertTrue(plan.hasEnded(on: day(10, 22), calendar: calendar))
+        XCTAssertFalse(plan.hasEnded(on: day(10, 21), calendar: calendar))
+    }
+
+    func testEverySessionIsItsOwnWithItsOwnId() {
+        let plan = schedule(from: day(10, 5))
+        XCTAssertEqual(Set(plan.sessions.map(\.id)).count, plan.sessions.count)
+        XCTAssertTrue(plan.sessions.allSatisfy { $0.status == .planned })
+    }
+
+    func testEveryFourthWeekIsLighter() {
+        let plan = schedule(from: day(10, 5))
+        let sets = plan.chronological.filter { $0.weekday == 1 }.map { $0.exercises[0].sets }  // one per week
+        let normal = SampleData.plan.sessions.first { $0.weekday == 1 }!.exercises[0].sets
+        XCTAssertEqual(sets.count, 8)
+        XCTAssertEqual(sets[0], normal)
+        XCTAssertEqual(sets[3], normal - 1, "the 4th week")
+        XCTAssertEqual(sets[7], normal - 1, "the 8th week")
+        XCTAssertEqual(sets[4], normal)
+        XCTAssertNotNil(plan.chronological.filter { $0.weekday == 1 }[3].adaptationNote)
+        XCTAssertNil(plan.chronological[0].adaptationNote)
+    }
+
+    func testAWeekWindowHasEachWeekdayOnce() throws {
+        let plan = schedule(from: day(10, 5))
+        for offset in 0..<20 {
+            let from = calendar.date(byAdding: .day, value: offset, to: day(10, 5))!
+            let weekdays = plan.window(from: from, calendar: calendar).map(\.weekday)
+            XCTAssertEqual(Set(weekdays).count, weekdays.count)
+        }
+    }
+
+    func testReadingByDate() {
+        let plan = schedule(from: day(10, 5), weeks: 2)
+        XCTAssertEqual(plan.session(on: day(10, 7), calendar: calendar)?.weekday, 3)
+        XCTAssertNil(plan.session(on: day(10, 8), calendar: calendar))
+        XCTAssertEqual(plan.sessionOnOrAfter(day(10, 8), calendar: calendar)?.weekday, 5)
+        XCTAssertNil(plan.sessionOnOrAfter(day(10, 17), calendar: calendar), "nothing after the last session")
+        XCTAssertEqual(plan.week(containing: day(10, 14), calendar: calendar).count, 3)
+        XCTAssertEqual(plan.sessionsPerWeek, 3)
+    }
+
+    func testAPlanWithoutDatesReadsAsBefore() {
+        let pattern = SampleData.plan
+        XCTAssertFalse(pattern.isDated)
+        XCTAssertEqual(pattern.window(from: day(10, 5)).count, 3)
+        XCTAssertEqual(pattern.sessionOnOrAfter(day(10, 6), calendar: calendar)?.weekday, 3)
+        XCTAssertFalse(pattern.hasEnded(on: day(12, 1)))
+    }
+
+    func testTheDatedPlanSurvivesEncoding() throws {
+        let plan = schedule(from: day(10, 5))
+        let again = try JSONDecoder().decode(TrainingPlan.self, from: JSONEncoder().encode(plan))
+        XCTAssertEqual(again, plan)
+    }
+}
+
 final class PlanGeneratorTests: XCTestCase {
     private let profile = SampleData.profile  // has free text in `avoid`
     private var templates: PlanTemplates!
@@ -244,10 +339,25 @@ final class PlanGeneratorTests: XCTestCase {
                       deadline: deadline)
     }
 
+    /// The first seven days of a dated plan, as the weekly pattern they came from: weekday → exercises.
+    private func firstWeek(_ plan: TrainingPlan) throws -> [Int: [PlannedExercise]] {
+        XCTAssertTrue(plan.isDated)
+        let start = try XCTUnwrap(plan.startDate)
+        return Dictionary(uniqueKeysWithValues: plan.window(from: start).map { ($0.weekday, $0.exercises) })
+    }
+
+    /// The first week as an undated plan, for the validator that checks one week.
+    private func weekPlan(_ plan: TrainingPlan) throws -> TrainingPlan {
+        var week = plan
+        week.sessions = plan.window(from: try XCTUnwrap(plan.startDate)).map { var s = $0; s.date = nil; return s }
+        return week
+    }
+
     func testAValidPlanFromTheBackendIsKept() async throws {
         let fromAI = try plan()
         let result = try await generator { PlanGenerateResponse(plan: fromAI, warnings: []) }.generatePlan(for: profile)
-        XCTAssertEqual(result, fromAI)
+        XCTAssertEqual(try firstWeek(result), Dictionary(uniqueKeysWithValues: fromAI.sessions.map { ($0.weekday, $0.exercises) }))
+        XCTAssertEqual(result.weeks, PlanScheduler.defaultWeeks)
         XCTAssertEqual(result.source, .ai)
         XCTAssertEqual(result.notices, [])
     }
@@ -257,7 +367,7 @@ final class PlanGeneratorTests: XCTestCase {
         let warnings = ["ai_unavailable", "avoid_text_not_applied", "ai_unavailable", "ai_mock", "something_new"]
         let result = try await generator { PlanGenerateResponse(plan: fromServer, warnings: warnings) }.generatePlan(for: profile)
         XCTAssertEqual(result.notices, [.aiUnavailable, .avoidTextNotApplied])
-        XCTAssertEqual(result.sessions, fromServer.sessions)
+        XCTAssertEqual(try firstWeek(result), Dictionary(uniqueKeysWithValues: fromServer.sessions.map { ($0.weekday, $0.exercises) }))
     }
 
     func testAPlanThatFailsTheChecksIsReplacedByTheLocalTemplate() async throws {
@@ -266,7 +376,7 @@ final class PlanGeneratorTests: XCTestCase {
         let result = try await generator { PlanGenerateResponse(plan: bad, warnings: []) }.generatePlan(for: profile)
         XCTAssertEqual(result.source, .template)
         XCTAssertEqual(result.notices, [.aiInvalidPlan, .avoidTextNotApplied])
-        XCTAssertEqual(PlanValidator.validate(result, profile: profile, catalog: bundledCatalog, templates: templates), [])
+        XCTAssertEqual(PlanValidator.validate(try weekPlan(result), profile: profile, catalog: bundledCatalog, templates: templates), [])
     }
 
     func testEquipmentTheUserLacksIsCaughtOnThePhoneToo() async throws {
@@ -284,8 +394,8 @@ final class PlanGeneratorTests: XCTestCase {
         let result = try await generator { throw APIError.transport("offline") }.generatePlan(for: profile)
         XCTAssertEqual(result.source, .template)
         XCTAssertEqual(result.notices, [.offline, .avoidTextNotApplied])
-        XCTAssertEqual(result.sessions.count, profile.daysPerWeek)
-        XCTAssertEqual(PlanValidator.validate(result, profile: profile, catalog: bundledCatalog, templates: templates), [])
+        XCTAssertEqual(result.sessionsPerWeek, profile.daysPerWeek)
+        XCTAssertEqual(PlanValidator.validate(try weekPlan(result), profile: profile, catalog: bundledCatalog, templates: templates), [])
     }
 
     func testNoBackendConfiguredIsTreatedAsOffline() async throws {
@@ -340,7 +450,7 @@ final class PlanGeneratorTests: XCTestCase {
         let generator = PlanGenerator(backend: FakeBackend { throw APIError.transport("offline") }, catalog: FixedCatalog(),
                                       templates: nil, deadline: 5)
         let result = try await generator.generatePlan(for: profile)
-        XCTAssertEqual(result.sessions.count, profile.daysPerWeek)
+        XCTAssertEqual(result.sessionsPerWeek, profile.daysPerWeek)
         XCTAssertEqual(result.notices.first, .offline)
     }
 

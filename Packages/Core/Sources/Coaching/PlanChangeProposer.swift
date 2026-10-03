@@ -25,7 +25,7 @@ public struct PlanChangeProposer: Sendable {
             return Self.failure("Użytkownik nie ma jeszcze planu.")
         }
         guard let kind = Self.kind(input["kind"]?.stringValue) else {
-            return Self.failure("Nieznany rodzaj zmiany. Dozwolone: swap_exercise, lighter_session, move_session.")
+            return Self.failure("Nieznany rodzaj zmiany. Dozwolone: swap_exercise, lighter_session, move_session, skip_session.")
         }
         let changer = PlanChanger(catalog: catalog.exercises, profile: await profile())
         do {
@@ -51,12 +51,12 @@ public struct PlanChangeProposer: Sendable {
     private func hint(for error: PlanChangeError, in plan: TrainingPlan) -> [String: JSONValue] {
         switch error {
         case .noSuchSession, .dayTaken, .sameDay:
-            let sessions = plan.sessions.sorted { $0.weekday < $1.weekday }.map {
+            let sessions = plan.window(from: Date()).map {
                 JSONValue.object(["weekday": .number(Double($0.weekday)), "title": .string($0.title)])
             }
             return ["sessionsInPlan": .array(sessions)]
         case .noSuchExercise:
-            return ["exercisesInPlan": .array(plan.sessions.sorted { $0.weekday < $1.weekday }.map { session in
+            return ["exercisesInPlan": .array(plan.window(from: Date()).map { session in
                 .object(["weekday": .number(Double(session.weekday)),
                          "exerciseIds": .array(session.exercises.map { .string($0.exerciseId) })])
             })]
@@ -70,6 +70,7 @@ public struct PlanChangeProposer: Sendable {
         case "swap_exercise": return .swapExercise
         case "lighter_session": return .lighterSession
         case "move_session": return .moveSession
+        case "skip_session": return .skipSession
         default: return nil
         }
     }

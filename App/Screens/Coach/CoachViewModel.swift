@@ -64,7 +64,7 @@ final class CoachViewModel {
                                           catalog: services.catalog, profile: { await MainActor.run { store.profile } })
         let tools = CoachTools(plan: plan, catalog: services.catalog, recovery: services.recovery,
                                checkIns: services.checkIns, technique: services.technique, recommendation: recommendation,
-                               feedback: services.sessionFeedback, proposer: proposer,
+                               feedback: services.sessionFeedback, proposer: proposer, log: services.planStore,
                                hasHealthConsent: { consent.isGranted })
         let chat = CoachChat(backend: services.api, tools: tools,
                              profile: { await MainActor.run { store.profile } },
@@ -144,7 +144,8 @@ final class CoachViewModel {
     private func finish(_ reply: CoachReply) async {
         var sources = reply.sources
         if reply.isSimulated { sources.append(CoachChat.simulatedSourceLabel) }
-        let answer = ChatMessage(role: .coach, text: reply.text, sources: sources, proposals: reply.proposals)
+        let answer = ChatMessage(role: .coach, text: reply.text, sources: sources, proposals: reply.proposals,
+                                  suggestsConsultation: reply.suggestsConsultation)
         messages.append(answer)
         await history.append([answer])
     }

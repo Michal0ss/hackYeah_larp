@@ -20,6 +20,8 @@ public struct CoachReply: Equatable, Sendable {
     public var isTruncated: Bool
     /// Changes of the plan the coach proposed while answering. Nothing is changed until the user accepts one.
     public var proposals: [PlanChangeProposal] = []
+    /// The question mentioned pain or an injury: show the "Warto rozważyć konsultację" card under the answer.
+    public var suggestsConsultation: Bool = false
 }
 
 public enum CoachEvent: Equatable, Sendable {
@@ -146,6 +148,7 @@ public struct CoachChat: Sendable {
         } else {
             messages.append(.user(Self.clip(text)))
         }
+        let painMentioned = PainSignal.mentions(text)
         var answer = ""
         // The last set travels with the request, so the answer rests on it: say so under the answer.
         var sources: [String] = workout?.lastSet == nil ? [] : ["ostatnia seria"]
@@ -196,7 +199,8 @@ public struct CoachChat: Sendable {
                 let final = answer.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !final.isEmpty else { throw CoachChatError.emptyAnswer }
                 continuation.yield(.finished(CoachReply(text: final, sources: sources, isSimulated: simulated,
-                                                        isTruncated: stopReason == "max_tokens", proposals: proposals)))
+                                                        isTruncated: stopReason == "max_tokens", proposals: proposals,
+                                                        suggestsConsultation: painMentioned)))
                 return
             }
             guard round < maxToolRounds else { throw CoachChatError.tooManyToolRounds }
