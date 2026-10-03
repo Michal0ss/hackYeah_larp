@@ -63,11 +63,19 @@ public enum RepAnalyzer {
     }
 
     /// The main angle of the exercise (knee for a squat, elbow for a push-up and a pull-up) at every frame where its
-    /// three joints are visible, for charting over time.
+    /// three joints are visible, for charting over time. Smoothed the same way `ClipRepDetector` smooths its depth
+    /// signal (a median of nearby samples, then a short moving average), so one bad Vision frame doesn't spike the
+    /// chart — scoring already picks a robust single frame per repetition (`MovementKind.representativeFrame`); this
+    /// is the same idea applied to every frame, for the line between repetitions.
     public static func angleSeries(in frames: [PoseFrame], kind: MovementKind) -> [(time: Double, angle: Double)] {
-        frames.compactMap { frame in
+        let raw = frames.compactMap { frame -> (time: Double, angle: Double)? in
             kind.primaryAngle(in: frame, minConfidence: 0.15).map { (frame.time, $0) }
         }
+        guard raw.count > 4 else { return raw }
+        let times = raw.map(\.time)
+        var angles = ClipRepDetector.medianFilter(raw.map(\.angle), radius: 2)
+        angles = ClipRepDetector.movingAverage(angles, times: times, window: 0.2)
+        return zip(times, angles).map { (time: $0, angle: $1) }
     }
 
     /// Knee angle at every frame where hip/knee/ankle are all visible, for charting over time (squat).
