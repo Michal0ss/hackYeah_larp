@@ -198,8 +198,18 @@ struct RecoveryMoodCard: View {
                 RecoveryMoodChart(recovery: report.recovery, mood: report.mood)
                     .frame(height: 170)
                 HStack(spacing: FormaSpacing.l) {
-                    LegendItem(title: "Regeneracja (sen, HRV, tętno)", color: FormaColor.volt, dashed: false)
-                    LegendItem(title: "Nastrój", color: FormaColor.rest, dashed: true)
+                    if !report.recovery.isEmpty {
+                        LegendItem(title: "Regeneracja (sen, HRV, tętno)", color: FormaColor.volt, dashed: false)
+                    }
+                    if !report.mood.isEmpty {
+                        LegendItem(title: "Nastrój", color: FormaColor.rest, dashed: true)
+                    }
+                }
+                if report.recovery.isEmpty {
+                    Text("Brak danych regeneracji. Sen, tętno i HRV pojawią się tu, gdy Apple Health je zapisze.")
+                        .formaStyle(.subheadline)
+                        .foregroundStyle(FormaColor.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if report.mood.isEmpty {
                     Button(action: onCheckIn) {

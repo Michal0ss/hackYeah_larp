@@ -34,11 +34,14 @@ public protocol HealthSummaryProviding: Sendable {
 
 /// `RecoveryProviding`, `HealthSummaryProviding` and `HealthAuthorizing` on top of Apple Health.
 ///
-/// Returns only daily summaries with a personal baseline, never raw samples. When Apple Health has no data at all
-/// (no access, empty, error, or the gate says "sample data") it falls back to the "Anna" sample data, marked
-/// `isSimulated` so the UI shows the "Dane przykładowe" badge. As soon as Health has *any* real number, only real
-/// data is returned: sample and real data are never mixed, even when the real data is incomplete (then `snapshots`
-/// has no complete day and the rule engine simply has no recovery signal).
+/// Returns only daily summaries with a personal baseline, never raw samples.
+///
+/// While Apple Health is readable (available, and the gate says real data is allowed) the answer is always the
+/// real one, even when it is empty or incomplete: "Health has nothing for you yet" is shown as "no data", never
+/// as made-up numbers. Only when real data does not apply (Health unavailable, or the user chose sample data in
+/// onboarding and the gate is closed) it falls back to the "Anna" sample data, marked `isSimulated` so the UI
+/// shows the "Dane przykładowe" badge. Sample and real data are never mixed. Incomplete real data gives
+/// `snapshots` no complete day, so the rule engine simply has no recovery signal.
 public struct HealthKitService: RecoveryProviding, HealthSummaryProviding, HealthAuthorizing {
     private let source: HealthSampleSource
     private let aggregator: RecoveryAggregator
@@ -69,7 +72,7 @@ public struct HealthKitService: RecoveryProviding, HealthSummaryProviding, Healt
 
     public func snapshots(days: Int) async -> [RecoverySnapshot] {
         guard days > 0 else { return [] }
-        if let real = await realSummaries(days: days), !real.isEmpty { return real.compactMap(\.snapshot) }
+        if let real = await realSummaries(days: days) { return real.compactMap(\.snapshot) }
         return useSampleFallback ? Array(SampleData.recovery.prefix(days)) : []
     }
 
@@ -77,18 +80,19 @@ public struct HealthKitService: RecoveryProviding, HealthSummaryProviding, Healt
 
     public func summaries(days: Int) async -> [HealthDaySummary] {
         guard days > 0 else { return [] }
-        if let real = await realSummaries(days: days), !real.isEmpty { return real }
+        if let real = await realSummaries(days: days) { return real }
         return useSampleFallback ? SampleData.recovery.prefix(days).map(HealthDaySummary.init) : []
     }
 
-    /// nil when real data must not or cannot be read (gate closed, Health unavailable, read failed).
+    /// nil when real data does not apply (gate closed, Health unavailable). Otherwise the real days, which is an
+    /// empty list when Health has nothing or the read failed (e.g. the phone is locked): that means "no data".
     private func realSummaries(days: Int) async -> [HealthDaySummary]? {
         guard gate.allowsRealData, source.isAvailable else { return nil }
         let end = now()
         let lookback = aggregator.lookbackDays(for: days)
         guard let start = aggregator.calendar.date(byAdding: .day, value: -lookback,
-                                                   to: aggregator.calendar.startOfDay(for: end)) else { return nil }
-        guard let samples = try? await source.samples(from: start, to: end) else { return nil }
+                                                   to: aggregator.calendar.startOfDay(for: end)) else { return [] }
+        guard let samples = try? await source.samples(from: start, to: end) else { return [] }
         return aggregator.summaries(from: samples, days: days, now: end)
     }
 }

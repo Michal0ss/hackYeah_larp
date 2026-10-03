@@ -38,10 +38,9 @@ final class HealthKitServiceTests: XCTestCase {
         XCTAssertFalse(result[0].isSimulated)
     }
 
-    func testEmptyHealthFallsBackToSimulatedSampleData() async {
+    func testEmptyHealthMeansNoDataAndNeverSampleData() async {
         let result = await service(FakeSource()).snapshots(days: 5)
-        XCTAssertEqual(result.count, 5)
-        XCTAssertTrue(result.allSatisfy(\.isSimulated))
+        XCTAssertTrue(result.isEmpty)
     }
 
     func testUnavailableHealthFallsBackToSample() async {
@@ -50,14 +49,16 @@ final class HealthKitServiceTests: XCTestCase {
         XCTAssertTrue(result.allSatisfy(\.isSimulated))
     }
 
-    func testSourceErrorFallsBackToSample() async {
-        let result = await service(FakeSource(samplesResult: .failure(Boom()))).snapshots(days: 3)
-        XCTAssertEqual(result.count, 3)
-        XCTAssertTrue(result.allSatisfy(\.isSimulated))
+    func testSourceErrorMeansNoDataAndNeverSampleData() async {
+        let s = service(FakeSource(samplesResult: .failure(Boom())))
+        let snapshots = await s.snapshots(days: 3)
+        let summaries = await s.summaries(days: 3)
+        XCTAssertTrue(snapshots.isEmpty)
+        XCTAssertTrue(summaries.isEmpty)
     }
 
     func testFallbackCanBeSwitchedOff() async {
-        let result = await service(FakeSource(), fallback: false).snapshots(days: 7)
+        let result = await service(FakeSource(isAvailable: false), fallback: false).snapshots(days: 7)
         XCTAssertTrue(result.isEmpty)
     }
 
@@ -75,11 +76,26 @@ final class HealthKitServiceTests: XCTestCase {
         XCTAssertFalse(summaries[0].isSimulated)
     }
 
-    func testSummariesFallBackToSimulatedSampleWhenHealthIsEmpty() async {
+    func testSummariesAreEmptyWhenHealthIsEmpty() async {
         let summaries = await service(FakeSource()).summaries(days: 5)
+        XCTAssertTrue(summaries.isEmpty)
+    }
+
+    func testSummariesFallBackToSimulatedSampleWhenHealthIsUnavailable() async {
+        let summaries = await service(FakeSource(isAvailable: false)).summaries(days: 5)
         XCTAssertEqual(summaries.count, 5)
         XCTAssertTrue(summaries.allSatisfy(\.isSimulated))
         XCTAssertEqual(summaries[0].snapshot, SampleData.recovery[0])
+    }
+
+    func testClosedGateWithEmptyHealthStillUsesSampleData() async {
+        let gate = HealthDataGate()
+        gate.allowsRealData = false
+        let fixedNow = now
+        let s = HealthKitService(source: FakeSource(), aggregator: aggregator, gate: gate, now: { fixedNow })
+        let summaries = await s.summaries(days: 4)
+        XCTAssertEqual(summaries.count, 4)
+        XCTAssertTrue(summaries.allSatisfy(\.isSimulated))
     }
 
     func testPartialRealDataIsShownAndNeverMixedWithSampleData() async {
@@ -113,7 +129,7 @@ final class HealthKitServiceTests: XCTestCase {
     }
 
     func testSummariesWithFallbackOffAreEmptyWithoutData() async {
-        let empty = await service(FakeSource(), fallback: false).summaries(days: 7)
+        let empty = await service(FakeSource(isAvailable: false), fallback: false).summaries(days: 7)
         XCTAssertTrue(empty.isEmpty)
     }
 
