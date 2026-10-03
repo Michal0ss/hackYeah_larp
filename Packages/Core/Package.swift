@@ -32,7 +32,7 @@ let package = Package(
         // Maciek: plan generation, validation, templates.
         .target(name: "Plan", dependencies: ["Contracts", "Content"], resources: [.process("Resources")]),
         // Maciek: API client, tools, chat.
-        .target(name: "Coaching", dependencies: ["Contracts", "Plan", "Content"]),
+        .target(name: "Coaching", dependencies: ["Contracts", "API", "Plan", "Content"]),
         // Maciek: exercise catalog and texts.
         .target(name: "Content", dependencies: ["Contracts", "API"], resources: [.process("Resources")]),
         // Michał: live set coaching (camera pose, tempo engine, voice cues, set summary).
@@ -49,7 +49,7 @@ let package = Package(
         .testTarget(name: "HealthTests", dependencies: ["Health", "Contracts"]),
         .testTarget(name: "InsightsTests", dependencies: ["Insights", "Contracts"]),
         .testTarget(name: "PlanTests", dependencies: ["Plan", "Content", "Contracts"]),
-        .testTarget(name: "CoachingTests", dependencies: ["Coaching", "Plan", "Content", "Contracts"]),
+        .testTarget(name: "CoachingTests", dependencies: ["Coaching", "API", "Plan", "Content", "Contracts"]),
         .testTarget(name: "ContentTests", dependencies: ["Content", "Contracts"]),
     ]
 )
