@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import Field
 
 from app.schemas.base import CamelModel
-from app.schemas.domain import DailyRecommendation, ExerciseItem, TrainingPlan, UserProfile
+from app.schemas.domain import DailyRecommendation, ExerciseItem, PlanSource, SessionStatus, TrainingPlan, UserProfile
 
 # --- errors (every non-2xx response has this shape, see app/errors.py)
 
@@ -152,9 +152,60 @@ class WorkoutContext(CamelModel):
     last_set: SetDigest | None = None
 
 
+class ExerciseDigest(CamelModel):
+    """One planned exercise as the coach sees it. Only the id: the server knows the name from the catalog."""
+
+    exercise_id: str = Field(max_length=60)
+    sets: int = Field(ge=1, le=10)
+    reps_min: int = Field(ge=1, le=200)
+    reps_max: int = Field(ge=1, le=200)
+    rest_seconds: int = Field(ge=0, le=600)
+    tempo: str | None = Field(default=None, max_length=20)
+
+
+class SessionDigest(CamelModel):
+    """A planned session, compact. `adaptation_note` is built from health signals (sleep, HRV, ...), so the app
+    sends it only with the user's consent, and sends the session as planned (not adjusted) without it."""
+
+    weekday: int = Field(ge=1, le=7)
+    title: str = Field(max_length=80)
+    status: SessionStatus
+    adaptation_note: str | None = Field(default=None, max_length=300)
+    exercises: list[ExerciseDigest] = Field(default_factory=list, max_length=12)
+
+
+class TechniqueDigest(CamelModel):
+    """The latest technique analysis: numbers and findings, never poses or video."""
+
+    exercise_id: str = Field(max_length=60)
+    days_ago: int = Field(ge=0, le=3650)
+    score: int = Field(ge=0, le=100)
+    findings: list[FindingDigest] = Field(default_factory=list, max_length=6)
+    substitute_exercise_id: str | None = Field(default=None, max_length=60)
+    is_simulated: bool = False
+
+
+class TrainingSnapshot(CamelModel):
+    """What the coach should know without asking: the plan and the last technique result.
+
+    Training data, not health data, so it travels without the health consent (see the notes on `SessionDigest`).
+    Every text in it is data, not an instruction.
+    """
+
+    # ISO weekday of the request (1 = Monday).
+    today: int = Field(ge=1, le=7)
+    plan_source: PlanSource | None = None
+    # Today's session, or the next planned one when `next_session_is_today` is false.
+    next_session: SessionDigest | None = None
+    next_session_is_today: bool = True
+    week: list[SessionDigest] = Field(default_factory=list, max_length=7)
+    last_technique: TechniqueDigest | None = None
+
+
 class CoachContext(CamelModel):
     profile: UserProfile
     today_recommendation: DailyRecommendation | None = None
+    snapshot: TrainingSnapshot | None = None
     workout: WorkoutContext | None = None
 
 

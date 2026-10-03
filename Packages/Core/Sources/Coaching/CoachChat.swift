@@ -92,27 +92,33 @@ public struct CoachChat: Sendable {
     private let tools: CoachToolRunning
     private let profile: @Sendable () async -> UserProfile
     private let recommendation: RecommendationProviding
+    private let snapshot: CoachSnapshotProviding?
     private let hasHealthConsent: @Sendable () -> Bool
     private let maxToolRounds: Int
 
+    /// `snapshot` tells the coach about the plan and the last technique result in every request; without it the
+    /// coach has to ask for them through the tools.
     public init(backend: CoachBackend, tools: CoachToolRunning, profile: @escaping @Sendable () async -> UserProfile,
-                recommendation: RecommendationProviding, hasHealthConsent: @escaping @Sendable () -> Bool,
-                maxToolRounds: Int = 4) {
+                recommendation: RecommendationProviding, snapshot: CoachSnapshotProviding? = nil,
+                hasHealthConsent: @escaping @Sendable () -> Bool, maxToolRounds: Int = 4) {
         self.backend = backend
         self.tools = tools
         self.profile = profile
         self.recommendation = recommendation
+        self.snapshot = snapshot
         self.hasHealthConsent = hasHealthConsent
         self.maxToolRounds = maxToolRounds
     }
 
     /// Answers `text` in the context of `history` (the earlier messages of this conversation, oldest first).
+    /// `workout` says where in the workout the question was asked (nil: in the Trener tab, not in a workout).
     /// The stream ends with `.finished` or fails with a `CoachChatError`.
-    public func reply(to text: String, history: [ChatMessage]) -> AsyncThrowingStream<CoachEvent, Error> {
+    public func reply(to text: String, history: [ChatMessage],
+                      workout: WorkoutContext? = nil) -> AsyncThrowingStream<CoachEvent, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    try await run(text: text, history: history, continuation: continuation)
+                    try await run(text: text, history: history, workout: workout, continuation: continuation)
                     continuation.finish()
                 } catch is CancellationError {
                     continuation.finish()
@@ -126,7 +132,7 @@ public struct CoachChat: Sendable {
 
     // MARK: the loop
 
-    private func run(text: String, history: [ChatMessage],
+    private func run(text: String, history: [ChatMessage], workout: WorkoutContext?,
                      continuation: AsyncThrowingStream<CoachEvent, Error>.Continuation) async throws {
         var messages = Self.wireHistory(from: history)
         if let last = messages.last, last.role == .user {
@@ -136,17 +142,21 @@ public struct CoachChat: Sendable {
             messages.append(.user(Self.clip(text)))
         }
         var answer = ""
-        var sources: [String] = []
+        // The last set travels with the request, so the answer rests on it: say so under the answer.
+        var sources: [String] = workout?.lastSet == nil ? [] : ["ostatnia seria"]
         var simulated = false
 
         for round in 0...maxToolRounds {
             try Task.checkCancellation()
             let consent = hasHealthConsent()
             let today = consent ? await recommendation.todayRecommendation() : nil
-            // The recommendation travels with the request, so the answer may rest on it: mark sample data as such.
-            simulated = simulated || (today?.isSimulated ?? false)
+            let training = await snapshot?.snapshot(healthConsent: consent)
+            // The recommendation and the snapshot travel with the request, so the answer may rest on them: mark
+            // sample data as such.
+            simulated = simulated || (today?.isSimulated ?? false) || (training?.containsSampleData ?? false)
             let request = ChatRequest(messages: messages,
-                                      context: ChatContext(profile: await profile(), todayRecommendation: today),
+                                      context: ChatContext(profile: await profile(), todayRecommendation: today,
+                                                           snapshot: training, workout: workout),
                                       healthConsent: consent)
 
             var roundText = ""

@@ -18,6 +18,8 @@ final class CoachViewModel {
     private(set) var error: CoachChatError?
     private(set) var consent: DataConsent
     var draft = ""
+    /// Where in the workout the next question is asked (set by the "Zapytaj trenera" sheet; nil in the Trener tab).
+    var workout: WorkoutContext?
 
     private let chat: CoachChat
     private let history: CoachHistoryStore
@@ -45,14 +47,18 @@ final class CoachViewModel {
     /// Builds the coach on the real services of the app.
     static func make(store: AppStore) -> CoachViewModel {
         let services = store.services
+        let consent = services.consent
         let recommendation = StoreRecommendationProvider(store: store)
-        let tools = CoachTools(plan: StorePlanProvider(store: store), catalog: services.catalog, recovery: services.recovery,
+        // The plan the coach reads is the adjusted one only after the user agreed to health data.
+        let plan = StorePlanProvider(store: store, adjusted: { consent.isGranted })
+        let tools = CoachTools(plan: plan, catalog: services.catalog, recovery: services.recovery,
                                checkIns: services.checkIns, technique: services.technique, recommendation: recommendation,
-                               hasHealthConsent: { [consent = services.consent] in consent.isGranted })
+                               feedback: services.sessionFeedback, hasHealthConsent: { consent.isGranted })
         let chat = CoachChat(backend: services.api, tools: tools,
                              profile: { await MainActor.run { store.profile } },
                              recommendation: recommendation,
-                             hasHealthConsent: { [consent = services.consent] in consent.isGranted })
+                             snapshot: CoachSnapshotBuilder(plan: plan, technique: services.technique),
+                             hasHealthConsent: { consent.isGranted })
         let texter = services.recommendationText
         return CoachViewModel(chat: chat, history: services.coachHistory, consentStore: services.consent,
                               onConsentWithdrawn: { await (texter as? RecommendationTexter)?.clearCache() })
@@ -95,9 +101,10 @@ final class CoachViewModel {
         streamingText = ""
         checking = nil
         let current = generation
+        let workout = workout
         task = Task { [chat] in
             do {
-                for try await event in chat.reply(to: question, history: before) {
+                for try await event in chat.reply(to: question, history: before, workout: workout) {
                     switch event {
                     case .delta(let piece):
                         checking = nil

@@ -83,9 +83,24 @@ Tools are defined on the server (`app/ai/tools.py`) and executed by the **app** 
    `tool_result` block (`toolUseId`, `content` = JSON text, a summary only),
 3. the app posts again; the model answers.
 
-Tools that read health data (`get_today_recommendation`, `get_recovery_summary`, `get_checkins`) are offered only
-when `consent.health` is true. Without consent they are not in the model's tool list, health context is left out
-of the prompt, and a history that contains health tool results is rejected (`consent_required`).
+Tools that read health data (`get_today_recommendation`, `get_recovery_summary`, `get_checkins`,
+`get_session_feedback`) are offered only when `consent.health` is true. Without consent they are not in the model's
+tool list, health context is left out of the prompt, and a history that contains health tool results is rejected
+(`consent_required`).
+
+The request also carries a small **context** that the server turns into the system prompt (`app/ai/prompts.py`), so
+simple questions need no tool call:
+
+- `profile` and `todayRecommendation` (the recommendation only with consent),
+- `snapshot` (`TrainingSnapshot`): today's session, the week and the last technique result, as ids and numbers. The
+  session's `adaptationNote` and its `adapted` status come from health signals, so the server ignores them without
+  consent (the app leaves them out as well),
+- `workout` (`WorkoutContext`): the screen the question was asked from and the last set as numbers (training data,
+  no health data; it makes the coach answer in at most three sentences while the user is exercising).
+
+Everything in the context is data, not an instruction: free text goes through `sanitize_free_text`, exercises are
+named from the catalog, and the catalog in the prompt is split into exercises that fit this person (equipment, level,
+movements to avoid) and the rest, so substitutes are always suitable.
 
 ## Layout
 

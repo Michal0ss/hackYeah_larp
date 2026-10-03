@@ -10,7 +10,15 @@ from functools import cache
 from importlib import resources
 
 from app.content.store import ContentStore
-from app.schemas.api import CoachContext, Consent
+from app.schemas.api import (
+    CoachContext,
+    Consent,
+    SessionDigest,
+    SetDigest,
+    TechniqueDigest,
+    TrainingSnapshot,
+    WorkoutContext,
+)
 from app.schemas.domain import DailyRecommendation, ExerciseItem, UserProfile
 from app.services.plan_builder import allowed_for
 from app.services.safety import sanitize_free_text
@@ -32,6 +40,23 @@ TAG_LABELS = {
     "loadedPushups": "pompki z obciążeniem",
 }
 DECISION_LABELS = {"train": "trenuj", "adapt": "zmodyfikuj trening", "rest": "odpuść"}
+WEEKDAYS = ["poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela"]
+WEEKDAYS_SHORT = ["pn", "wt", "śr", "cz", "pt", "sb", "nd"]
+STATUS_LABELS = {"planned": "zaplanowana", "done": "wykonana", "adapted": "zmieniona na dziś"}
+SEVERITY_LABELS = {"good": "w porządku", "minor": "drobna uwaga", "major": "ważna uwaga"}
+FRAMING_LABELS = {"good": "dobry", "fair": "średni", "poor": "słaby"}
+PLAN_SOURCE_LABELS = {"ai": "ułożony przez model", "template": "z szablonu"}
+SCREEN_LABELS = {
+    "today": "ekran Dziś",
+    "plan": "ekran Plan",
+    "liveSet": "w trakcie serii na żywo",
+    "setSummary": "podsumowanie właśnie zakończonej serii",
+    "rest": "odpoczynek między seriami",
+    "sessionFeedback": "feedback po treningu",
+    "analysis": "wynik analizy techniki z filmu",
+}
+# On these screens the person is exercising right now: short answers, one cue for the next set.
+IN_WORKOUT_SCREENS = {"liveSet", "setSummary", "rest", "sessionFeedback"}
 
 
 @cache
@@ -82,12 +107,153 @@ def describe_recommendation(rec: DailyRecommendation) -> str:
     return "\n".join(lines)
 
 
-def catalog_lines(content: ContentStore) -> str:
-    def line(exercise: ExerciseItem) -> str:
-        substitutes = ", ".join(exercise.substitute_ids)
-        return f"- {exercise.id}: {exercise.name}" + (f"; zamienniki: {substitutes}" if substitutes else "")
+def catalog_lines(content: ContentStore, profile: UserProfile | None = None) -> str:
+    """The catalog the coach may recommend from. With a profile the list is split: exercises that fit this person
+    (equipment, level, movements to avoid) come first, the rest is marked so it is not suggested as a substitute."""
 
-    return "\n".join(line(exercise) for exercise in content.exercises)
+    def line(exercise: ExerciseItem, fitting: set[str] | None) -> str:
+        ids = [i for i in exercise.substitute_ids if fitting is None or i in fitting]
+        substitutes = ", ".join(ids)
+        facts = f"{exercise.muscle_group.lower()}; {EQUIPMENT_LABELS[exercise.equipment]}"
+        return f"- {exercise.id}: {exercise.name} ({facts})" + (f"; zamienniki: {substitutes}" if substitutes else "")
+
+    if profile is None:
+        return "\n".join(line(exercise, None) for exercise in content.exercises)
+    fitting = {exercise.id for exercise in allowed_for(profile, content)}
+    mine = [e for e in content.exercises if e.id in fitting]
+    others = [e for e in content.exercises if e.id not in fitting]
+    text = "Pasują do tej osoby (z tych wybieraj zamienniki i propozycje):\n"
+    text += "\n".join(line(e, fitting) for e in mine)
+    if others:
+        text += (
+            "\n\nPozostałe z katalogu (nie pasują do sprzętu, poziomu albo unikanych ruchów tej osoby; "
+            "możesz je wyjaśnić, ale nie proponuj ich jako zamiennika):\n" + "\n".join(line(e, fitting) for e in others)
+        )
+    return text
+
+
+def _name(content: ContentStore, exercise_id: str | None) -> str | None:
+    exercise = content.by_id.get(exercise_id) if exercise_id else None
+    return exercise.name if exercise else None
+
+
+def _plural(n: int, one: str, few: str, many: str) -> str:
+    if n == 1:
+        return one
+    return few if 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14 else many
+
+
+def _ago(days: int) -> str:
+    if days == 0:
+        return "dzisiaj"
+    return "wczoraj" if days == 1 else f"{days} dni temu"
+
+
+def _decimal(value: float) -> str:
+    return f"{value:.1f}".replace(".", ",")
+
+
+def _finding_text(finding) -> str:
+    return (
+        f"{sanitize_free_text(finding.title, 80)} ({SEVERITY_LABELS[finding.severity]}, "
+        f"{finding.reps_affected} z {finding.reps_total} powt.)"
+    )
+
+
+def _session_line(session: SessionDigest, content: ContentStore, health_consent: bool) -> str:
+    parts = []
+    for item in session.exercises:
+        exercise = content.by_id.get(item.exercise_id)
+        if not exercise:
+            continue
+        reps = str(item.reps_min) if item.reps_min == item.reps_max else f"{item.reps_min}–{item.reps_max}"
+        amount = f"{reps} s" if exercise.timed else reps
+        tempo = f", tempo {item.tempo}" if item.tempo and item.tempo != "0-0-0-0" else ""
+        parts.append(f"{exercise.name} {item.sets}×{amount}, przerwa {item.rest_seconds} s{tempo}")
+    body = "; ".join(parts) if parts else "bez ćwiczeń (odpoczynek)"
+    # "Changed for today" is a decision derived from health signals: without consent it is not told to the model.
+    status = session.status if health_consent or session.status != "adapted" else "planned"
+    return f"„{sanitize_free_text(session.title, 80)}” [{STATUS_LABELS[status]}]: {body}"
+
+
+def describe_technique(technique: TechniqueDigest, content: ContentStore) -> str | None:
+    name = _name(content, technique.exercise_id)
+    if not name:
+        return None
+    text = f"- Ostatnia analiza techniki: {name}, {_ago(technique.days_ago)}, wynik {technique.score}/100"
+    if technique.findings:
+        text += "; uwagi: " + ", ".join(_finding_text(f) for f in technique.findings)
+    substitute = _name(content, technique.substitute_exercise_id)
+    if substitute:
+        text += f"; aplikacja sugeruje zamiennik: {substitute}"
+    if technique.is_simulated:
+        text += " (dane przykładowe, symulowane)"
+    return text
+
+
+def describe_snapshot(snapshot: TrainingSnapshot, content: ContentStore, health_consent: bool) -> str:
+    lines = [f"- Dziś jest {WEEKDAYS[snapshot.today - 1]}."]
+    if snapshot.plan_source:
+        lines.append(f"- Plan tygodnia: {PLAN_SOURCE_LABELS[snapshot.plan_source]}.")
+    session = snapshot.next_session
+    if session:
+        when = (
+            "Dzisiejsza sesja"
+            if snapshot.next_session_is_today
+            else (f"Dziś nie ma sesji; najbliższa to {WEEKDAYS[session.weekday - 1]}")
+        )
+        lines.append(f"- {when}: {_session_line(session, content, health_consent)}")
+        if session.adaptation_note and health_consent:
+            lines.append(f"  Dlaczego zmieniona: {sanitize_free_text(session.adaptation_note, 300)}")
+    elif not snapshot.week:
+        lines.append("- Użytkownik nie ma jeszcze planu treningowego.")
+    shown = session.weekday if session else None
+    others = [s for s in sorted(snapshot.week, key=lambda s: s.weekday) if s.weekday != shown]
+    if others:
+        lines.append("- Pozostałe sesje w tygodniu:")
+        lines += [f"  {WEEKDAYS_SHORT[s.weekday - 1]}: {_session_line(s, content, health_consent)}" for s in others]
+    if snapshot.last_technique:
+        technique = describe_technique(snapshot.last_technique, content)
+        if technique:
+            lines.append(technique)
+    return "\n".join(lines)
+
+
+def describe_last_set(last: SetDigest) -> str:
+    technique = f"technika {last.technique_score}/100" if last.technique_score is not None else "technika bez oceny"
+    word = _plural(last.reps, "powtórzenie", "powtórzenia", "powtórzeń")
+    reps = f"{last.reps} {word} ({last.full_range_reps} w pełnym zakresie)"
+    text = (
+        f"- Ostatnia seria (nr {last.set_index}): {reps}, {technique}, tempo {last.tempo_score}/100 przy celu "
+        f"{sanitize_free_text(last.target_tempo, 20)} (średnio {_decimal(last.average_descent_seconds)} s w dół, "
+        f"{_decimal(last.average_ascent_seconds)} s w górę), jakość nagrania: {FRAMING_LABELS[last.framing]}"
+    )
+    notes = [f for f in last.findings if f.severity != "good"]
+    if notes:
+        text += "\n- Uwagi z tej serii: " + ", ".join(_finding_text(f) for f in notes)
+    elif last.findings:
+        text += "\n- Uwagi z tej serii: bez zastrzeżeń."
+    return text
+
+
+def describe_workout(workout: WorkoutContext, content: ContentStore) -> str:
+    lines = [f"- Użytkownik jest teraz na ekranie: {SCREEN_LABELS[workout.screen]}."]
+    name = _name(content, workout.exercise_id)
+    if name:
+        position = ""
+        if workout.set_index and workout.total_sets:
+            position = f", seria {workout.set_index} z {workout.total_sets}"
+        elif workout.set_index:
+            position = f", seria {workout.set_index}"
+        lines.append(f"- Ćwiczenie: {name}{position}")
+    if workout.last_set:
+        lines.append(describe_last_set(workout.last_set))
+    if workout.screen in IN_WORKOUT_SCREENS:
+        lines.append(
+            "- To trening w toku: odpowiadaj w najwyżej 3 zdaniach, bez wstępu, z jedną konkretną wskazówką na "
+            "następną serię (albo na odpoczynek). Odnieś się do liczb z ostatniej serii."
+        )
+    return "\n".join(lines)
 
 
 # --- coach
@@ -111,12 +277,21 @@ def coach_system_prompt(content: ContentStore, context: CoachContext | None, con
         recommendation = "\nRekomendacja na dziś (policzona na telefonie):\n" + describe_recommendation(
             context.today_recommendation
         )
+    snapshot = ""
+    if context and context.snapshot:
+        described = describe_snapshot(context.snapshot, content, consent.health)
+        snapshot = "\nPlan i ostatnia technika (z aplikacji):\n" + described
+    moment = ""
+    if context and context.workout:
+        moment = "\nCo dzieje się teraz w aplikacji:\n" + describe_workout(context.workout, content)
     return render(
         "coach_system.md",
         health_rule=health_rule,
         profile=profile,
         recommendation=recommendation,
-        catalog=catalog_lines(content),
+        snapshot=snapshot,
+        moment=moment,
+        catalog=catalog_lines(content, context.profile if context else None),
     )
 
 

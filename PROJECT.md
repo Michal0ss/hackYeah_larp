@@ -210,7 +210,7 @@ Nawigacja: pasek zakładek **Dziś · Plan · Analiza · Trener · Postępy**. O
 
 - **Cel:** doradca, z którym można porozmawiać o treningu, planie i samopoczuciu.
 - **Zawartość:** okno rozmowy, kilka gotowych pytań na start („Czy dziś ćwiczyć nogi?”, „Czym zastąpić przysiad?”, „Jak poprawić technikę?”), informacja, że to nie jest porada medyczna.
-- **Dostęp trenera do aplikacji:** stały kontekst (decyzja dnia, profil) plus narzędzia, przez które pyta o plan, regenerację (z Apple Health), check-iny, wyniki analiz i opisy ćwiczeń (patrz 7.6). Użytkownik widzi pod odpowiedzią, z jakich danych trener skorzystał (np. „na podstawie: sen z 7 dni, ostatnia analiza przysiadu”).
+- **Dostęp trenera do aplikacji:** stały kontekst (decyzja dnia, profil, plan i ostatnia analiza techniki, a w trakcie treningu także ekran i ostatnia seria) plus narzędzia, przez które pyta o historię, regenerację (z Apple Health), check-iny, feedback po treningach i wyniki analiz (patrz 7.6). Użytkownik widzi pod odpowiedzią, z jakich danych trener skorzystał (np. „na podstawie: sen z 7 dni, ostatnia analiza przysiadu”).
 - **Zgoda na dane zdrowotne:** ekran zgody przed pierwszą rozmową (patrz 7.6).
 - **Zasady odpowiedzi:** patrz 7.6. Przy wzmiance o bólu, urazie lub niepokojących objawach trener nie zgaduje przyczyny, tylko odsyła do specjalisty i pokazuje kartę „Warto rozważyć konsultację”.
 - **Stany:** błąd połączenia lub modelu (krótki komunikat i ponowienie), trwa odpowiedź (wskaźnik pisania), pusta rozmowa (gotowe pytania).
@@ -380,8 +380,10 @@ Model (Gemini, szybki model „flash”) dostaje **gotową strukturę** z silnik
 
 1. **Stały kontekst w każdej rozmowie** (mały, budowany przez aplikację):
    - **instrukcja systemowa** z naszymi zasadami tonu i bezpieczeństwa (sekcja 3.6) i informacją, że trener nie jest lekarzem,
-   - **dzisiejsza decyzja z silnika reguł** wraz z czynnikami (żeby trener nigdy jej nie ominął),
+   - **dzisiejsza decyzja z silnika reguł** wraz z czynnikami (żeby trener nigdy jej nie ominął; tylko po zgodzie),
    - krótki **profil** (cel, poziom, sprzęt, „czego unikać”),
+   - **plan i ostatnia analiza techniki** (dzisiejsza sesja, tydzień, wynik i uwagi jako identyfikatory i liczby), żeby proste pytania nie wymagały wywołania narzędzia. To, co wynika z danych zdrowotnych (sesja zmieniona na dziś i jej powód), trafia tam tylko po zgodzie, a bez niej sesja jest opisana jak w planie,
+   - **moment treningu**, gdy pytanie pada w trakcie treningu: ekran, ćwiczenie, numer serii i podsumowanie ostatniej serii jako liczby (bez póz i wideo; wtedy trener odpowiada krótko, jedną wskazówką na następną serię),
    - historia bieżącej rozmowy.
 2. **Narzędzia wywoływane przez model** (function calling). Definicje narzędzi trzyma backend, a **wykonuje je aplikacja**: gdy trener potrzebuje danych, backend przekazuje aplikacji wywołanie (`tool_use`), aplikacja wykonuje zapytanie **lokalnie na telefonie** i odsyła wynik w kolejnym żądaniu (`tool_result`). Dzięki temu do modelu trafia tylko to, o co zapytał, a dane zdrowotne nie leżą na serwerze. Backend jest bezstanowy: aplikacja wysyła całą rozmowę za każdym razem.
 
@@ -392,6 +394,7 @@ Model (Gemini, szybki model „flash”) dostaje **gotową strukturę** z silnik
 | `get_today_recommendation` (zgoda) | dzisiejsza decyzja z silnika reguł i jej czynniki |
 | `get_recovery_summary` (zgoda) | sen, tętno spoczynkowe i HRV z ostatnich N dni jako **podsumowania** (średnie, odchylenie od punktu odniesienia), nie surowe próbki z Apple Health |
 | `get_checkins` (zgoda) | nastrój, stres, energia z ostatnich N dni |
+| `get_session_feedback` (zgoda) | feedback po ostatnich treningach: wysiłek (RPE 1–10), ocena, miejsca dyskomfortu z nasileniem, wykonane serie; bez notatek |
 | `propose_plan_change` (priorytet 5, jeszcze niezaimplementowane) | **propozycja** zmiany sesji (np. zamiennik). Zmiana wchodzi do planu dopiero po kliknięciu przez użytkownika „Zastosuj” |
 
 Narzędzia tylko **czytają** dane. Model nie ma narzędzia, które samo zmieniłoby plan lub dane. Narzędzia oznaczone „(zgoda)” czytają dane zdrowotne: backend **nie oferuje ich modelowi bez zgody**, nie dołącza do instrukcji dzisiejszej rekomendacji i odrzuca rozmowę, która zawiera takie wyniki mimo braku zgody. Opisy ćwiczeń i zamienniki model bierze z katalogu wklejonego do instrukcji, nie z narzędzia. Dodatkowo backend wykrywa w wiadomości użytkownika objawy alarmowe (ból w klatce piersiowej, omdlenie, duszność) i **zawsze** zaczyna odpowiedź stałym komunikatem o przerwaniu treningu i numerze 112, niezależnie od modelu.
@@ -403,7 +406,7 @@ Zasady odpowiedzi trenera:
 - Mówi, czego nie wie. Nie zmyśla danych, których nie dostał w kontekście.
 - Odpowiada po polsku, krótko, w naszym tonie.
 
-**Prywatność czatu i dane zdrowotne.** Do modelu trafiają: stały kontekst, wyniki wywołanych narzędzi (podsumowania, nie surowe dane z Apple Health), dane profilu i tekst, który użytkownik sam wpisze. **Wideo i obrazy nigdy.** Dane zdrowotne są szczególnie wrażliwe, więc:
+**Prywatność czatu i dane zdrowotne.** Do modelu trafiają: stały kontekst (w tym plan i ostatnia analiza techniki jako liczby), wyniki wywołanych narzędzi (podsumowania, nie surowe dane z Apple Health), dane profilu i tekst, który użytkownik sam wpisze. **Wideo i obrazy nigdy.** Dane zdrowotne są szczególnie wrażliwe, więc:
 - przed pierwszą rozmową aplikacja prosi o **wyraźną zgodę** na przekazanie modelowi danych zdrowotnych i opisuje, co dokładnie trafia do usługi zewnętrznej, a użytkownik może ją wycofać (wtedy czat działa bez danych zdrowotnych),
 - przekazujemy **minimum**: podsumowania zamiast surowych próbek,
 - dane zdrowotne z Apple Health nie służą do reklam ani do niczego poza funkcją trenera (wymóg zasad Apple dotyczących HealthKit),
@@ -511,7 +514,7 @@ CoachContextBuilder (profil + decyzja) ─→ CoachChat ─→ BACKEND /v1/coach
 | `TrainingPlan` | tydzień → sesje (dzień, lista pozycji: `id` ćwiczenia, serie, zakres powtórzeń, przerwa), źródło (AI lub szablon) |
 | `PlannedSession` | data, pozycje, status (zaplanowana, wykonana, zmieniona), powód zmiany |
 | `ChatMessage` | rola (użytkownik lub trener), tekst, czas |
-| `CoachContext` | stały kontekst rozmowy: krótki profil, dzisiejsza `DailyRecommendation` z czynnikami |
+| `CoachContext` | stały kontekst rozmowy: krótki profil, dzisiejsza `DailyRecommendation` z czynnikami (po zgodzie), `snapshot` (plan i ostatnia technika) i `workout` (moment treningu: ekran, ćwiczenie, ostatnia seria) |
 | `CoachTool` | nazwa, opis i schemat parametrów narzędzia (np. `get_recovery_history(days)`), funkcja wykonywana lokalnie, wynik jako podsumowanie. Lista narzędzi w 7.6 |
 | `TempoSpec` | czasy faz w sekundach: ekscentryczna, pauza na dole, koncentryczna, pauza na górze (opis „3-1-2-0”) |
 | `RepTempo` | zmierzony czas faz jednego powtórzenia, największa głębokość, czy pełny zakres |
