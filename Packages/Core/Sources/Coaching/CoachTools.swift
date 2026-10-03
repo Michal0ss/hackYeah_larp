@@ -31,9 +31,10 @@ public enum CoachToolName {
     public static let todayRecommendation = "get_today_recommendation"
     public static let recoverySummary = "get_recovery_summary"
     public static let checkIns = "get_checkins"
+    public static let sessionFeedback = "get_session_feedback"
 
     /// Tools that read health data: they answer only with the user's consent.
-    public static let health: Set<String> = [todayRecommendation, recoverySummary, checkIns]
+    public static let health: Set<String> = [todayRecommendation, recoverySummary, checkIns, sessionFeedback]
 }
 
 /// Runs the coach tools against the shared service protocols, so they work on sample data and on the real services.
@@ -47,13 +48,15 @@ public struct CoachTools: CoachToolRunning {
     private let checkIns: CheckInProviding
     private let technique: TechniqueHistoryProviding
     private let recommendation: RecommendationProviding
+    private let feedback: SessionFeedbackStoring?
     private let hasHealthConsent: @Sendable () -> Bool
     private let calendar: Calendar
     private let now: @Sendable () -> Date
 
     public init(plan: PlanProviding, catalog: ExerciseCatalogProviding, recovery: RecoveryProviding,
                 checkIns: CheckInProviding, technique: TechniqueHistoryProviding,
-                recommendation: RecommendationProviding, hasHealthConsent: @escaping @Sendable () -> Bool,
+                recommendation: RecommendationProviding, feedback: SessionFeedbackStoring? = nil,
+                hasHealthConsent: @escaping @Sendable () -> Bool,
                 calendar: Calendar = .current, now: @escaping @Sendable () -> Date = { Date() }) {
         self.plan = plan
         self.catalog = catalog
@@ -61,6 +64,7 @@ public struct CoachTools: CoachToolRunning {
         self.checkIns = checkIns
         self.technique = technique
         self.recommendation = recommendation
+        self.feedback = feedback
         self.hasHealthConsent = hasHealthConsent
         self.calendar = calendar
         self.now = now
@@ -72,11 +76,12 @@ public struct CoachTools: CoachToolRunning {
                                    isError: true)
         }
         switch name {
-        case CoachToolName.currentPlan: return await currentPlan()
+        case CoachToolName.currentPlan: return await currentPlan(healthConsent: hasHealthConsent())
         case CoachToolName.techniqueHistory: return await techniqueHistory(input)
         case CoachToolName.todayRecommendation: return await todayRecommendation()
         case CoachToolName.recoverySummary: return await recoverySummary(days: Self.days(input, default: 7))
         case CoachToolName.checkIns: return await recentCheckIns(days: Self.days(input, default: 7))
+        case CoachToolName.sessionFeedback: return await recentSessionFeedback(limit: Self.clamp(input["limit"]?.intValue ?? 3, 1, 10))
         default:
             return CoachToolOutput(content: Self.json(["error": .string("Nieznane narzędzie.")]), isError: true)
         }
@@ -90,7 +95,9 @@ public struct CoachTools: CoachToolRunning {
         catalog.exercise(id: exerciseId)?.name ?? exerciseId
     }
 
-    private func currentPlan() async -> CoachToolOutput {
+    /// The reason a session was lightened comes from health signals (sleep, HRV, the check-in), so it is told only
+    /// with consent; without it a lightened session reads as planned.
+    private func currentPlan(healthConsent: Bool) async -> CoachToolOutput {
         guard let plan = await plan.currentPlan() else {
             return CoachToolOutput(content: Self.json(["plan": .null, "note": .string("Użytkownik nie ma jeszcze planu.")]),
                                    sourceLabel: "plan treningowy")
@@ -102,11 +109,11 @@ public struct CoachTools: CoachToolRunning {
                 "weekday": .number(Double(session.weekday)),
                 "dayName": .string(Self.weekdayNames[(session.weekday - 1) % 7]),
                 "title": .string(session.title),
-                "status": .string(session.status.rawValue),
+                "status": .string((healthConsent || session.status != .adapted ? session.status : .planned).rawValue),
                 "today": .bool(session.weekday == today),
                 "exercises": .array(session.exercises.map(exercise)),
             ]
-            if let note = session.adaptationNote { fields["adaptationNote"] = .string(note) }
+            if healthConsent, let note = session.adaptationNote { fields["adaptationNote"] = .string(note) }
             return .object(fields)
         }
         return CoachToolOutput(content: Self.json(["source": .string(plan.source.rawValue), "sessions": .array(sessions)]),
@@ -238,6 +245,37 @@ public struct CoachTools: CoachToolRunning {
                                 "energy": .number(average(entries.map(\.energy)))]),
         ]
         return CoachToolOutput(content: Self.json(fields), sourceLabel: "check-iny z \(days) \(Self.dayWord(days))")
+    }
+
+    private func recentSessionFeedback(limit: Int) async -> CoachToolOutput {
+        guard let feedback else {
+            return CoachToolOutput(content: Self.json(["workouts": .array([]), "note": .string("Brak danych o feedbacku po treningach.")]),
+                                   sourceLabel: "feedback po treningach")
+        }
+        let entries = await feedback.feedbacks(limit: limit)
+        guard !entries.isEmpty else {
+            return CoachToolOutput(content: Self.json(["workouts": .array([]), "note": .string("Brak feedbacku po treningach.")]),
+                                   sourceLabel: "feedback po treningach")
+        }
+        let list: [JSONValue] = entries.map { entry in
+            var fields: [String: JSONValue] = [
+                "date": .string(day(entry.date)),
+                "rpe": .number(Double(entry.perceivedExertion)),
+                "completedSets": .number(Double(entry.completedSets)),
+                "plannedSets": .number(Double(entry.plannedSets)),
+                // Where it hurt and how much; the free-text note is never included.
+                "discomfort": .array(entry.pain.map {
+                    .object(["area": .string($0.area.title), "intensity": .number(Double($0.intensity))])
+                }),
+            ]
+            if let enjoyment = entry.enjoyment { fields["enjoyment1to5"] = .number(Double(enjoyment)) }
+            if entry.isSimulated { fields["isSimulated"] = .bool(true) }
+            return .object(fields)
+        }
+        let average = (Double(entries.map(\.perceivedExertion).reduce(0, +)) / Double(entries.count) * 10).rounded() / 10
+        let fields: [String: JSONValue] = ["rpeScale": .string("1-10"), "workouts": .array(list), "averageRpe": .number(average)]
+        let simulated = entries.contains { $0.isSimulated }
+        return CoachToolOutput(content: Self.json(fields), sourceLabel: "feedback po treningach", isSimulated: simulated)
     }
 
     // MARK: helpers

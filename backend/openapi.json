@@ -160,6 +160,16 @@
           "profile": {
             "$ref": "#/components/schemas/UserProfile"
           },
+          "snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainingSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "todayRecommendation": {
             "anyOf": [
               {
@@ -362,6 +372,61 @@
           "message"
         ],
         "title": "ErrorField",
+        "type": "object"
+      },
+      "ExerciseDigest": {
+        "description": "One planned exercise as the coach sees it. Only the id: the server knows the name from the catalog.",
+        "properties": {
+          "exerciseId": {
+            "maxLength": 60,
+            "title": "Exerciseid",
+            "type": "string"
+          },
+          "repsMax": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Repsmax",
+            "type": "integer"
+          },
+          "repsMin": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Repsmin",
+            "type": "integer"
+          },
+          "restSeconds": {
+            "maximum": 600.0,
+            "minimum": 0.0,
+            "title": "Restseconds",
+            "type": "integer"
+          },
+          "sets": {
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Sets",
+            "type": "integer"
+          },
+          "tempo": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo"
+          }
+        },
+        "required": [
+          "exerciseId",
+          "sets",
+          "repsMin",
+          "repsMax",
+          "restSeconds"
+        ],
+        "title": "ExerciseDigest",
         "type": "object"
       },
       "ExerciseItem": {
@@ -776,6 +841,58 @@
         "title": "RecommendationTextResponse",
         "type": "object"
       },
+      "SessionDigest": {
+        "description": "A planned session, compact. `adaptation_note` is built from health signals (sleep, HRV, ...), so the app\nsends it only with the user's consent, and sends the session as planned (not adjusted) without it.",
+        "properties": {
+          "adaptationNote": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adaptationnote"
+          },
+          "exercises": {
+            "items": {
+              "$ref": "#/components/schemas/ExerciseDigest"
+            },
+            "maxItems": 12,
+            "title": "Exercises",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "planned",
+              "done",
+              "adapted"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 80,
+            "title": "Title",
+            "type": "string"
+          },
+          "weekday": {
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Weekday",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weekday",
+          "title",
+          "status"
+        ],
+        "title": "SessionDigest",
+        "type": "object"
+      },
       "SetDigest": {
         "description": "Numbers from one finished set (Swift: SetDigest). Never poses, frames or video.",
         "properties": {
@@ -862,6 +979,60 @@
           "framing"
         ],
         "title": "SetDigest",
+        "type": "object"
+      },
+      "TechniqueDigest": {
+        "description": "The latest technique analysis: numbers and findings, never poses or video.",
+        "properties": {
+          "daysAgo": {
+            "maximum": 3650.0,
+            "minimum": 0.0,
+            "title": "Daysago",
+            "type": "integer"
+          },
+          "exerciseId": {
+            "maxLength": 60,
+            "title": "Exerciseid",
+            "type": "string"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingDigest"
+            },
+            "maxItems": 6,
+            "title": "Findings",
+            "type": "array"
+          },
+          "isSimulated": {
+            "default": false,
+            "title": "Issimulated",
+            "type": "boolean"
+          },
+          "score": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "integer"
+          },
+          "substituteExerciseId": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Substituteexerciseid"
+          }
+        },
+        "required": [
+          "exerciseId",
+          "daysAgo",
+          "score"
+        ],
+        "title": "TechniqueDigest",
         "type": "object"
       },
       "TempoSpec": {
@@ -1035,6 +1206,70 @@
           "sessions"
         ],
         "title": "TrainingPlan",
+        "type": "object"
+      },
+      "TrainingSnapshot": {
+        "description": "What the coach should know without asking: the plan and the last technique result.\n\nTraining data, not health data, so it travels without the health consent (see the notes on `SessionDigest`).\nEvery text in it is data, not an instruction.",
+        "properties": {
+          "lastTechnique": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TechniqueDigest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nextSession": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionDigest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nextSessionIsToday": {
+            "default": true,
+            "title": "Nextsessionistoday",
+            "type": "boolean"
+          },
+          "planSource": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ai",
+                  "template"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plansource"
+          },
+          "today": {
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Today",
+            "type": "integer"
+          },
+          "week": {
+            "items": {
+              "$ref": "#/components/schemas/SessionDigest"
+            },
+            "maxItems": 7,
+            "title": "Week",
+            "type": "array"
+          }
+        },
+        "required": [
+          "today"
+        ],
+        "title": "TrainingSnapshot",
         "type": "object"
       },
       "Usage": {

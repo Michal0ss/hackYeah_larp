@@ -85,6 +85,19 @@ TOOLS: dict[str, CoachTool] = {
             },
             needs_health_consent=True,
         ),
+        CoachTool(
+            name="get_session_feedback",
+            description=(
+                "Returns the user's feedback after recent workouts: how hard it felt (RPE, 1 to 10), enjoyment, "
+                "areas of discomfort with their intensity and how many of the planned sets were done. "
+                "Free-text notes are never included."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {"limit": {"type": "integer", "description": "How many workouts, 1 to 10."}},
+            },
+            needs_health_consent=True,
+        ),
     )
 }
 
@@ -109,6 +122,8 @@ def normalise_tool_input(name: str, raw: dict[str, Any], content: ContentStore) 
     """Keeps only known keys with valid values, so the app never receives malformed model output."""
     if name in ("get_recovery_summary", "get_checkins"):
         return {"days": _clamped_int(raw.get("days"), 1, 14, 7)}
+    if name == "get_session_feedback":
+        return {"limit": _clamped_int(raw.get("limit"), 1, 10, 3)}
     if name == "get_technique_history":
         cleaned: dict[str, Any] = {"limit": _clamped_int(raw.get("limit"), 1, 10, 5)}
         exercise_id = raw.get("exerciseId")

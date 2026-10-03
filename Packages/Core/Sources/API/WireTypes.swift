@@ -114,13 +114,18 @@ public struct ChatContext: Codable, Equatable, Sendable {
     public var profile: UserProfile
     /// Sent only with health consent (the server ignores it otherwise).
     public var todayRecommendation: DailyRecommendation?
+    /// The plan and the last technique result, so the coach knows them without asking. Training data; what is derived
+    /// from health signals is left out without the consent (see `TrainingSnapshot`).
+    public var snapshot: TrainingSnapshot?
     /// Where in the workout the question was asked (screen, set, last set as numbers). Training data only, so it is
     /// sent regardless of the health consent.
     public var workout: WorkoutContext?
 
-    public init(profile: UserProfile, todayRecommendation: DailyRecommendation? = nil, workout: WorkoutContext? = nil) {
+    public init(profile: UserProfile, todayRecommendation: DailyRecommendation? = nil,
+                snapshot: TrainingSnapshot? = nil, workout: WorkoutContext? = nil) {
         self.profile = profile
         self.todayRecommendation = todayRecommendation
+        self.snapshot = snapshot
         self.workout = workout
     }
 }
