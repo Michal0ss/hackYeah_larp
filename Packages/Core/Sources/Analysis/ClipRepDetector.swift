@@ -248,14 +248,16 @@ public enum ClipRepDetector {
         return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - Double(lower))
     }
 
-    private static func medianFilter(_ values: [Double], radius: Int) -> [Double] {
+    // Internal, not private: `RepAnalyzer.angleSeries` reuses these for the same reason (a chart of raw
+    // per-frame angles is as spiky as the raw depth signal would be without them).
+    static func medianFilter(_ values: [Double], radius: Int) -> [Double] {
         values.indices.map { i in
             median(Array(values[max(0, i - radius)...min(values.count - 1, i + radius)]))
         }
     }
 
     /// Centered moving average over `window` seconds (handles uneven spacing of the samples).
-    private static func movingAverage(_ values: [Double], times: [Double], window: Double) -> [Double] {
+    static func movingAverage(_ values: [Double], times: [Double], window: Double) -> [Double] {
         guard window > 0 else { return values }
         var result: [Double] = []
         var lo = 0, hi = 0

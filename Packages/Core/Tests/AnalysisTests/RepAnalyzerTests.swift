@@ -59,4 +59,39 @@ final class RepAnalyzerTests: XCTestCase {
         XCTAssertTrue(result.reps.isEmpty)
         XCTAssertTrue(result.bottomFrames.isEmpty)
     }
+
+    /// `angleSeries` feeds the chart on the result screen. A single bad Vision frame (a glitch, not
+    /// a real movement) should barely show up in it, the same way a one-frame tracking glitch can't
+    /// become the chosen "bottom of a squat" (`MovementKind.representativeFrame`).
+    func testAngleSeriesSmoothesASingleBadFrame() {
+        func frame(time: Double, kneeOffset: Double) -> PoseFrame {
+            PoseFrame(time: time, joints: [
+                Joint(name: .leftHip, x: 0.5, y: 0.3, confidence: 1),
+                Joint(name: .leftKnee, x: 0.5 + kneeOffset, y: 0.6, confidence: 1),
+                Joint(name: .leftAnkle, x: 0.5, y: 0.9, confidence: 1),
+            ])
+        }
+        // A steady knee angle except one glitched frame (index 3) far off from its neighbors.
+        let offsets = [0.05, 0.06, 0.05, 0.35, 0.05, 0.06, 0.05]
+        let frames = offsets.enumerated().map { frame(time: Double($0.offset) / 30, kneeOffset: $0.element) }
+
+        let raw = frames.compactMap { MovementKind.squat.primaryAngle(in: $0, minConfidence: 0.1) }
+        let smoothed = RepAnalyzer.angleSeries(in: frames, kind: .squat).map(\.angle)
+
+        XCTAssertEqual(raw.count, 7)
+        XCTAssertEqual(smoothed.count, 7)
+        let rawDip = raw[2] - raw[3]
+        let smoothedDip = smoothed[2] - smoothed[3]
+        XCTAssertGreaterThan(rawDip, 30, "the injected glitch should be a real outlier in the raw signal")
+        XCTAssertLessThan(smoothedDip, rawDip / 3, "smoothing should absorb most of a single-frame glitch")
+    }
+
+    func testAngleSeriesMatchesSimulatedSquatLength() {
+        var sim = SimulatedSquat()
+        sim.reps = 2
+        let frames = sim.frames()
+        let series = RepAnalyzer.angleSeries(in: frames, kind: .squat)
+        XCTAssertFalse(series.isEmpty)
+        XCTAssertLessThanOrEqual(series.count, frames.count)
+    }
 }
