@@ -16,6 +16,7 @@ let package = Package(
         .library(name: "Coaching", targets: ["Coaching"]),
         .library(name: "Content", targets: ["Content"]),
         .library(name: "LiveSet", targets: ["LiveSet"]),
+        .library(name: "Onboarding", targets: ["Onboarding"]),
     ],
     targets: [
         // Shared types between modules. Changes only with team agreement.
@@ -36,7 +37,10 @@ let package = Package(
         // Michał: live set coaching (camera pose, tempo engine, voice cues, set summary).
         .target(name: "LiveSet", dependencies: ["Contracts"]),
         // Test targets exist for every module so nobody has to edit this file to add tests.
+        // Michał: first-run flow (profile, health history kept on the phone, plan generation step).
+        .target(name: "Onboarding", dependencies: ["Contracts"]),
         .testTarget(name: "ContractsTests", dependencies: ["Contracts"]),
+        .testTarget(name: "OnboardingTests", dependencies: ["Onboarding", "Contracts"]),
         .testTarget(name: "LiveSetTests", dependencies: ["LiveSet", "Contracts"]),
         .testTarget(name: "AnalysisTests", dependencies: ["Analysis", "Contracts"]),
         .testTarget(name: "HealthTests", dependencies: ["Health", "Contracts"]),

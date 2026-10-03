@@ -44,6 +44,8 @@ targets:
         product: Content
       - package: Core
         product: LiveSet
+      - package: Core
+        product: Onboarding
     info:
       path: App/Info.plist
       properties:

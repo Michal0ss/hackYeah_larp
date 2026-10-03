@@ -1,6 +1,7 @@
 import SwiftUI
 import Contracts
 import DesignSystem
+import Onboarding
 
 /// 15-second check-in: mood, stress, energy (1...5). Owner: Michał.
 struct CheckInView: View {
@@ -86,6 +87,6 @@ struct CheckInView: View {
 
 #Preview {
     CheckInView()
-        .environment(AppStore())
+        .environment(AppStore(onboardingStorage: InMemoryOnboardingStorage()))
         .preferredColorScheme(.dark)
 }

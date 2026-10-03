@@ -34,6 +34,7 @@ Packages/Core/        cała logika w modułach (jedna biblioteka = jeden właśc
   Health, Insights    Wiktor: HealthKit, check-in, silnik reguł, opieka
   Plan, Coaching, Content   Maciek: plan, czat z trenerem AI, katalog ćwiczeń
   LiveSet             Michał: seria na żywo (fazy ruchu, tempo, głos, kamera, podsumowanie)
+  Onboarding          Michał: pierwsze uruchomienie (profil, historia zdrowia na telefonie, generowanie planu)
 Config/               ustawienia budowania (Local i Secrets są poza repo)
 project.yml           opis projektu dla XcodeGen
 ```

@@ -1,6 +1,7 @@
 import SwiftUI
 import Contracts
 import DesignSystem
+import Onboarding
 
 /// "Dziś": the recommendation of the day, today's session and the recovery strip.
 /// Owner: Michał.
@@ -248,7 +249,7 @@ private struct RecoveryStrip: View {
 
 #Preview {
     TodayView()
-        .environment(AppStore())
+        .environment(AppStore(onboardingStorage: InMemoryOnboardingStorage()))
         .environment(AppRouter())
         .preferredColorScheme(.dark)
 }

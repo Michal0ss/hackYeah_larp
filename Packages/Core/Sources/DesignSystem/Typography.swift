@@ -10,17 +10,18 @@ public extension Font {
 public enum FormaTextStyle {
     case largeTitle, title, title2, headline, body, callout, subheadline, footnote, caption
 
+    /// Semantic styles: same sizes as before at the default setting, but they follow Dynamic Type.
     var font: Font {
         switch self {
-        case .largeTitle: return .system(size: 34, weight: .bold)
-        case .title: return .system(size: 28, weight: .bold)
-        case .title2: return .system(size: 22, weight: .semibold)
-        case .headline: return .system(size: 17, weight: .semibold)
-        case .body: return .system(size: 17)
-        case .callout: return .system(size: 16)
-        case .subheadline: return .system(size: 15)
-        case .footnote: return .system(size: 13)
-        case .caption: return .system(size: 12, weight: .bold)
+        case .largeTitle: return .system(.largeTitle, weight: .bold)
+        case .title: return .system(.title, weight: .bold)
+        case .title2: return .system(.title2, weight: .semibold)
+        case .headline: return .system(.headline)
+        case .body: return .system(.body)
+        case .callout: return .system(.callout)
+        case .subheadline: return .system(.subheadline)
+        case .footnote: return .system(.footnote)
+        case .caption: return .system(.caption, weight: .bold)
         }
     }
 }

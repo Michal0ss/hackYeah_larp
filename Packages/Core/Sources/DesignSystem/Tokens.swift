@@ -34,6 +34,7 @@ public enum FormaColor {
     public static let ink3 = Color(light: Color(hex: 0x0B1118, opacity: 0.66), dark: Color(hex: 0xEEF4FC, opacity: 0.62))
     public static let line = Color(light: Color(hex: 0x0B1118, opacity: 0.10), dark: Color.white.opacity(0.11))
     public static let well = Color(light: Color.white.opacity(0.58), dark: Color.white.opacity(0.065))
+    public static let wellLine = Color(light: Color(hex: 0x0B1118, opacity: 0.07), dark: Color.white.opacity(0.09))
 
     // Brand and state fills (fixed)
     public static let volt = Color(hex: 0xC8FF2E)

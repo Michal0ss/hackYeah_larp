@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Main action: volt gradient pill.
 public struct FormaPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
     public init() {}
 
     public func makeBody(configuration: Configuration) -> some View {
@@ -14,7 +16,8 @@ public struct FormaPrimaryButtonStyle: ButtonStyle {
                 LinearGradient(colors: [Color(hex: 0xDDFF70), FormaColor.volt, Color(hex: 0xB8F01C)],
                                startPoint: .top, endPoint: .bottom),
                 in: Capsule(style: .continuous))
-            .shadow(color: FormaColor.volt.opacity(0.45), radius: 14, y: 8)
+            .shadow(color: FormaColor.volt.opacity(isEnabled ? 0.45 : 0), radius: 14, y: 8)
+            .opacity(isEnabled ? 1 : 0.4)
             .scaleEffect(configuration.isPressed ? 0.95 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
@@ -22,6 +25,8 @@ public struct FormaPrimaryButtonStyle: ButtonStyle {
 
 /// Secondary action: glass pill.
 public struct FormaGlassButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
     public init() {}
 
     public func makeBody(configuration: Configuration) -> some View {
@@ -31,6 +36,7 @@ public struct FormaGlassButtonStyle: ButtonStyle {
             .padding(.horizontal, 22)
             .frame(minHeight: 52)
             .glassCapsule(interactive: true)
+            .opacity(isEnabled ? 1 : 0.4)
             .scaleEffect(configuration.isPressed ? 0.95 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
@@ -42,4 +48,19 @@ public extension ButtonStyle where Self == FormaPrimaryButtonStyle {
 
 public extension ButtonStyle where Self == FormaGlassButtonStyle {
     static var formaGlass: FormaGlassButtonStyle { FormaGlassButtonStyle() }
+}
+
+/// Subtle press feedback for tiles and rows.
+public struct FormaPressStyle: ButtonStyle {
+    public init() {}
+
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
+    }
+}
+
+public extension ButtonStyle where Self == FormaPressStyle {
+    static var formaPress: FormaPressStyle { FormaPressStyle() }
 }

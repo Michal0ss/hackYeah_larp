@@ -117,7 +117,7 @@ Ton: spokojny, konkretny, wspierający. Bez straszenia i bez moralizowania.
 
 ### 4.1 W zakresie (musi działać na prawdziwym iPhonie)
 
-1. **Start (onboarding):** krótki profil: cel, poziom, liczba dni w tygodniu, czas sesji, sprzęt, opcjonalnie „czego unikać” (np. ograniczenie kolana).
+1. **Start (onboarding):** profil: cel, poziom, liczba dni w tygodniu, czas sesji, sprzęt, opcjonalnie „czego unikać”, opcjonalna historia zdrowia i pytania przesiewowe (zostają na telefonie), Apple Health i układanie planu (sekcja 5.6).
 2. **Plan treningowy:** plan na tydzień (3–4 sesje) wygenerowany przez AI z katalogu ćwiczeń, zapisany w aplikacji. Widok planu i widok dzisiejszej sesji (ćwiczenia, serie, powtórzenia, przerwy, **tempo**), oznaczanie wykonania.
 3. **Ekran „Dziś”:** dzisiejsza sesja z planu, sen, tętno spoczynkowe, zmienność rytmu serca, samopoczucie i jedna rekomendacja dnia.
 4. **Check-in samopoczucia** (ok. 15 sekund): nastrój, stres, energia w skali 1–5.
@@ -180,10 +180,23 @@ Nawigacja: pasek zakładek **Dziś · Plan · Analiza · Trener · Postępy**. O
 
 ### 5.6 Onboarding i profil
 
-- **Cel:** zebrać minimum potrzebne do planu, w około minutę.
-- **Pytania:** cel (siła, sylwetka, ogólna kondycja, powrót do ruchu), poziom (początkujący, średni), dni w tygodniu (2–5), czas jednej sesji, sprzęt (brak, hantle, siłownia), opcjonalne „czego unikać”.
-- **Zasady:** bez pytań o choroby. Pole „czego unikać” to wolny tekst użytkownika, a aplikacja nie ocenia go medycznie. Przy pierwszym uruchomieniu prosimy też o uprawnienia do Apple Health i wyjaśniamy po co.
-- **Wynik:** profil zapisany lokalnie i uruchomienie generowania planu.
+- **Cel:** zebrać to, co potrzebne do planu, w około dwie minuty. Sześć kroków, każdy z paskiem postępu „Krok N z 6”, plus ekran układania planu.
+- **Kroki:**
+  1. **Cel:** siła, sylwetka, kondycja, powrót do ruchu.
+  2. **Kilka pytań o Ciebie:** poziom (początkujący, średni), dni w tygodniu (2–5), czas sesji (30, 45, 60, 75 min).
+  3. **Sprzęt i „czego unikać”:** wielokrotny wybór (bez sprzętu, hantle, kettlebell, siłownia; „bez sprzętu” wyklucza resztę) oraz wolny tekst, którego nie oceniamy medycznie.
+  4. **Historia medyczna (opcjonalna, „Wolę nie podawać”):** kontuzje (kolano, bark, plecy, biodro, łokieć, kostka, z informacją, kiedy ostatnio) oraz choroby i stany (dobrowolnie).
+  5. **Przeciwwskazania (opcjonalne, „Odpowiem później”):** sześć standardowych pytań przesiewowych Tak/Nie z wynikiem na żywo: brak sygnałów, „dostosujemy plan”, albo „warto rozważyć konsultację”.
+  6. **Apple Health:** prośba o dostęp (sen, tętno spoczynkowe, HRV) lub przejście z danymi przykładowymi.
+  7. **Układanie planu:** postęp w procentach i cztery etapy, potem „Plan gotowy”.
+- **Zasady dla danych zdrowotnych (kroki 4 i 5):**
+  - Zostają **na telefonie**, w osobnym pliku chronionym, gdy telefon jest zablokowany, i wyłączonym z kopii zapasowych.
+  - Do planu i do modelu językowego trafiają tylko **wyprowadzone** wartości: lista ruchów do pominięcia (skoki, głębokie wykroki, wyciskanie nad głowę, martwy ciąg ze sztangą, głębokie przysiady, pompki z obciążeniem) oraz znacznik „lżejszy start”. Reszta nie opuszcza profilu na telefonie.
+  - Ruchy do pominięcia wynikają z zaznaczonych miejsc (np. kolano: skoki i głębokie wykroki) albo, bez kontuzji, z odpowiedzi o stawie lub kości. „Lżejszy start” ustawia sygnał ostrożności z pytań przesiewowych albo dowolna zgłoszona choroba lub stan.
+  - „Warto rozważyć konsultację” wynika z odpowiedzi „Tak” na pytania przesiewowe (poza pytaniem o staw lub kość, które tylko dostosowuje plan). To sygnał ostrożności, nigdy diagnoza. W nagłej sytuacji lub przy silnym bólu: numer 112.
+  - Nic nie jest wymagane. Brak odpowiedzi nie blokuje aplikacji.
+- **Wynik:** profil (`UserProfile`) i plan zapisane lokalnie, aplikacja przechodzi do ekranu Dziś. Przy kolejnym uruchomieniu onboarding się nie powtarza.
+- **Czego jeszcze nie ma:** ekranu profilu do poprawiania odpowiedzi i usuwania historii zdrowia. Tekst w kroku 4 („zmienisz to w profilu”) zapowiada tę funkcję, więc to zadanie na kolejny PR.
 
 ### 5.7 Plan
 

@@ -67,7 +67,7 @@ Przy każdym zadaniu: **gałąź**, co powstaje, **gotowe, gdy** (kryterium uko�
 
 | Gałąź | Zadanie | Gotowe, gdy |
 |---|---|---|
-| `feat/michal-onboarding` | Onboarding w 5 krokach (cel, poziom i dni, sprzęt, Apple Health, układam plan) zapisujący `UserProfile` w `AppStore` | profil trafia do `AppStore`, kroki zgodne z prototypem, test logiki walidacji |
+| `feat/michal-onboarding` | Onboarding w 6 krokach + układanie planu (cel, o tobie, sprzęt, historia medyczna, przeciwwskazania, Apple Health) zapisujący `UserProfile` i plan; dane zdrowotne zostają na telefonie | gotowe w PR (profil i plan w `AppStore` i na dysku, kroki zgodne z prototypem, testy logiki). Do zrobienia osobno: ekran profilu |
 | `feat/michal-live-set-device` | Test i strojenie serii na żywo na prawdziwym iPhonie: kamera, progi `PhaseTrackerConfig`, głos w słuchawkach, kadr | pełna seria na telefonie z poprawnie liczonymi fazami, lista zmian progów w PR |
 | `feat/michal-integration` | Podłączanie usług (`AppServices`), zapis wyników serii i analiz (`TechniqueHistoryProviding`), spięcie ekranów i nawigacji, przejścia Dziś → Plan → seria | cały przepływ klikalny na jednym urządzeniu na danych przykładowych, a potem na prawdziwych usługach |
 | `feat/michal-submission` | README dla jury, slajdy (12.1), nagranie demo, zrzuty ekranu, zgłoszenie na HackTribe | komplet materiałów i kompletne zgłoszenie z zapasem przed terminem |
@@ -159,7 +159,7 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie.
 |---|---|---|---|---|
 | Szkielet, kontrakty, DesignSystem, Dziś, Check-in | Michał | `main` | gotowe (dane przykładowe) | |
 | Seria na żywo (tempo, głos, podsumowanie) | Michał | `main` | pierwsza wersja | silnik ma testy, kamera niesprawdzona na iPhonie |
-| Onboarding | Michał | `feat/michal-onboarding` | do zrobienia | |
+| Onboarding | Michał | `feat/michal-onboarding` | w PR | zależy od PR kontraktowego `contracts/onboarding-profile`; ekran profilu (edycja i usuwanie historii zdrowia) jeszcze nie istnieje |
 | Seria na żywo na telefonie | Michał | `feat/michal-live-set-device` | do zrobienia | |
 | Integracja usług i przepływu | Michał | `feat/michal-integration` | do zrobienia | |
 | Materiały i zgłoszenie | Michał | `feat/michal-submission` | do zrobienia | |

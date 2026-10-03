@@ -23,7 +23,7 @@ Plik `Forma.xcodeproj` jest generowany i nie wchodzi do repo. Po `git pull` z no
 |---|---|---|
 | `Packages/Core/Sources/Contracts` | wspólne (zmiany tylko addytywne, patrz niżej) | typy danych, interfejsy usług, dane przykładowe |
 | `Packages/Core/Sources/DesignSystem`, `App/` poza `Screens/*` | Michał | tokeny, szkło, komponenty, nawigacja, stan aplikacji |
-| `Packages/Core/Sources/LiveSet`, `App/Screens/LiveSet`, `App/Screens/Today`, `App/Screens/CheckIn`, `App/Screens/Onboarding` | Michał | seria na żywo, ekran Dziś, check-in, onboarding |
+| `Packages/Core/Sources/LiveSet`, `Onboarding`, `App/Screens/LiveSet`, `App/Screens/Today`, `App/Screens/CheckIn`, `App/Screens/Onboarding` | Michał | seria na żywo, onboarding (w tym historia zdrowia zostająca na telefonie), ekran Dziś, check-in |
 | `Packages/Core/Sources/Analysis`, `App/Screens/Analysis` | Bartek | analiza filmu, jakość nagrania, scoring |
 | `Packages/Core/Sources/Health`, `Insights`, `App/Screens/Progress`, `App/Screens/Care` | Wiktor | HealthKit, check-in (zapis), silnik reguł, opieka, postępy |
 | `Packages/Core/Sources/Plan`, `Coaching`, `Content`, `App/Screens/Plan`, `App/Screens/Coach` | Maciek | katalog, plan, klient modelu, czat trenera |
