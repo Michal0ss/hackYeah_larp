@@ -10,5 +10,5 @@ ENV FORMA_ENV=prod FORMA_CONTENT_DIR=/srv/content PORT=8080
 RUN useradd --system --uid 10001 forma
 USER forma
 EXPOSE 8080
-# FORMA_APP_TOKENS (required in prod) and ANTHROPIC_API_KEY come from the host's secret store.
+# FORMA_APP_TOKENS (required in prod) and GEMINI_API_KEY come from the host's secret store.
 CMD ["sh", "-c", "uvicorn app.main:create_app --factory --host 0.0.0.0 --port ${PORT}"]

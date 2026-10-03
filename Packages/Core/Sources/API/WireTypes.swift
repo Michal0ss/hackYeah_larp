@@ -20,7 +20,7 @@ public struct HealthResponse: Codable, Equatable, Sendable {
     public var status: String
     public var version: String
     public var env: String
-    /// "mock" (offline stand-in) or "anthropic".
+    /// "mock" (offline stand-in) or "gemini".
     public var aiMode: String
     public var contentVersion: String
 }

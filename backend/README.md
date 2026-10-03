@@ -13,14 +13,37 @@ make install      # venv + pinned dependencies
 make dev          # http://localhost:8000  (docs: /docs)
 ```
 
-Works with no key: without `ANTHROPIC_API_KEY` the AI is an offline mock (plans come from templates, chat
-returns canned answers and even asks for tools, so the app side can be built offline). To use the real model:
-`export ANTHROPIC_API_KEY=...` (never commit it). To force the mock even when a key is in your shell:
-`FORMA_AI_MODE=mock make dev`.
+Works with no key: without `GEMINI_API_KEY` the AI is an offline mock (plans come from templates, chat
+returns canned answers and even asks for tools, so the app side can be built offline). To use the real model
+(Google Gemini): `export GEMINI_API_KEY=...` or put it in `backend/.env` (git-ignored; never commit it). To force
+the mock even when a key is set: `FORMA_AI_MODE=mock make dev`.
+
+Use a key from a **paid** (billing-enabled) Google AI project with a budget limit. On the free tier Google may use
+prompts to improve its products (coach prompts carry health summaries) and the quota is tiny: 20 requests per
+day per model, after which every call answers 429.
+
+### Models and what happens when Gemini misbehaves
+
+`FORMA_COACH_MODEL`, `FORMA_PLAN_MODEL` and `FORMA_TEXT_MODEL` (default `gemini-3.5-flash`) pick the model;
+`FORMA_FALLBACK_MODELS` (comma-separated) lists the ones that take over. See what a key can use with
+`.venv/bin/python evals/run_ai_evals.py --list-models`.
+
+- A call moves to the next model on 404 (retired), 429 (quota), 5xx, timeout or connection error. A chat stream
+  moves on only while nothing was sent to the app yet.
+- A model that answered 429 or 404 is skipped for 5 min or 1 h, so following requests do not wait for the same
+  failure again. With every model cooling down the first one is tried anyway.
+- When no model works: plans and texts are answered from templates (`warnings: ["ai_unavailable"]`), the chat
+  answers `503 ai_unavailable` (or an `error` event in a stream) and the app shows its retry message.
+- Plans and texts have deadlines (`plan_deadline_seconds` 50 s, kept under the 60 s Vercel limit, and `text_deadline_seconds`); one request to one model is
+  capped by `ai_timeout_seconds`. Thinking is kept low, and token limits are generous because thinking tokens
+  count against them.
+
+`make test` runs the unit tests (no network, no key): they use a fake Gemini client. `make evals` checks the real
+model (needs a key and quota).
 
 From the iPhone use the Mac's address (`http://<mac-ip>:8000`); plain HTTP needs an ATS exception in debug builds.
 
-`make check` is what CI runs: lint, content validation and "openapi.json is up to date".
+`make check` is what CI runs: lint, unit tests, content validation and "openapi.json is up to date".
 
 ## Endpoints
 
@@ -74,7 +97,8 @@ app/middleware.py      request id, size limit, access log, last-resort 500
 app/errors.py          error envelope
 app/schemas/           wire types (domain.py mirrors Packages/Core/Sources/Contracts)
 app/content/store.py   loads + validates content/, content hashes as versions
-app/ai/gateway.py      the only code that talks to Anthropic, plus the offline MockGateway
+app/ai/gateway.py      gateway interface and the offline MockGateway
+app/ai/gemini.py       Gemini gateway: tool translation, model fallback, cooldown (the only code that calls Google)
 app/ai/prompts/*.md    Polish system prompts (edit wording here)
 app/ai/prompts.py      fills prompts with sanitised data
 app/ai/tools.py        coach tool definitions, consent gating
@@ -105,14 +129,14 @@ dependencies, keep in sync with `backend/constraints.txt`), `.vercelignore`. Ste
 
 1. Import the GitHub repo in Vercel; leave the Root Directory as the repo root and the framework as "Other".
 2. Project environment variables (all environments): `FORMA_APP_TOKENS` (required, one or more random strings),
-   `ANTHROPIC_API_KEY` (optional: without it the server stays in mock mode). Nothing else is required.
-3. Deploy. Check `https://<project>.vercel.app/health` (`aiMode` shows `mock` or `anthropic`).
+   `GEMINI_API_KEY` (key of a paid Google AI project; without it the server stays in mock mode). Nothing else is required.
+3. Deploy. Check `https://<project>.vercel.app/health` (`aiMode` shows `mock` or `gemini`).
 4. Everyone sets `FORMA_API_URL=https://<project>.vercel.app` and `FORMA_API_TOKEN=<one of the tokens>` in
    `Config/Secrets.xcconfig`. Every branch gets its own preview URL.
 
 Known gaps to check on the first deploy: SSE streaming through the function, the 60 s limit for the coach, cold
 starts, and rate limits that live in memory (per instance, so they barely work on Vercel: move them to Supabase
-or rely on the token and the spending limit on the key). Plan generation allows 45 s, which fits the limit.
+or rely on the token and the spending limit on the key). Plan generation allows 50 s, which fits the limit.
 
 `docker build -f backend/Dockerfile -t forma-backend .` from the repository root is the fallback (untested: no
 Docker on the build machine). In prod the docs and the schema endpoint are off.

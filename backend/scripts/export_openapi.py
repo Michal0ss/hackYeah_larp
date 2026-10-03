@@ -22,7 +22,7 @@ TARGET = BACKEND / "openapi.json"
 
 def render() -> str:
     # Mock mode and no tokens: the document does not depend on anyone's environment or secrets.
-    app = create_app(Settings(_env_file=None, env="dev", ai_mode="mock", anthropic_api_key=None, app_tokens=[]))
+    app = create_app(Settings(_env_file=None, env="dev", ai_mode="mock", gemini_api_key=None, app_tokens=[]))
     return json.dumps(app.openapi(), indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 

@@ -34,7 +34,7 @@ class HealthResponse(CamelModel):
     status: Literal["ok"]
     version: str
     env: str
-    ai_mode: Literal["mock", "anthropic"]
+    ai_mode: Literal["mock", "gemini"]
     content_version: str
 
 

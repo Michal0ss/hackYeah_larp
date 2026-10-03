@@ -66,7 +66,7 @@ W `Contracts/Services.swift` są protokoły usług (`PlanProviding`, `RecoveryPr
 
 - **Żadnych diagnoz ani twierdzeń medycznych.** Piszemy „sygnał", „warto rozważyć konsultację". Każdy nowy tekst zdrowotny przechodzi tę kontrolę (PROJECT.md, 3.6).
 - **Wideo i obrazy nie opuszczają telefonu.** Do sieci wychodzą liczby, podsumowania i tekst wpisany przez użytkownika. Dane zdrowotne trafiają do modelu wyłącznie po zgodzie (`DataConsent`) i jako podsumowania.
-- **Klucz do modelu nigdy w repozytorium ani w aplikacji.** Żyje tylko w środowisku serwera (`ANTHROPIC_API_KEY`). Aplikacja zna adres i token backendu (`Config/Secrets.xcconfig`, poza gitem). Przed commitem sprawdź `git diff` pod kątem kluczy.
+- **Klucz do modelu nigdy w repozytorium ani w aplikacji.** Żyje tylko w środowisku serwera (`GEMINI_API_KEY`). Aplikacja zna adres i token backendu (`Config/Secrets.xcconfig`, poza gitem). Przed commitem sprawdź `git diff` pod kątem kluczy.
 - **Model wołamy tylko przez backend** (`backend/`). Backend nie loguje treści, waliduje wszystko, co zwraca model, i ma szablon zapasowy. Zmiana API = zmiana schematu + `make openapi` + zgodna zmiana po stronie Swifta.
 - Decyzję dnia podaje **silnik reguł**, nie model językowy. Plan i trener używają wyłącznie ćwiczeń z katalogu.
 - Mówimy uczciwie, co działa, a co jest symulowane. Nie obiecujemy dokładności, której nie zmierzyliśmy.

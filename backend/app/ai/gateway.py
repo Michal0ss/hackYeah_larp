@@ -1,20 +1,17 @@
-"""The only place that talks to a language model.
+"""The interface to the language model, and the offline stand-in.
 
 Everything else (services, routers) depends on the small `AIGateway` interface, so:
   * tests and the app run offline with `MockGateway` (no key, no network),
-  * swapping the provider or model is a change in this file only,
+  * the real model is `GeminiGateway` (app/ai/gemini.py),
   * errors are reduced to `AIUnavailable(reason)`, a short code that never contains user text.
 """
 
 import asyncio
 import re
-import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any, Protocol, TypeVar
 
-import anthropic
-from anthropic import AsyncAnthropic
 from pydantic import BaseModel
 
 from app.logging_setup import get_logger
@@ -77,112 +74,6 @@ class AIGateway(Protocol):
     ) -> AsyncIterator[ChatEvent]: ...
 
     async def aclose(self) -> None: ...
-
-
-# --- Anthropic
-
-
-def _reason(exc: Exception) -> str:
-    if isinstance(exc, anthropic.APITimeoutError):
-        return "timeout"
-    if isinstance(exc, anthropic.APIConnectionError):
-        return "connection"
-    if isinstance(exc, anthropic.APIStatusError):
-        return f"status_{exc.status_code}"
-    return "sdk_error"
-
-
-class AnthropicGateway:
-    mode = "anthropic"
-
-    def __init__(self, api_key: str, timeout: float = 60.0, client: AsyncAnthropic | None = None):
-        # max_retries: the SDK retries 429/5xx/connection errors with backoff before we give up.
-        self._client = client or AsyncAnthropic(api_key=api_key, timeout=timeout, max_retries=2)
-
-    def _log_call(self, kind: str, model: str, started: float, usage: Any) -> None:
-        log.info(
-            "ai_call",
-            extra={
-                "kind": kind,
-                "model": model,
-                "inputTokens": getattr(usage, "input_tokens", 0),
-                "outputTokens": getattr(usage, "output_tokens", 0),
-                "ms": round((time.perf_counter() - started) * 1000),
-            },
-        )
-
-    def _fail(self, kind: str, model: str, exc: Exception) -> AIUnavailable:
-        reason = _reason(exc)
-        # Type and reason only: SDK error messages can quote parts of the request.
-        log.warning("ai_error", extra={"kind": kind, "model": model, "reason": reason, "excType": type(exc).__name__})
-        return AIUnavailable(reason)
-
-    async def complete_text(self, *, kind: str, model: str, system: str, user: str, max_tokens: int) -> str:
-        started = time.perf_counter()
-        try:
-            message = await self._client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                system=system,
-                messages=[{"role": "user", "content": user}],
-            )
-        except anthropic.AnthropicError as exc:
-            raise self._fail(kind, model, exc) from None
-        self._log_call(kind, model, started, message.usage)
-        return "".join(block.text for block in message.content if block.type == "text").strip()
-
-    async def complete_structured(
-        self, *, kind: str, model: str, system: str, user: str, schema: type[T], max_tokens: int
-    ) -> T:
-        started = time.perf_counter()
-        try:
-            message = await self._client.messages.parse(
-                model=model,
-                max_tokens=max_tokens,
-                system=system,
-                messages=[{"role": "user", "content": user}],
-                output_format=schema,
-            )
-        except anthropic.AnthropicError as exc:
-            raise self._fail(kind, model, exc) from None
-        except ValueError:
-            # The reply did not match the schema (the SDK validates it with pydantic).
-            log.warning("ai_error", extra={"kind": kind, "model": model, "reason": "invalid_output"})
-            raise AIUnavailable("invalid_output") from None
-        self._log_call(kind, model, started, message.usage)
-        if message.parsed_output is None:
-            raise AIUnavailable(f"empty_output_{message.stop_reason}")
-        return message.parsed_output
-
-    async def stream_chat(
-        self,
-        *,
-        model: str,
-        system: str,
-        messages: list[dict[str, Any]],
-        tools: list[dict[str, Any]],
-        max_tokens: int,
-    ) -> AsyncIterator[ChatEvent]:
-        started = time.perf_counter()
-        try:
-            async with self._client.messages.stream(
-                model=model, max_tokens=max_tokens, system=system, messages=messages, tools=tools
-            ) as stream:
-                async for text in stream.text_stream:
-                    yield TextDelta(text)
-                final = await stream.get_final_message()
-        except anthropic.AnthropicError as exc:
-            raise self._fail("coach", model, exc) from None
-        self._log_call("coach", model, started, final.usage)
-        # A tool call cut off by max_tokens has incomplete input: never forward it.
-        if final.stop_reason == "tool_use":
-            for block in final.content:
-                if block.type == "tool_use":
-                    yield ToolCall(id=block.id, name=block.name, input=dict(block.input))
-        yield Finished(final.stop_reason, final.usage.input_tokens, final.usage.output_tokens)
-
-    async def aclose(self) -> None:
-        await self._client.close()
 
 
 # --- offline mock
