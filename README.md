@@ -29,7 +29,17 @@ cd backend && make install && make dev     # http://localhost:8000, dokumentacja
 
 Na prawdziwym telefonie ustaw `FORMA_API_URL` w `Config/Secrets.xcconfig` na adres Maca w sieci (np. `http://192.168.1.20:8000`). Szczegóły: [backend/README.md](backend/README.md).
 
+Wspólny backend jest wdrożony na Vercelu z prawdziwym modelem (Gemini): `https://forma-api-three.vercel.app`. Żeby aplikacja z niego korzystała, wpisz w `Config/Secrets.xcconfig` `FORMA_API_URL = https:/$()/forma-api-three.vercel.app` i `FORMA_API_TOKEN` (token dostajesz od Michała, nigdy do repo). Bez tego aplikacja łączy się z lokalnym backendem albo działa na danych przykładowych. Klucz do modelu jest tylko w sekretach Vercela, nikt poza Michałem go nie potrzebuje.
+
 Na symulatorze wystarczy `Cmd+R`. Kamera, HealthKit z prawdziwymi danymi i podpis wymagają prawdziwego iPhone'a (Local.xcconfig z `DEVELOPMENT_TEAM`).
+
+## Stan projektu (3.10, wieczór)
+
+| Działa w `main` | W toku (kto) |
+|---|---|
+| onboarding, Dziś, check-in, Plan, Profil, Postępy, Opieka; silnik reguł i teksty rekomendacji; seria na żywo z kamerą dla przysiadu, pompki i podciągania; analiza z filmu (sześć ekranów, przysiad); czat z trenerem (zgoda, narzędzia, historia); backend z Gemini na Vercelu | Maciek: Swift `PlanGenerator`, magazyn planu, katalog. Wiktor: sprawdzenie na iPhonie, teksty z modelem, audyt tekstów. Bartek: **głos** (płynniejszy trener tempa, rozmowa głosowa), scoring pompki i podciągania, fixtures. Michał: test na iPhonie, materiały na zgłoszenie |
+
+Czego **nikt jeszcze nie sprawdził na prawdziwym iPhonie**: kamera i analiza na żywo, HealthKit z prawdziwymi danymi, czat i plany z telefonu przez Vercela, głos w słuchawkach. Szczegóły i zadania na osoby: [WORKINGPLAN.md](WORKINGPLAN.md), sekcje 5 i 9. **Zamrożenie funkcji: 4.10 rano, zgłoszenie z zapasem przed 23:00.**
 
 ## Struktura
 
@@ -38,7 +48,7 @@ App/                  aplikacja SwiftUI: ekrany, nawigacja, stan
 Packages/Core/        cała logika w modułach (jedna biblioteka = jeden właściciel)
   Contracts           wspólne typy i dane przykładowe (zmiany tylko za zgodą zespołu)
   DesignSystem        tokeny, szkło, przyciski, komponenty
-  Analysis            Bartek: Vision, jakość nagrania, powtórzenia, wynik
+  Analysis            Bartek: Vision, jakość nagrania, powtórzenia, wynik (oraz głos: tempo na żywo i rozmowa z trenerem)
   Health, Insights    Wiktor: HealthKit, check-in, silnik reguł, opieka
   Plan, Coaching, Content   Maciek: plan, czat z trenerem AI, katalog ćwiczeń
   LiveSet             Michał: seria na żywo (fazy ruchu, tempo, głos, kamera, podsumowanie)

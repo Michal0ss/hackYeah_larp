@@ -26,6 +26,7 @@ Plik `Forma.xcodeproj` jest generowany i nie wchodzi do repo. Po `git pull` z no
 | `Packages/Core/Sources/DesignSystem`, `App/` poza `Screens/*` | Michał | tokeny, szkło, komponenty, nawigacja, stan aplikacji |
 | `Packages/Core/Sources/LiveSet`, `API`, `Onboarding`, `App/Screens/LiveSet`, `Today`, `CheckIn`, `Onboarding`, `Profile` | Michał | seria na żywo (przysiad, pompka, podciąganie: `MovementKind`), klient backendu, onboarding (historia zdrowia zostaje na telefonie), ekran Dziś, check-in, Profil |
 | `Packages/Core/Sources/Analysis`, `App/Screens/Analysis` | Bartek | analiza filmu, jakość nagrania, scoring |
+| `LiveSet/Engine/CoachVoice.swift`, `LiveSet/Tempo/CuePlanner.swift`, `LiveSet/Tempo/PolishText.swift`, `LiveSet/Voice/`, `App/Screens/Coach/Voice/` | Bartek | głos: trener tempa na żywo i rozmowa głosowa z trenerem (reszta `LiveSet` i `Screens/Coach` zostaje u Michała i Maćka; zmiany tam minimalne, w osobnym PR) |
 | `Packages/Core/Sources/Health`, `Insights`, `App/Screens/Progress`, `App/Screens/Care` | Wiktor | HealthKit, check-in (zapis), silnik reguł, opieka, postępy |
 | `Packages/Core/Sources/Plan`, `Coaching`, `Content`, `App/Screens/Plan`, `App/Screens/Coach` | Maciek | katalog, plan, klient modelu, czat trenera |
 
