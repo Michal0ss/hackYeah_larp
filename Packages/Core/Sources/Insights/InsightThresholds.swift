@@ -16,12 +16,14 @@ public struct InsightThresholds: Codable, Equatable, Sendable {
         public var energyLow = 2
         /// Technique score strictly below this is a signal.
         public var techniqueScoreLow = 60
+        /// Only analyses from the last this many days count as today's technique signal.
+        public var techniqueMaxAgeDays = 14
 
         public init() {}
 
         private enum CodingKeys: String, CodingKey {
             case sleepMinutesLow, hrvBelowBaselineRatio, restingHeartRateAboveBaseline, stressHigh, energyLow,
-                 techniqueScoreLow
+                 techniqueScoreLow, techniqueMaxAgeDays
         }
 
         public init(from decoder: Decoder) throws {
@@ -34,6 +36,7 @@ public struct InsightThresholds: Codable, Equatable, Sendable {
             stressHigh = try c.decodeIfPresent(Int.self, forKey: .stressHigh) ?? d.stressHigh
             energyLow = try c.decodeIfPresent(Int.self, forKey: .energyLow) ?? d.energyLow
             techniqueScoreLow = try c.decodeIfPresent(Int.self, forKey: .techniqueScoreLow) ?? d.techniqueScoreLow
+            techniqueMaxAgeDays = try c.decodeIfPresent(Int.self, forKey: .techniqueMaxAgeDays) ?? d.techniqueMaxAgeDays
         }
     }
 
