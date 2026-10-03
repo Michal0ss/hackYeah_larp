@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "note": "Odpowiada PhaseTrackerConfig, TempoScoring i CoachingPolicy w pakiecie LiveSet. Właściciel: Michał.",
+  "tolerance": {
+    "minSeconds": 0.5,
+    "ratio": 0.2
+  },
+  "phaseTracker": {
+    "startDepth": 0.08,
+    "returnDepth": 0.06,
+    "restDepth": 0.02,
+    "minRepDepth": 0.3,
+    "velocityThreshold": 0.1,
+    "bottomHold": 0.15,
+    "bottomBand": 0.02,
+    "smoothingTau": 0.12,
+    "velocityWindow": 0.35,
+    "idleTimeout": 6.0
+  },
+  "policy": {
+    "cooldownReps": 2,
+    "tooFastEccentricRatio": 0.7,
+    "tooFastConcentricRatio": 0.6,
+    "tooShortPauseRatio": 0.5
+  }
+}

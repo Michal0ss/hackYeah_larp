@@ -2,6 +2,7 @@ import SwiftUI
 import Observation
 import AVFoundation
 import Contracts
+import Content
 import LiveSet
 
 /// Owns the engine and its frame source (camera on a device, simulated squat in the simulator).
@@ -36,7 +37,9 @@ final class LiveSetSession {
         #endif
         self.source = source
         self.engine = LiveSetEngine(exerciseId: exercise.id, spec: spec, setIndex: setIndex,
-                                    voice: SpeechCoachVoice(), isSimulated: source == .simulation)
+                                    voice: SpeechCoachVoice(), isSimulated: source == .simulation,
+                                    trackerConfig: PhaseTrackerConfig(values: ContentRepository.shared.numbers("tempo", "phaseTracker")),
+                                    cooldownReps: ContentRepository.shared.numbers("tempo", "policy")["cooldownReps"].map(Int.init))
     }
 
     func start() {

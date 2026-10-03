@@ -15,5 +15,5 @@ Jedyne źródło prawdy dla katalogu ćwiczeń, reguł układania planów i zdal
 - Plik musi być poprawnym JSON-em i przechodzić walidację backendu (`cd backend && make test`). Backend nie startuje na błędnej treści.
 - `catalog.json`: każdy `id` jest unikalny, każdy zamiennik istnieje, `pattern` jest jednym z: `squat`, `hinge`, `lunge`, `push`, `pull`, `core`, `cardio`. `movementTags` opisuje wzorce ruchu, które ćwiczenie zawiera (np. `deepLunges`). Użytkownik, który zgłosił problem z danym wzorcem, nie dostaje takich ćwiczeń.
 - Zmiana wartości w `config/*.json` zmienia zachowanie aplikacji bez nowej wersji (po pobraniu konfiguracji). Zmiany progów opisuj w PR, bo wpływają na wynik i rekomendacje.
-- Po zmianie uruchom `python scripts/sync_content.py`, żeby zaktualizować kopie w aplikacji (`--check` tylko sprawdza).
+- Po zmianie uruchom `python scripts/sync_content.py` z katalogu głównego repo, żeby zaktualizować kopie w aplikacji (`Packages/Core/Sources/Content/Resources/`; `--check` tylko sprawdza, a `make check` w `backend/` to robi). Aplikacja czyta kopię przez `ContentRepository`, a przy starcie pobiera nowszą wersję z serwera.
 - Teksty zdrowotne: „sygnał”, nigdy diagnoza (PROJECT.md 3.6).

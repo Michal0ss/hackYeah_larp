@@ -49,13 +49,16 @@ public final class LiveSetEngine {
     private var repBest: (depth: Double, frame: PoseFrame)?
 
     public init(exerciseId: String, spec: TempoSpec, setIndex: Int = 1, voice: CoachVoice,
-                assessor: TechniqueAssessing = BasicSquatAssessor(), isSimulated: Bool = false) {
+                assessor: TechniqueAssessing = BasicSquatAssessor(), isSimulated: Bool = false,
+                trackerConfig: PhaseTrackerConfig = PhaseTrackerConfig(), cooldownReps: Int? = nil) {
         self.exerciseId = exerciseId
         self.spec = spec
         self.setIndex = setIndex
         self.voice = voice
         self.assessor = assessor
         self.isSimulated = isSimulated
+        self.tracker = PhaseTracker(config: trackerConfig)
+        if let cooldownReps { self.policy.cooldownReps = cooldownReps }
     }
 
     public var headphonesConnected: Bool { voice.headphonesConnected }

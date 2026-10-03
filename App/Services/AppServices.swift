@@ -1,4 +1,5 @@
 import API
+import Content
 import Contracts
 import Insights
 
@@ -11,7 +12,8 @@ import Insights
 struct AppServices {
     /// Backend client (adres i token z Config/*.xcconfig). Maciek and Wiktor use it in their services.
     var api = FormaAPI()
-    var catalog: ExerciseCatalogProviding = SampleServices()
+    // Bundled content/ copy, refreshed from the backend (Michał, feat/michal-content-sync).
+    var catalog: ExerciseCatalogProviding = ContentRepository.shared
     var plan: PlanProviding = SampleServices()
     var recovery: RecoveryProviding = SampleServices()
     var checkIns: CheckInProviding = SampleServices()

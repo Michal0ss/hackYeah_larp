@@ -24,6 +24,22 @@ public struct PhaseTrackerConfig: Sendable, Equatable {
     public var idleTimeout = 6.0
 
     public init() {}
+
+    /// Overrides defaults with values from remote config (content/config/tempo.json, "phaseTracker"). Unknown or
+    /// missing keys keep their defaults.
+    public init(values: [String: Double]) {
+        self.init()
+        startDepth = values["startDepth"] ?? startDepth
+        returnDepth = values["returnDepth"] ?? returnDepth
+        restDepth = values["restDepth"] ?? restDepth
+        minRepDepth = values["minRepDepth"] ?? minRepDepth
+        velocityThreshold = values["velocityThreshold"] ?? velocityThreshold
+        bottomHold = values["bottomHold"] ?? bottomHold
+        bottomBand = values["bottomBand"] ?? bottomBand
+        smoothingTau = values["smoothingTau"] ?? smoothingTau
+        velocityWindow = values["velocityWindow"] ?? velocityWindow
+        idleTimeout = values["idleTimeout"] ?? idleTimeout
+    }
 }
 
 public enum TrackerEvent: Equatable, Sendable {

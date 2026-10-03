@@ -1,6 +1,7 @@
 import SwiftUI
 import Contracts
 import DesignSystem
+import Content
 
 @main
 struct FormaApp: App {
@@ -15,6 +16,8 @@ struct FormaApp: App {
                 // Dark is the default look. A settings switch can come later.
                 .preferredColorScheme(.dark)
                 .tint(FormaColor.voltText)
+                // Newer catalog and thresholds from the backend; offline we keep the bundled or cached copy.
+                .task { await ContentRepository.shared.refresh(using: store.services.api) }
         }
     }
 }
