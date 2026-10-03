@@ -57,6 +57,8 @@ struct CoachView: View {
                 if let voice, voice.isAvailable { VoiceMicRow(controller: voice) }
                 CoachInputBar(model: model, focused: $inputFocused)
             }
+            // Text scrolling under the bar must not show through it.
+            .background { Rectangle().fill(.ultraThinMaterial).ignoresSafeArea(edges: .bottom) }
         }
         .confirmationDialog("Wyczyścić rozmowę z trenerem?", isPresented: $confirmClear, titleVisibility: .visible) {
             Button("Wyczyść rozmowę", role: .destructive) { Task { await model.clearConversation() } }
@@ -168,7 +170,13 @@ struct CoachView: View {
             }
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
-            .onChange(of: model.messages.count) { scrollToEnd(proxy) }
+            // Opens at the newest message; an empty conversation starts at the top (the starter questions).
+            .defaultScrollAnchor(model.messages.isEmpty ? .top : .bottom)
+            .onAppear { scrollToEndSoon(proxy) }
+            .onChange(of: model.messages.count) { old, _ in
+                // The saved conversation arriving is not a new message: jump, do not scroll through it.
+                if old == 0 { scrollToEndSoon(proxy) } else { scrollToEnd(proxy) }
+            }
             .onChange(of: model.streamingText) { scrollToEnd(proxy, animated: false) }
             .onChange(of: model.isResponding) { scrollToEnd(proxy) }
             .onChange(of: model.error) { scrollToEnd(proxy) }
@@ -189,6 +197,14 @@ struct CoachView: View {
                         .formaStyle(.footnote).foregroundStyle(FormaColor.voltText)
                 }
             }
+        }
+    }
+
+    /// After the layout of what just appeared, so the jump lands on the real end of a long conversation.
+    private func scrollToEndSoon(_ proxy: ScrollViewProxy) {
+        Task { @MainActor in
+            await Task.yield()
+            proxy.scrollTo("bottom", anchor: .bottom)
         }
     }
 
