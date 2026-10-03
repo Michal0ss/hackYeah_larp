@@ -27,3 +27,5 @@ backend/.env
 backend/*.egg-info/
 __pycache__/
 .ruff_cache/
+.vercel
+.env.local

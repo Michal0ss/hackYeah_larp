@@ -103,7 +103,7 @@ Przy każdym zadaniu: **gałąź**, co powstaje, **gotowe, gdy**. „Zrobione”
 |---|---|---|
 | `feat/michal-live-set-device` | **Test analizy na żywo na iPhonie** (przysiad, pompka, podciąganie): szkielet pokrywa się z ciałem, 15/15 stawów, FPS ≥ 15, kąty i liczba powtórzeń zgodne z rzeczywistością, głos nadąża. Strojenie progów w `content/config/tempo.json` i ocen w `UpperBodyAssessors`/`BasicSquatAssessor`. Nagranie 2–3 serii dobrych i złych na każde ćwiczenie i wysłanie JSON-ów do Bartka | pełna seria każdego z trzech ćwiczeń na telefonie z poprawnie liczonymi fazami, lista zmian progów w PR, pliki z pozami u Bartka |
 | `feat/michal-submission` | README dla jury, 10 slajdów (PROJECT.md 12.1), nagranie demo z prawdziwego iPhone'a (zapasowe na pitch), zrzuty ekranu, zgłoszenie na HackTribe | komplet materiałów i wysłane zgłoszenie z zapasem przed terminem |
-| `feat/michal-backend-deploy` | **Decyzja do jutra rano:** wdrożenie na Vercelu (szkielet gotowy, opis w `backend/README.md`) z płatnym kluczem Gemini, żeby wszyscy testowali bez laptopa Michała, albo zostajemy przy laptopie + hotspot na demo. Jeśli wdrażamy: sekrety w Vercelu, test strumienia SSE i limitu 60 s, limity zapytań (pamięć nie działa między instancjami) | `/health` z telefonu na adresie z Vercela pokazuje `aiMode: gemini`, czat działa przez strumień, klucz tylko w sekretach hostingu |
+| `feat/michal-backend-deploy` | **Wdrożone na Vercelu** (adres i zasady w `backend/README.md`). Zostaje: płatny klucz Gemini w sekretach Vercela, test czatu z prawdziwym modelem przez Vercel i z telefonu, decyzja o Supabase (limity zapytań) | `/health` na adresie z Vercela pokazuje `aiMode: gemini`, czat działa przez strumień z telefonu, klucz tylko w sekretach hostingu |
 | `feat/michal-demo-polish` | Scenariusz demo: dane startowe (check-in, plan), tryb demo bez przypadkowych błędów, puste stany, jasny motyw i Dynamic Type na Dziś/Plan/Profil, edycja pól profilu, wejście do Opieki z wyniku analizy (po #22), zapis wyników analiz Bartka do Dziś/Postępów, usunięcie tymczasowego `BackendPlanGenerator`, gdy Maciek odda swój | całe demo da się przejść od czystej instalacji bez ręcznych obejść |
 
 **Prompt startowy dla jego sesji Claude'a:**
@@ -199,7 +199,7 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie. Stan: 3.10 
 | Ekran Plan | Michał | w `main` | tydzień, szczegóły sesji, start serii, „Przywróć oryginał”; bez oznaczania wykonania (Maciek: magazyn planu) |
 | Seria na żywo: przysiad, pompka, podciąganie, diagnostyka, eksport póz | Michał | w `main` | sprawdzone na symulacji i headless; **kamera i iPhone nie sprawdzone**, progi to wartości startowe |
 | Backend: szkielet (Michał), AI na Gemini z kaskadą i testami (Maciek) | Michał, Maciek | w `main` | 58 testów, `make check`; plany 6/6 i czat 9/9 na prawdziwym modelu; wymaga płatnego klucza; strumień SSE przez Vercel nie sprawdzony |
-| Wdrożenie na Vercel (szkielet) | Michał | w `main`, niewdrożone | decyzja do jutra rano (sekcja 5) |
+| Wdrożenie na Vercel | Michał | **wdrożone** (`https://forma-api-three.vercel.app`) | `/health`, token (401 bez, 200 z), katalog z ETag, plan, strumień SSE działają w trybie atrapy; **brakuje `GEMINI_API_KEY`** (płatny klucz, ustawia właściciel: `npx vercel env add GEMINI_API_KEY production` + redeploy). Supabase: nie założony, limit 2 darmowych projektów, a limity zapytań w pamięci |
 | Analiza z filmu: ekstraktor póz, `QualityGate` | Bartek | w `main` | obrót filmu z iPhone'a obsłużony; bez prawdziwych nagrań |
 | Analiza z filmu: `RepAnalyzer` + `TechniqueScorer` (#18), ekrany analizy (#22) | Bartek | drafty | #22 do rebase i poprawek (komentarze w PR), scoring tylko dla przysiadu |
 | HealthKit, `CheckInStore`, silnik reguł, `PlanAdjuster`, `CarePathway`, teksty rekomendacji | Wiktor | w `main` | dialog uprawnień sprawdzony na symulatorze; prawdziwe dane z zegarka i teksty z prawdziwym modelem nie sprawdzone |
@@ -217,7 +217,8 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie. Stan: 3.10 
 ## 11. Otwarte sprawy
 
 - [ ] **Klucz Gemini z płatnego projektu** i limit budżetu: kto go zakłada i trzyma (jedna osoba). Darmowy poziom: 20 zapytań na dobę na model i Google może używać treści zapytań.
-- [ ] **Wdrożenie:** Vercel albo laptop + hotspot na demo (decyzja Michała do 4.10 rano). Zapas na demo: nagranie.
+- [x] **Wdrożenie:** Vercel (`https://forma-api-three.vercel.app`). Token aplikacji ma Michał. Zapas na demo: laptop + hotspot i nagranie.
+- [ ] Supabase: darmowy limit 2 projektów jest wyczerpany (TogetherPlan, trackly). Potrzebny tylko do wspólnych limitów zapytań; decyzja Michała (wstrzymać jeden projekt, użyć osobnego schematu w istniejącym albo zrezygnować).
 - [ ] Zamrożenie funkcji 4.10 rano i godzina wysłania zgłoszenia (propozycja w sekcji 7), potwierdzenie przez zespół.
 - [ ] Potwierdzenie z organizatorami, że wcześniejsze planowanie jest w porządku.
 - [ ] Potwierdzenie mapowania loginów GitHub na osoby (sekcja 2) oraz modele iPhone'ów i wersje iOS w zespole.

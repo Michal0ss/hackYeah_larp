@@ -123,20 +123,32 @@ scripts/export_openapi.py
 
 ## Deploying
 
-**Vercel (prepared, never deployed yet).** Files at the repo root: `api/index.py` (exposes `app`), `vercel.json`
-(rewrites everything to it, 60 s limit, bundles `backend/app` and `content/`), `requirements.txt` (pinned runtime
-dependencies, keep in sync with `backend/constraints.txt`), `.vercelignore`. Steps:
+**Vercel (deployed 2026-10-03).** Project `forma-api` in the team `michal-team00`, production URL
+`https://forma-api-three.vercel.app` (region fra1, no Vercel Authentication, so the app token is the only gate).
+Files at the repo root: `api/index.py` (exposes `app`), `vercel.json` (everything rewritten to it, 60 s limit),
+`requirements.txt` (pinned runtime dependencies, keep in sync with `backend/constraints.txt`), `.vercelignore`.
 
-1. Import the GitHub repo in Vercel; leave the Root Directory as the repo root and the framework as "Other".
-2. Project environment variables (all environments): `FORMA_APP_TOKENS` (required, one or more random strings),
-   `GEMINI_API_KEY` (key of a paid Google AI project; without it the server stays in mock mode). Nothing else is required.
-3. Deploy. Check `https://<project>.vercel.app/health` (`aiMode` shows `mock` or `gemini`).
-4. Everyone sets `FORMA_API_URL=https://<project>.vercel.app` and `FORMA_API_TOKEN=<one of the tokens>` in
-   `Config/Secrets.xcconfig`. Every branch gets its own preview URL.
+Environment variables of the Vercel project (Settings, or `npx vercel env add NAME production`):
 
-Known gaps to check on the first deploy: SSE streaming through the function, the 60 s limit for the coach, cold
-starts, and rate limits that live in memory (per instance, so they barely work on Vercel: move them to Supabase
-or rely on the token and the spending limit on the key). Plan generation allows 50 s, which fits the limit.
+| Name | Needed | What |
+|---|---|---|
+| `FORMA_APP_TOKENS` | yes | the app token(s); the server refuses to start without it. Set. |
+| `GEMINI_API_KEY` | for the real model | key from a **paid** Google project with a budget limit. Not set yet: without it the server answers in mock mode (`/health` shows `aiMode: mock`). |
+
+Redeploy: `npx vercel deploy --prod --yes --scope michal-team00` from the repo root (the CLI must be logged in:
+`npx vercel login`). Changing an environment variable needs a redeploy. Logs: Vercel dashboard, or the MCP tool
+`get_runtime_logs`.
+
+App side: `FORMA_API_URL` and `FORMA_API_TOKEN` in `Config/Secrets.xcconfig` (gitignored). Ask Michał for the token.
+
+Lessons from the first deploy (so nobody repeats them):
+- `.vercelignore` matching is **case-insensitive**: a plain `App/` also removed `backend/app/` and the function
+  failed with `No module named 'app'`. Anchor patterns with a leading `/`.
+- `includeFiles` with brace globs did not include the backend; the Python runtime bundles the project by default.
+- The GitHub integration was not connected for this repo, so deploys are made from the CLI, not by pushing.
+
+Known gaps: rate limits live in memory (per instance, so they barely work on Vercel: rely on the token and the
+spending limit on the key), cold starts, the Gemini key signature cache is per process.
 
 `docker build -f backend/Dockerfile -t forma-backend .` from the repository root is the fallback (untested: no
 Docker on the build machine). In prod the docs and the schema endpoint are off.
