@@ -1,6 +1,6 @@
 PY ?= .venv/bin/python
 
-.PHONY: install dev check lint fmt openapi
+.PHONY: install dev check lint fmt openapi evals
 
 install:  ## create .venv and install pinned dependencies
 	python3 -m venv .venv
@@ -10,12 +10,15 @@ dev:  ## run with reload on http://localhost:8000 (offline mock AI unless GEMINI
 	$(PY) -m uvicorn app.main:create_app --factory --reload --host 0.0.0.0 --port 8000
 
 lint:
-	$(PY) -m ruff check app scripts
-	$(PY) -m ruff format --check app scripts
+	$(PY) -m ruff check app scripts evals
+	$(PY) -m ruff format --check app scripts evals
 
 fmt:
-	$(PY) -m ruff check --fix app scripts
-	$(PY) -m ruff format app scripts
+	$(PY) -m ruff check --fix app scripts evals
+	$(PY) -m ruff format app scripts evals
+
+evals:  ## run plan and chat checks against the real model (needs GEMINI_API_KEY), see evals/run_ai_evals.py
+	$(PY) evals/run_ai_evals.py
 
 openapi:  ## regenerate openapi.json (the API contract), validates content/ on the way
 	$(PY) scripts/export_openapi.py
