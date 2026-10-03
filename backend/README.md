@@ -99,6 +99,20 @@ scripts/export_openapi.py
 
 ## Deploying
 
-`docker build -f backend/Dockerfile -t forma-backend .` from the repository root (untested here: no Docker on the
-build machine). Needs `FORMA_APP_TOKENS` and `ANTHROPIC_API_KEY` from the host's secrets, listens on `$PORT`.
-In prod the docs and the schema endpoint are off. Rate limits are in memory, so run one instance (or add Redis).
+**Vercel (prepared, never deployed yet).** Files at the repo root: `api/index.py` (exposes `app`), `vercel.json`
+(rewrites everything to it, 60 s limit, bundles `backend/app` and `content/`), `requirements.txt` (pinned runtime
+dependencies, keep in sync with `backend/constraints.txt`), `.vercelignore`. Steps:
+
+1. Import the GitHub repo in Vercel; leave the Root Directory as the repo root and the framework as "Other".
+2. Project environment variables (all environments): `FORMA_APP_TOKENS` (required, one or more random strings),
+   `ANTHROPIC_API_KEY` (optional: without it the server stays in mock mode). Nothing else is required.
+3. Deploy. Check `https://<project>.vercel.app/health` (`aiMode` shows `mock` or `anthropic`).
+4. Everyone sets `FORMA_API_URL=https://<project>.vercel.app` and `FORMA_API_TOKEN=<one of the tokens>` in
+   `Config/Secrets.xcconfig`. Every branch gets its own preview URL.
+
+Known gaps to check on the first deploy: SSE streaming through the function, the 60 s limit for the coach, cold
+starts, and rate limits that live in memory (per instance, so they barely work on Vercel: move them to Supabase
+or rely on the token and the spending limit on the key). Plan generation allows 45 s, which fits the limit.
+
+`docker build -f backend/Dockerfile -t forma-backend .` from the repository root is the fallback (untested: no
+Docker on the build machine). In prod the docs and the schema endpoint are off.
