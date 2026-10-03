@@ -12,10 +12,10 @@ Budujemy aplikację na iPhone'a (SwiftUI): trener, plan treningowy i doradca w j
 
 | | Rola | Imię | iPhone / iOS | Xcode |
 |---|---|---|---|---|
-| **1** | Lead, UI i integracja | Maciek | [uzupełnić] | [uzupełnić] |
+| **1** | Lead, UI i integracja | Michał | [uzupełnić] | [uzupełnić] |
 | **2** | Analiza ruchu | Bartek | [uzupełnić] | [uzupełnić] |
 | **3** | Dane i reguły | Wiktor | [uzupełnić] | [uzupełnić] |
-| **4** | Plan i trener AI | Michał | [uzupełnić] | [uzupełnić] |
+| **4** | Plan i trener AI | Maciek | [uzupełnić] | [uzupełnić] |
 
 Projekt Xcode zakłada **osoba z Xcode 26** (projekt zapisany w Xcode 27 może się nie otwierać w 26). Kto ma 27, nie zgadza się na „upgrade project format”. Założy go: **[uzupełnić]**.
 
@@ -44,7 +44,7 @@ Do następnej fazy przechodzimy, gdy spełniony jest jej warunek ukończenia, a 
 
 ## 5. Zadania na osoby
 
-### Maciek: Lead, UI i integracja
+### Michał: Lead, UI i integracja
 
 **Teraz (przed 23:00):**
 - [ ] Konto na HackTribe i dostęp do Discorda HackYeah.
@@ -61,7 +61,7 @@ Do następnej fazy przechodzimy, gdy spełniony jest jej warunek ukończenia, a 
 - [ ] Integracja modułów, nagranie demo, slajdy (12.1), README dla jury, zgłoszenie na HackTribe.
 
 **Dostarcza innym:** kontrakty i DesignSystem (jako pierwsze).
-**Wsparcie:** po skończeniu przejmuje UI ekranu **Plan** od Michała.
+**Wsparcie:** po skończeniu przejmuje UI ekranu **Plan** od Maćka.
 
 ### Bartek: Analiza ruchu
 
@@ -78,7 +78,7 @@ Do następnej fazy przechodzimy, gdy spełniony jest jej warunek ukończenia, a 
 - [ ] Ekrany **Analiza** (wybór, ustawienie telefonu, nagrywanie, jakość, przetwarzanie) i **Wynik**.
 - [ ] Testy jednostkowe scoringu na zapisanych `PoseFrame`.
 
-**Dostarcza innym:** `TechniqueResult` (najpierw makieta z prawdziwymi polami) dla Maćka i Wiktora.
+**Dostarcza innym:** `TechniqueResult` (najpierw makieta z prawdziwymi polami) dla Michała i Wiktora.
 
 ### Wiktor: Dane i reguły
 
@@ -95,9 +95,9 @@ Do następnej fazy przechodzimy, gdy spełniony jest jej warunek ukończenia, a 
 - [ ] Ekrany **Opieka** i **Postępy** (Swift Charts).
 - [ ] Funkcje dla narzędzi czatu: `get_recovery_history` i `get_checkins`.
 
-**Dostarcza innym:** `DailyRecommendation` (najpierw makieta) dla Maćka i Michała.
+**Dostarcza innym:** `DailyRecommendation` (najpierw makieta) dla Michała i Maćka.
 
-### Michał: Plan i trener AI
+### Maciek: Plan i trener AI
 
 **Teraz (przed 23:00):**
 - [ ] Konto i klucz do Claude API z **limitem wydatków**, jedno zapytanie testowe poza projektem, klucz trzymany poza repozytorium.
@@ -108,19 +108,19 @@ Do następnej fazy przechodzimy, gdy spełniony jest jej warunek ukończenia, a 
 - [ ] Klient API w Swifcie (`URLSession`, streaming, pętla narzędzi). Adres wywołań modelu jako jedno ustawienie w konfiguracji.
 - [ ] `PlanGenerator`: model zwraca JSON, nasz kod **waliduje** (istniejące `id`, sprzęt, limity), a przy błędzie używa szablonu.
 - [ ] `CoachChat`: instrukcja systemowa (3.6, 7.6), narzędzia (`get_training_plan`, `get_recovery_history`, `get_checkins`, `get_technique_results`, `get_exercise_info`), **zgoda na dane zdrowotne** (`DataConsent`).
-- [ ] Ekrany **Plan** i **Trener** (zgoda, pusta rozmowa, trener pisze, błąd). Plan może przejąć Maciek.
+- [ ] Ekrany **Plan** i **Trener** (zgoda, pusta rozmowa, trener pisze, błąd). Plan może przejąć Michał.
 - [ ] Testy walidatora planu i kilka testowych pytań do czatu (ból, uraz, „czy ćwiczyć dziś”).
 
-**Dostarcza innym:** `TrainingPlan` i dzisiejszą sesję dla Maćka i Wiktora.
+**Dostarcza innym:** `TrainingPlan` i dzisiejszą sesję dla Michała i Wiktora.
 
 ## 6. Zależności
 
 | Od | Do | Co |
 |---|---|---|
-| Maciek | wszyscy | kontrakty i DesignSystem |
-| Bartek | Maćka i Wiktora | `TechniqueResult` (makieta, potem prawdziwy) |
-| Wiktor | Maćka i Michała | `DailyRecommendation` i funkcje narzędzi czatu |
-| Michał | Maćka i Wiktora | `TrainingPlan` i dzisiejsza sesja |
+| Michał | wszyscy | kontrakty i DesignSystem |
+| Bartek | Michała i Wiktora | `TechniqueResult` (makieta, potem prawdziwy) |
+| Wiktor | Michała i Maćka | `DailyRecommendation` i funkcje narzędzi czatu |
+| Maciek | Michała i Wiktora | `TrainingPlan` i dzisiejsza sesja |
 
 **Zasada:** każdy publikuje najpierw makietę swojego typu (z prawdziwymi polami), żeby nikt nie czekał na gotowy moduł.
 
@@ -153,16 +153,16 @@ Wyższy zawsze przed niższym (PROJECT.md, 4.2):
 
 | Obszar | Kto | Status | Uwagi |
 |---|---|---|---|
-| Projekt i kontrakty | Maciek | do zrobienia | |
-| DesignSystem i nawigacja | Maciek | do zrobienia | |
-| Dziś / Check-in / Onboarding | Maciek | do zrobienia | |
+| Projekt i kontrakty | Michał | do zrobienia | |
+| DesignSystem i nawigacja | Michał | do zrobienia | |
+| Dziś / Check-in / Onboarding | Michał | do zrobienia | |
 | Analiza ruchu i scoring | Bartek | do zrobienia | |
 | Ekrany Analiza i Wynik | Bartek | do zrobienia | |
 | Dane, HealthKit, silnik reguł | Wiktor | do zrobienia | |
 | Opieka i Postępy | Wiktor | do zrobienia | |
-| Katalog i plan | Michał | do zrobienia | |
-| Czat trenera | Michał | do zrobienia | |
-| Slajdy, demo, README, zgłoszenie | Maciek | do zrobienia | |
+| Katalog i plan | Maciek | do zrobienia | |
+| Czat trenera | Maciek | do zrobienia | |
+| Slajdy, demo, README, zgłoszenie | Michał | do zrobienia | |
 
 ## 11. Otwarte sprawy
 
