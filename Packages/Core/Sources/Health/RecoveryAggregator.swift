@@ -48,7 +48,8 @@ public struct HealthSamples: Equatable, Sendable {
 /// - Baseline: the median of the previous `baselineDays` days that have data, never including the day itself.
 ///   With fewer than `minBaselineDays` earlier days the baseline equals the day's own value, so a new user
 ///   gets no false signal.
-/// - A day becomes a snapshot only when sleep, resting heart rate and HRV are all present.
+/// - `snapshots` (for the rule engine) need sleep, resting heart rate and HRV on the same day; `summaries` (for
+///   display) need only one of them.
 public struct RecoveryAggregator: Sendable {
     public var calendar: Calendar
     public var baselineDays: Int
@@ -66,29 +67,42 @@ public struct RecoveryAggregator: Sendable {
     /// Snapshots for the last `days` days (including today), newest first. Days without full data are skipped.
     public func snapshots(from samples: HealthSamples, days: Int, now: Date = Date(),
                           isSimulated: Bool = false) -> [RecoverySnapshot] {
+        summaries(from: samples, days: days, now: now, isSimulated: isSimulated).compactMap(\.snapshot)
+    }
+
+    /// What Health knows per day for the last `days` days (including today), newest first. A day appears as soon as
+    /// it has at least one number; missing numbers stay nil, so an iPhone without a watch still shows its sleep.
+    public func summaries(from samples: HealthSamples, days: Int, now: Date = Date(),
+                          isSimulated: Bool = false) -> [HealthDaySummary] {
         guard days > 0 else { return [] }
         let today = calendar.startOfDay(for: now)
         let sleepByDay = sleepMinutesPerDay(samples.sleep)
         let rhrByDay = latestPerDay(samples.restingHeartRate)
         let hrvByDay = meanPerDay(samples.hrv)
 
-        var result: [RecoverySnapshot] = []
+        var result: [HealthDaySummary] = []
         for offset in 0..<days {
-            guard let day = calendar.date(byAdding: .day, value: -offset, to: today),
-                  let sleep = sleepByDay[day], let rhr = rhrByDay[day], let hrv = hrvByDay[day] else { continue }
-
-            let earlier = (1...max(baselineDays, 1)).compactMap { calendar.date(byAdding: .day, value: -$0, to: day) }
-            let rhrHistory = earlier.compactMap { rhrByDay[$0] }
-            let hrvHistory = earlier.compactMap { hrvByDay[$0] }
-            let rhrBaseline = rhrHistory.count >= minBaselineDays ? Self.median(rhrHistory) : rhr
-            let hrvBaseline = hrvHistory.count >= minBaselineDays ? Self.median(hrvHistory) : hrv
-
-            result.append(RecoverySnapshot(
-                date: day, sleepMinutes: Int(sleep.rounded()), restingHeartRate: Int(rhr.rounded()),
-                hrvMs: Int(hrv.rounded()), restingHeartRateBaseline: Int(rhrBaseline.rounded()),
-                hrvBaselineMs: Int(hrvBaseline.rounded()), isSimulated: isSimulated))
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: today) else { continue }
+            let sleep = sleepByDay[day], rhr = rhrByDay[day], hrv = hrvByDay[day]
+            guard sleep != nil || rhr != nil || hrv != nil else { continue }
+            result.append(HealthDaySummary(
+                date: day,
+                sleepMinutes: sleep.map { Int($0.rounded()) },
+                restingHeartRate: rhr.map { Int($0.rounded()) },
+                hrvMs: hrv.map { Int($0.rounded()) },
+                restingHeartRateBaseline: rhr.map { Int(baseline(for: day, value: $0, byDay: rhrByDay).rounded()) },
+                hrvBaselineMs: hrv.map { Int(baseline(for: day, value: $0, byDay: hrvByDay).rounded()) },
+                isSimulated: isSimulated))
         }
         return result
+    }
+
+    /// Median of the earlier days that have the metric, never including the day itself.
+    private func baseline(for day: Date, value: Double, byDay: [Date: Double]) -> Double {
+        let history = (1...max(baselineDays, 1))
+            .compactMap { calendar.date(byAdding: .day, value: -$0, to: day) }
+            .compactMap { byDay[$0] }
+        return history.count >= minBaselineDays ? Self.median(history) : value
     }
 
     // MARK: Per-day reductions
