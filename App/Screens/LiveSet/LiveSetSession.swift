@@ -40,7 +40,7 @@ final class LiveSetSession {
         #endif
         self.source = source
         self.engine = LiveSetEngine(exerciseId: exercise.id, spec: spec, setIndex: setIndex,
-                                    voice: SpeechCoachVoice(), kind: kind, isSimulated: source == .simulation,
+                                    voice: BankedCoachVoice(), kind: kind, isSimulated: source == .simulation,
                                     trackerConfig: PhaseTrackerConfig(values: ContentRepository.shared.numbers("tempo", "phaseTracker")),
                                     cooldownReps: ContentRepository.shared.numbers("tempo", "policy")["cooldownReps"].map(Int.init))
     }

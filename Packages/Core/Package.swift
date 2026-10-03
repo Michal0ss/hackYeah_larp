@@ -36,7 +36,8 @@ let package = Package(
         // Maciek: exercise catalog and texts.
         .target(name: "Content", dependencies: ["Contracts", "API"], resources: [.process("Resources")]),
         // Michał: live set coaching (camera pose, tempo engine, voice cues, set summary).
-        .target(name: "LiveSet", dependencies: ["Contracts"]),
+        // resources: voice_manifest.json + pre-recorded coach clips (scripts/generate_voice_bank.py).
+        .target(name: "LiveSet", dependencies: ["Contracts"], resources: [.process("Resources")]),
         // Test targets exist for every module so nobody has to edit this file to add tests.
         // Michał: first-run flow (profile, health history kept on the phone, plan generation step).
         .target(name: "Onboarding", dependencies: ["Contracts"]),
