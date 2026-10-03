@@ -12,6 +12,9 @@ struct TodayView: View {
     @State private var showCheckIn = false
     @State private var liveLaunch: LiveSetLaunch?
     @State private var showProfile = false
+    @State private var showCare = false
+    /// Same data and rules as the Postępy tab, to show the care signal here too.
+    @State private var careModel = ProgressModel()
 
     var body: some View {
         ZStack {
@@ -20,6 +23,9 @@ struct TodayView: View {
                 VStack(alignment: .leading, spacing: FormaSpacing.l) {
                     header
                     RecommendationCard(recommendation: store.recommendation)
+                    if let care = careModel.care {
+                        CareTeaserCard(assessment: care, simulated: careModel.careSimulated) { showCare = true }
+                    }
                     if let entry = store.todaySession {
                         let adjustment = store.adjustment(for: entry.session)
                         SessionCard(adjustment: adjustment, isToday: entry.isToday,
@@ -42,6 +48,10 @@ struct TodayView: View {
         .sheet(isPresented: $showProfile) {
             ProfileView()
         }
+        .sheet(isPresented: $showCare) {
+            if let care = careModel.care { CareView(assessment: care, simulated: careModel.careSimulated) }
+        }
+        .task(id: store.recommendation) { await careModel.load(services: store.services) }
         .fullScreenCover(item: $liveLaunch) { launch in
             LiveSetFlow(exercise: launch.exercise, spec: launch.spec, totalSets: launch.sets) {
                 liveLaunch = nil
