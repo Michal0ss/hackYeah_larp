@@ -57,6 +57,10 @@ public final class BankedCoachVoice: NSObject, CoachVoice {
         newPlayer.play()
     }
 
+    public func signalSetStart() {
+        fallback.signalSetStart()
+    }
+
     public func finish() {
         player?.stop()
         player = nil
