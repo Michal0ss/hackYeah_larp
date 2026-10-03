@@ -37,6 +37,7 @@ public struct HKHealthSampleSource: HealthSampleSource, @unchecked Sendable {
         ]
         let sleep = sleepSamples.filter { asleep.contains($0.value) }
             .map { SleepInterval(start: $0.startDate, end: $0.endDate) }
+        let inBedCount = sleepSamples.count - sleep.count
 
         let bpm = HKUnit.count().unitDivided(by: .minute())
         let resting = try await HKSampleQueryDescriptor(
@@ -49,7 +50,7 @@ public struct HKHealthSampleSource: HealthSampleSource, @unchecked Sendable {
             limit: HKObjectQueryNoLimit).result(for: store)
             .map { DatedValue(date: $0.endDate, value: $0.quantity.doubleValue(for: .secondUnit(with: .milli))) }
 
-        return HealthSamples(sleep: sleep, restingHeartRate: resting, hrv: hrv)
+        return HealthSamples(sleep: sleep, restingHeartRate: resting, hrv: hrv, inBedCount: inBedCount)
     }
 }
 #else
