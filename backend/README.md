@@ -22,6 +22,14 @@ Use a key from a **paid** (billing-enabled) Google AI project with a budget limi
 prompts to improve its products (coach prompts carry health summaries) and the quota is tiny: 20 requests per
 day per model, after which every call answers 429.
 
+### Knowledge base (RAG) for the coach
+
+`content/knowledge/*.md`: short Polish notes (own summaries of open sources: WHO guidelines, studies on load and
+volume, Wikipedia on technique and recovery), each with `source`, `url`, `license`. For every question
+`app/ai/knowledge.py` picks the 1-3 notes that fit (BM25 in memory: no embeddings, no extra API call, works offline)
+and `coach_service` adds them to the system prompt with their sources. Missing or broken notes are skipped and never
+fail the chat. How to add a note and the licence status: `content/knowledge/README.md`.
+
 ### Models and what happens when Gemini misbehaves
 
 `FORMA_COACH_MODEL`, `FORMA_PLAN_MODEL` and `FORMA_TEXT_MODEL` (default `gemini-3.5-flash`) pick the model;
@@ -126,6 +134,7 @@ app/ai/gemini.py       Gemini gateway: tool translation, model fallback, cooldow
 app/ai/prompts/*.md    Polish system prompts (edit wording here)
 app/ai/prompts.py      fills prompts with sanitised data
 app/ai/tools.py        coach tool definitions, consent gating
+app/ai/knowledge.py    notes for the coach (content/knowledge), BM25 retrieval
 app/services/          plan_builder (templates), plan_validator, plan_service, coach_service,
                        text_service, safety
 app/routers/           one file per area

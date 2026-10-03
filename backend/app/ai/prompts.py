@@ -263,7 +263,9 @@ def describe_workout(workout: WorkoutContext, content: ContentStore) -> str:
 # --- coach
 
 
-def coach_system_prompt(content: ContentStore, context: CoachContext | None, consent: Consent) -> str:
+def coach_system_prompt(
+    content: ContentStore, context: CoachContext | None, consent: Consent, knowledge: str = ""
+) -> str:
     if consent.health:
         health_rule = (
             "Użytkownik zgodził się na przekazywanie podsumowań danych zdrowotnych (sen, tętno, zmienność rytmu "
@@ -296,6 +298,7 @@ def coach_system_prompt(content: ContentStore, context: CoachContext | None, con
         snapshot=snapshot,
         moment=moment,
         catalog=catalog_lines(content, context.profile if context else None),
+        knowledge=knowledge,
     )
 
 
