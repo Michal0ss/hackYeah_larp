@@ -25,6 +25,8 @@ struct SupabaseAuthClient: Sendable {
             URLQueryItem(name: "redirect_to", value: config.callbackURL.absoluteString),
             URLQueryItem(name: "code_challenge", value: challenge),
             URLQueryItem(name: "code_challenge_method", value: "s256"),
+            // The sign-in browser remembers the last Google account; always let the person pick which one to use.
+            URLQueryItem(name: "prompt", value: "select_account"),
         ]
         return parts.url!
     }
