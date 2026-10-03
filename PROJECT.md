@@ -440,7 +440,9 @@ Backend nie zapisuje rozmów ani nie loguje ich treści (tylko identyfikator ż�
 - Aplikację instalujemy przez Xcode na naszych telefonach (bez TestFlight i bez płatnego konta Apple Developer). W debugu telefon łączy się z backendem po HTTP w sieci lokalnej (wyjątek ATS `NSAllowsLocalNetworking`) albo po HTTPS z wdrożenia.
 - **Bez klucza wszystko działa:** serwer uruchomiony bez `ANTHROPIC_API_KEY` ma tryb atrapy (plany z szablonu, czat z gotowymi odpowiedziami), więc zespół rozwija aplikację i backend niezależnie od klucza.
 
-**Po hackathonie:** konta, baza i synchronizacja (np. Supabase), współdzielone limity (Redis) przy wielu instancjach, TestFlight i płatne konto Apple Developer dla większej grupy testerów.
+**Hosting i baza (decyzja 2026-10-03): na razie backend działa lokalnie, na laptopie (`make dev`), bez hostingu i bez bazy. Docelowo backend na Vercelu, baza na Supabase (Postgres).** Po przejściu na Vercel uruchamia ten sam kod FastAPI jako funkcję bezserwerową (klucz do modelu i `FORMA_APP_TOKENS` w zmiennych środowiskowych projektu Vercel). Supabase to jedyna baza i służy do rzeczy, których bezserwerowy backend nie utrzyma w pamięci: wspólne limity zapytań i liczniki zużycia modelu (same metadane, bez treści), a potem konta i synchronizacja planu oraz wyników. **Do bazy nie trafiają: wideo, treść rozmów, historia zdrowia i surowe dane zdrowotne** (zasady prywatności bez zmian). Klucz `service_role` Supabase tylko w środowisku Vercela.
+
+**Po hackathonie:** konta (Supabase Auth) zamiast wspólnego tokenu, TestFlight i płatne konto Apple Developer dla większej grupy testerów.
 
 ### 8.2 Organizacja repozytorium (ważne przy różnych wersjach Xcode)
 
@@ -467,7 +469,7 @@ Szkielet (`backend/`, opis uruchomienia w [backend/README.md](backend/README.md)
 
 **Konwencje API:** JSON w camelCase tak jak typy `Codable` w Swifcie (`Contracts` i `backend/app/schemas/domain.py` mają te same pola), daty w ISO 8601 UTC bez ułamków sekund (`.iso8601`), każdy błąd w jednym formacie `{"error":{"code","message","requestId"}}` (aplikacja przełącza się po `code`), nagłówki `Authorization: Bearer`, `X-Device-Id`, `X-Request-Id`. Schemat w `backend/openapi.json` jest generowany (`make openapi`) i commitowany razem ze zmianą.
 
-**Wdrożenie [do decyzji, sekcja 15]:** obraz Dockera (`backend/Dockerfile`) na hostingu, który obsługuje strumienie SSE (np. Fly.io, Render, Railway), jedna instancja (limity w pamięci). Na demo zapas: backend na laptopie w tej samej sieci co telefon albo przez tunel.
+**Wdrożenie:** teraz lokalnie: backend na laptopie, telefon w tej samej sieci (`FORMA_API_URL=http://<ip-maca>:8000`), tryb atrapy lub z kluczem w terminalu. Później Vercel (funkcja Python/ASGI) + Supabase. Do sprawdzenia przy przejściu, bo szkielet nie był wdrażany: strumień SSE przez funkcje Vercela i limit czasu funkcji (czat musi się mieścić), dołączenie `content/` do wdrożenia (leży poza `backend/`), zimny start, limity pamięci w procesie nie działają między instancjami, więc **limity zapytań przenosimy do Supabase**. `backend/Dockerfile` zostaje jako zapas. Na demo dodatkowy zapas: backend na laptopie w tej samej sieci co telefon albo przez tunel.
 
 ## 9. Architektura i kontrakty między modułami
 
@@ -701,7 +703,7 @@ Język slajdów i opisu: polski lub angielski **[do ustalenia]**.
 - [ ] Które ćwiczenia wchodzą do katalogu (ok. 12–15) i kto go przygotowuje.
 - [ ] Czy czat trenera ma tylko odpowiadać, czy też proponować zmiany w planie z przyciskiem „Zastosuj” (priorytet 5).
 - [x] Jeden wspólny backend (FastAPI) trzyma klucz do modelu i obsługuje plan, czat i teksty; telefon robi analizę, reguły i dane zdrowotne (sekcje 8.1, 8.3). Zastępuje wcześniejszą decyzję „bez backendu”. Baza i konta dopiero po hackathonie.
-- [ ] Hosting backendu na demo (Fly.io, Render lub Railway z Dockerem albo laptop i tunel) i kto go utrzymuje.
+- [x] Teraz backend lokalnie na laptopie; docelowo Vercel + Supabase (sekcja 8.1), bez terminu. Do ustalenia przy przejściu: kto zakłada projekty, schemat bazy (limity i liczniki) i czy SSE przechodzi przez Vercela w limicie czasu.
 - [ ] Który model w czacie (Haiku 4.5 czy Sonnet 5) po próbie szybkości i jakości.
 - [ ] Czy w demo trener pracuje na danych przykładowych, na prawdziwych danych z telefonu, czy na obu (przełącznik).
 - [ ] Źródło filmów wzorcowych i danych przykładowych (kto się nagrywa, za zgodą).
