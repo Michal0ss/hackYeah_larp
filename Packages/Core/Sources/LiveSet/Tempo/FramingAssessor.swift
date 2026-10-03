@@ -132,7 +132,7 @@ public enum FramingAssessor {
             checks.append(QualityCheck(id: "size", label: "Odpowiednia wielkość w kadrze", passed: sizeOK, hint: sizeHint))
         }
 
-        if kind == .pushup, let l = frame.joint(.leftShoulder, minConfidence: minConfidence), let r = frame.joint(.rightShoulder, minConfidence: minConfidence), let neck, let root {
+        if kind == .pushup || kind == .dip, let l = frame.joint(.leftShoulder, minConfidence: minConfidence), let r = frame.joint(.rightShoulder, minConfidence: minConfidence), let neck, let root {
             let torso = frame.distance(neck, root)
             if torso > 0.02 {
                 let sideOK = abs(l.x - r.x) * frame.aspectRatio / torso <= maxShoulderRatio

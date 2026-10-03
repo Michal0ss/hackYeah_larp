@@ -255,7 +255,7 @@ struct LiveSetView: View {
     private func calibratingPanel(_ progress: Double) -> some View {
         HStack(spacing: FormaSpacing.l) {
             ProgressRing(progress: progress, lineWidth: 8) {
-                Image(systemName: session.kind == .pullup ? "figure.climbing" : session.kind == .pushup ? "figure.strengthtraining.functional" : "figure.stand").font(.system(size: 22)).foregroundStyle(FormaColor.ink)
+                Image(systemName: session.kind == .pullup ? "figure.climbing" : (session.kind == .pushup || session.kind == .dip) ? "figure.strengthtraining.functional" : "figure.stand").font(.system(size: 22)).foregroundStyle(FormaColor.ink)
             }
             .frame(width: 64, height: 64)
             VStack(alignment: .leading, spacing: 4) {

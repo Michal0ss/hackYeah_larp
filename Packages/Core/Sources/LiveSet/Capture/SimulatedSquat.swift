@@ -66,6 +66,7 @@ public struct SimulatedSquat: Sendable {
         case .squat: return squatFrame(at: t, progress: p)
         case .pushup: return pushupFrame(at: t, progress: p)
         case .pullup: return pullupFrame(at: t, progress: p)
+        case .dip: return dipFrame(at: t, progress: p)
         }
     }
 
@@ -88,6 +89,32 @@ public struct SimulatedSquat: Sendable {
         return make(t, [
             (.nose, neck.x + 0.05, neck.y + 0.01), (.neck, neck.x, neck.y),
             (.leftShoulder, neck.x + 0.006, neck.y + 0.01), (.rightShoulder, neck.x - 0.006, neck.y + 0.01),
+            (.leftElbow, elbow.x, elbow.y), (.rightElbow, elbow.x - 0.004, elbow.y),
+            (.leftWrist, wrist.x, wrist.y), (.rightWrist, wrist.x - 0.004, wrist.y),
+            (.root, hip.x, hip.y), (.leftHip, hip.x + 0.006, hip.y), (.rightHip, hip.x - 0.006, hip.y),
+            (.leftKnee, knee.x + 0.004, knee.y), (.rightKnee, knee.x - 0.004, knee.y),
+            (.leftAnkle, ankle.x + 0.006, ankle.y), (.rightAnkle, ankle.x - 0.006, ankle.y),
+        ])
+    }
+
+    /// Side view, supported on parallel bars, hands on the bar. p = 0 arms locked out, p = 1 elbows about 70 degrees
+    /// (shoulders a little below the elbows). Two equal arm segments: the elbow is found from the shoulder and the hand.
+    private func dipFrame(at t: Double, progress p: Double) -> PoseFrame {
+        let wrist = (x: 0.56, y: 0.56)
+        let arm = 0.10
+        let shoulder = (x: 0.54 - 0.03 * p, y: 0.36 + 0.08 * p)
+        let dx = wrist.x - shoulder.x, dy = wrist.y - shoulder.y
+        let d = (dx * dx + dy * dy).squareRoot()
+        let h = max(0, arm * arm - (d / 2) * (d / 2)).squareRoot()
+        // The elbow goes out behind the body (to the left in this view).
+        let ux = dx / d, uy = dy / d
+        let elbow = (x: shoulder.x + dx / 2 - uy * h, y: shoulder.y + dy / 2 + ux * h)
+        let hip = (x: shoulder.x - 0.02 - 0.03 * p, y: shoulder.y + 0.22)
+        let knee = (x: hip.x - 0.02, y: hip.y + 0.17)
+        let ankle = (x: knee.x - 0.07, y: knee.y + 0.12)
+        return make(t, [
+            (.nose, shoulder.x + 0.03, shoulder.y - 0.07), (.neck, shoulder.x, shoulder.y - 0.01),
+            (.leftShoulder, shoulder.x + 0.006, shoulder.y), (.rightShoulder, shoulder.x - 0.006, shoulder.y),
             (.leftElbow, elbow.x, elbow.y), (.rightElbow, elbow.x - 0.004, elbow.y),
             (.leftWrist, wrist.x, wrist.y), (.rightWrist, wrist.x - 0.004, wrist.y),
             (.root, hip.x, hip.y), (.leftHip, hip.x + 0.006, hip.y), (.rightHip, hip.x - 0.006, hip.y),
