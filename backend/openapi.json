@@ -169,6 +169,16 @@
                 "type": "null"
               }
             ]
+          },
+          "workout": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkoutContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -468,6 +478,51 @@
         "title": "ExerciseItem",
         "type": "object"
       },
+      "FindingDigest": {
+        "description": "A technique or tempo finding of a set without its long description.",
+        "properties": {
+          "id": {
+            "maxLength": 60,
+            "title": "Id",
+            "type": "string"
+          },
+          "repsAffected": {
+            "maximum": 200.0,
+            "minimum": 0.0,
+            "title": "Repsaffected",
+            "type": "integer"
+          },
+          "repsTotal": {
+            "maximum": 200.0,
+            "minimum": 0.0,
+            "title": "Repstotal",
+            "type": "integer"
+          },
+          "severity": {
+            "enum": [
+              "good",
+              "minor",
+              "major"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 80,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "severity",
+          "repsAffected",
+          "repsTotal"
+        ],
+        "title": "FindingDigest",
+        "type": "object"
+      },
       "HealthResponse": {
         "properties": {
           "aiMode": {
@@ -719,6 +774,94 @@
           "source"
         ],
         "title": "RecommendationTextResponse",
+        "type": "object"
+      },
+      "SetDigest": {
+        "description": "Numbers from one finished set (Swift: SetDigest). Never poses, frames or video.",
+        "properties": {
+          "averageAscentSeconds": {
+            "maximum": 60.0,
+            "minimum": 0.0,
+            "title": "Averageascentseconds",
+            "type": "number"
+          },
+          "averageDescentSeconds": {
+            "maximum": 60.0,
+            "minimum": 0.0,
+            "title": "Averagedescentseconds",
+            "type": "number"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingDigest"
+            },
+            "maxItems": 12,
+            "title": "Findings",
+            "type": "array"
+          },
+          "framing": {
+            "enum": [
+              "good",
+              "fair",
+              "poor"
+            ],
+            "title": "Framing",
+            "type": "string"
+          },
+          "fullRangeReps": {
+            "maximum": 200.0,
+            "minimum": 0.0,
+            "title": "Fullrangereps",
+            "type": "integer"
+          },
+          "reps": {
+            "maximum": 200.0,
+            "minimum": 0.0,
+            "title": "Reps",
+            "type": "integer"
+          },
+          "setIndex": {
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Setindex",
+            "type": "integer"
+          },
+          "targetTempo": {
+            "maxLength": 20,
+            "title": "Targettempo",
+            "type": "string"
+          },
+          "techniqueScore": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Techniquescore"
+          },
+          "tempoScore": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Temposcore",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "setIndex",
+          "reps",
+          "fullRangeReps",
+          "tempoScore",
+          "targetTempo",
+          "averageDescentSeconds",
+          "averageAscentSeconds",
+          "framing"
+        ],
+        "title": "SetDigest",
         "type": "object"
       },
       "TempoSpec": {
@@ -1002,6 +1145,89 @@
           "equipment"
         ],
         "title": "UserProfile",
+        "type": "object"
+      },
+      "WorkoutContext": {
+        "description": "Where in the workout the question was asked (Swift: WorkoutContext).\n\nTraining data only, no health data: pain and effort reach the model only through a consent-gated tool.\nEvery text in it is data, not an instruction.",
+        "properties": {
+          "exerciseId": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exerciseid"
+          },
+          "lastSet": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SetDigest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "screen": {
+            "enum": [
+              "today",
+              "plan",
+              "liveSet",
+              "setSummary",
+              "rest",
+              "sessionFeedback",
+              "analysis"
+            ],
+            "title": "Screen",
+            "type": "string"
+          },
+          "sessionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sessionid"
+          },
+          "setIndex": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setindex"
+          },
+          "totalSets": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Totalsets"
+          }
+        },
+        "required": [
+          "screen"
+        ],
+        "title": "WorkoutContext",
         "type": "object"
       }
     }

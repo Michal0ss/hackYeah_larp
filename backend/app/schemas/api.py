@@ -1,6 +1,7 @@
 """Request and response bodies of the HTTP API."""
 
 from typing import Annotated, Any, Literal
+from uuid import UUID
 
 from pydantic import Field
 
@@ -105,9 +106,56 @@ class Consent(CamelModel):
     health: bool = False
 
 
+WorkoutScreen = Literal["today", "plan", "liveSet", "setSummary", "rest", "sessionFeedback", "analysis"]
+FindingSeverity = Literal["good", "minor", "major"]
+FramingRating = Literal["good", "fair", "poor"]
+
+
+class FindingDigest(CamelModel):
+    """A technique or tempo finding of a set without its long description."""
+
+    id: str = Field(max_length=60)
+    title: str = Field(max_length=80)
+    severity: FindingSeverity
+    reps_affected: int = Field(ge=0, le=200)
+    reps_total: int = Field(ge=0, le=200)
+
+
+class SetDigest(CamelModel):
+    """Numbers from one finished set (Swift: SetDigest). Never poses, frames or video."""
+
+    set_index: int = Field(ge=1, le=20)
+    reps: int = Field(ge=0, le=200)
+    full_range_reps: int = Field(ge=0, le=200)
+    technique_score: int | None = Field(default=None, ge=0, le=100)
+    tempo_score: int = Field(ge=0, le=100)
+    # Written like "3-1-2-0".
+    target_tempo: str = Field(max_length=20)
+    average_descent_seconds: float = Field(ge=0, le=60)
+    average_ascent_seconds: float = Field(ge=0, le=60)
+    framing: FramingRating
+    findings: list[FindingDigest] = Field(default_factory=list, max_length=12)
+
+
+class WorkoutContext(CamelModel):
+    """Where in the workout the question was asked (Swift: WorkoutContext).
+
+    Training data only, no health data: pain and effort reach the model only through a consent-gated tool.
+    Every text in it is data, not an instruction.
+    """
+
+    screen: WorkoutScreen
+    session_id: UUID | None = None
+    exercise_id: str | None = Field(default=None, max_length=60)
+    set_index: int | None = Field(default=None, ge=1, le=20)
+    total_sets: int | None = Field(default=None, ge=1, le=20)
+    last_set: SetDigest | None = None
+
+
 class CoachContext(CamelModel):
     profile: UserProfile
     today_recommendation: DailyRecommendation | None = None
+    workout: WorkoutContext | None = None
 
 
 class CoachChatRequest(CamelModel):

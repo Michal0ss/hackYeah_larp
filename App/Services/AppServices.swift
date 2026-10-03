@@ -10,7 +10,8 @@ import Insights
 ///   catalog, plan, planGenerator        Maciek
 ///   recovery, checkIns, recommendation,
 ///   healthAuthorization                 Wiktor
-///   technique                           Michał
+///   technique, sessionFeedback          Michał
+///   setFeedback                         Wiktor
 struct AppServices {
     /// Backend client (adres i token z Config/*.xcconfig). Maciek and Wiktor use it in their services.
     var api = FormaAPI()
@@ -29,6 +30,10 @@ struct AppServices {
     /// Results of live sets and analyses (Michał). The app and Bartek write through `localHistory`.
     let localHistory = LocalTechniqueHistory.shared
     var technique: TechniqueHistoryProviding
+    /// Feedback after a workout (RPE, pain, a note). Sample until Michał's local store lands (feat/michal-session-feedback).
+    var sessionFeedback: SessionFeedbackStoring = SampleServices()
+    /// Coach text after a set and after a workout. Sample until Wiktor's SetFeedbackTexter lands.
+    var setFeedback: SetFeedbackProviding = SampleServices()
     // Rule engine (Wiktor) over recovery (Apple Health or sample), the check-ins and the recorded results.
     var recommendation: RecommendationProviding
     /// Wording of the daily recommendation: the model via the backend when allowed, the phone's own text otherwise.
