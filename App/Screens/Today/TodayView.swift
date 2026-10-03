@@ -1,5 +1,6 @@
 import SwiftUI
 import Contracts
+import Health
 import DesignSystem
 import Insights
 import LiveSet
@@ -34,7 +35,8 @@ struct TodayView: View {
                                     onStart: { startSet(in: adjustment.session) },
                                     onToggle: { store.toggleOriginal(entry.session) })
                     }
-                    RecoveryStrip(today: store.today, checkIn: store.checkIn)
+                    RecoveryStrip(health: store.health, loaded: store.healthLoaded,
+                                  accessGranted: store.healthAccess == .granted, checkIn: store.checkIn)
                     actions
                 }
                 .padding(.horizontal, FormaSpacing.screen)
@@ -248,18 +250,37 @@ private struct SessionCard: View {
     }
 }
 
+/// Sleep, resting heart rate and HRV from Apple Health (or flagged sample data), next to today's mood.
 private struct RecoveryStrip: View {
-    let today: RecoverySnapshot?
+    let health: HealthDaySummary?
+    /// False until the first read finished (then the numbers are placeholders, not "missing").
+    let loaded: Bool
+    /// The user allowed Apple Health: sample numbers then mean "Health has nothing for you yet".
+    let accessGranted: Bool
     let checkIn: CheckIn?
 
     var body: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.m) {
-            SectionLabel("Regeneracja")
+            HStack(alignment: .firstTextBaseline) {
+                SectionLabel("Regeneracja")
+                Spacer()
+                source
+            }
             HStack(alignment: .top, spacing: FormaSpacing.m) {
-                stat("Sen", sleepText, unit: nil)
-                stat("Tętno spocz.", today.map { "\($0.restingHeartRate)" } ?? "–", unit: "bpm")
-                stat("HRV", today.map { "\($0.hrvMs)" } ?? "–", unit: "ms")
-                stat("Nastrój", checkIn.map { "\($0.mood)/5" } ?? "–", unit: nil)
+                stat("Sen", sleepText, unit: nil, note: nil, spoken: nil)
+                stat("Tętno spocz.", health?.restingHeartRate.map { "\($0)" } ?? "–", unit: "bpm",
+                     note: health?.restingHeartRateDelta.map(signed),
+                     spoken: health?.restingHeartRateDelta.map { "\(abs($0)) uderzeń \($0 < 0 ? "poniżej" : "powyżej") średniej" })
+                stat("HRV", health?.hrvMs.map { "\($0)" } ?? "–", unit: "ms",
+                     note: health?.hrvDeltaPercent.map { signed($0) + "%" },
+                     spoken: health?.hrvDeltaPercent.map { "\(abs($0)) procent \($0 < 0 ? "poniżej" : "powyżej") średniej" })
+                stat("Nastrój", checkIn.map { "\($0.mood)/5" } ?? "–", unit: nil, note: nil, spoken: nil)
+            }
+            if let hint {
+                Text(hint)
+                    .formaStyle(.footnote)
+                    .foregroundStyle(FormaColor.ink3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(FormaSpacing.xl)
@@ -267,12 +288,49 @@ private struct RecoveryStrip: View {
         .glassCard()
     }
 
+    @ViewBuilder
+    private var source: some View {
+        if let health {
+            if health.isSimulated {
+                SimulatedBadge()
+            } else {
+                Label("Apple Health · \(dayLabel(health.date))", systemImage: "heart.fill")
+                    .labelStyle(.titleAndIcon)
+                    .formaStyle(.footnote)
+                    .foregroundStyle(FormaColor.ink3)
+            }
+        }
+    }
+
     private var sleepText: String {
-        guard let minutes = today?.sleepMinutes else { return "–" }
+        guard let minutes = health?.sleepMinutes else { return "–" }
         return "\(minutes / 60) h \(minutes % 60)"
     }
 
-    private func stat(_ label: String, _ value: String, unit: String?) -> some View {
+    /// What is missing and why, only when it matters.
+    private var hint: String? {
+        guard loaded, let health else { return nil }
+        if health.isSimulated {
+            return accessGranted
+                ? "Apple Health nie ma jeszcze danych. Sprawdź dostęp w Ustawieniach: Zdrowie, Dostęp do danych i urządzenia."
+                : nil
+        }
+        if health.restingHeartRate == nil && health.hrvMs == nil {
+            return "Brak tętna spoczynkowego i HRV. Zwykle mierzy je zegarek."
+        }
+        return nil
+    }
+
+    private func dayLabel(_ date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) { return "dziś" }
+        if calendar.isDateInYesterday(date) { return "wczoraj" }
+        return date.formatted(.dateTime.weekday(.wide))
+    }
+
+    private func signed(_ value: Int) -> String { value > 0 ? "+\(value)" : value < 0 ? "−\(abs(value))" : "0" }
+
+    private func stat(_ label: String, _ value: String, unit: String?, note: String?, spoken: String?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             NumberText(value, size: 20, unit: unit)
                 .minimumScaleFactor(0.7)
@@ -282,9 +340,18 @@ private struct RecoveryStrip: View {
                 .foregroundStyle(FormaColor.ink3)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
+            if let note {
+                Text(note + " od średniej")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(FormaColor.ink3)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue([value, unit, spoken].compactMap { $0 }.joined(separator: " "))
     }
 }
 

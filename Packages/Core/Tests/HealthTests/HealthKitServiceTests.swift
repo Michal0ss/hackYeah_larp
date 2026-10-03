@@ -66,6 +66,57 @@ final class HealthKitServiceTests: XCTestCase {
         XCTAssertTrue(result.isEmpty)
     }
 
+    // MARK: Summaries for display
+
+    func testSummariesAreRealWhenHealthHasData() async {
+        let summaries = await service(FakeSource(samplesResult: .success(realToday()))).summaries(days: 7)
+        XCTAssertEqual(summaries.count, 1)
+        XCTAssertEqual(summaries[0].sleepMinutes, 420)
+        XCTAssertFalse(summaries[0].isSimulated)
+    }
+
+    func testSummariesFallBackToSimulatedSampleWhenHealthIsEmpty() async {
+        let summaries = await service(FakeSource()).summaries(days: 5)
+        XCTAssertEqual(summaries.count, 5)
+        XCTAssertTrue(summaries.allSatisfy(\.isSimulated))
+        XCTAssertEqual(summaries[0].snapshot, SampleData.recovery[0])
+    }
+
+    func testPartialRealDataIsShownAndNeverMixedWithSampleData() async {
+        // Only sleep (an iPhone without a watch).
+        let wake = calendar.date(bySettingHour: 7, minute: 0, second: 0, of: now)!
+        let onlySleep = HealthSamples(sleep: [SleepInterval(start: wake.addingTimeInterval(-6 * 3600), end: wake)])
+        let s = service(FakeSource(samplesResult: .success(onlySleep)))
+        let summaries = await s.summaries(days: 7)
+        XCTAssertEqual(summaries.count, 1)
+        XCTAssertEqual(summaries[0].sleepMinutes, 360)
+        XCTAssertNil(summaries[0].hrvMs)
+        XCTAssertFalse(summaries[0].isSimulated)
+        // The rule engine gets no complete day, but also no sample day.
+        let snapshots = await s.snapshots(days: 7)
+        XCTAssertTrue(snapshots.isEmpty)
+    }
+
+    func testClosedGateUsesSampleDataEvenWhenHealthHasData() async {
+        let gate = HealthDataGate()
+        gate.allowsRealData = false
+        let fixedNow = now
+        let s = HealthKitService(source: FakeSource(samplesResult: .success(realToday())), aggregator: aggregator,
+                                 gate: gate, now: { fixedNow })
+        let summaries = await s.summaries(days: 3)
+        let snapshots = await s.snapshots(days: 3)
+        XCTAssertTrue(summaries.allSatisfy(\.isSimulated))
+        XCTAssertTrue(snapshots.allSatisfy(\.isSimulated))
+        gate.allowsRealData = true
+        let real = await s.summaries(days: 3)
+        XCTAssertFalse(real[0].isSimulated)
+    }
+
+    func testSummariesWithFallbackOffAreEmptyWithoutData() async {
+        let empty = await service(FakeSource(), fallback: false).summaries(days: 7)
+        XCTAssertTrue(empty.isEmpty)
+    }
+
     func testRequestAccessForwardsResultAndHandlesUnavailable() async {
         let granted = await service(FakeSource(accessResult: true)).requestAccess()
         let refused = await service(FakeSource(accessResult: false)).requestAccess()

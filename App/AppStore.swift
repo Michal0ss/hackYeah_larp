@@ -1,6 +1,7 @@
 import SwiftUI
 import Observation
 import Contracts
+import Health
 import Insights
 import Onboarding
 import Plan
@@ -18,7 +19,10 @@ final class AppStore {
     /// Bumped when newer content arrives from the backend, so screens that read `catalog` refresh.
     private(set) var contentRevision = 0
     var catalog: [ExerciseItem] { _ = contentRevision; return services.catalog.exercises }
-    var recovery: [RecoverySnapshot] = SampleData.recovery
+    /// The newest day with numbers from Apple Health for the "Regeneracja" strip. Sample data (flagged as simulated)
+    /// while Health has nothing or the user chose sample data. nil until the first read finished.
+    private(set) var health: HealthDaySummary?
+    private(set) var healthLoaded = false
     var checkIn: CheckIn? = SampleData.checkIn
     var lastTechnique: TechniqueResult? = SampleData.technique
     var recommendation: DailyRecommendation = SampleData.recommendation {
@@ -69,6 +73,8 @@ final class AppStore {
             onboardingSaveFailed = true
         }
         onboardingCompleted = true
+        // Access to Apple Health was just decided: read it now.
+        Task { await refreshHealth() }
     }
 
     private func apply(_ result: OnboardingResult) {
@@ -76,9 +82,13 @@ final class AppStore {
         plan = services.planStore.templatePlan ?? result.plan
         healthHistory = result.health
         healthAccess = result.healthAccess
+        syncHealthGate()
     }
 
-    var today: RecoverySnapshot? { recovery.first }
+    /// "Use sample data" chosen in onboarding means the app must not show or use real Health numbers.
+    private func syncHealthGate() {
+        HealthDataGate.shared.allowsRealData = healthAccess != .sampleData
+    }
 
     // MARK: Profile and data
 
@@ -231,11 +241,14 @@ final class AppStore {
         plan = SampleData.plan
         healthHistory = HealthHistory()
         healthAccess = nil
+        syncHealthGate()
+        health = nil
+        healthLoaded = false
         checkIn = nil
         lastTechnique = SampleData.technique
         restoredSessionIds = []
         onboardingCompleted = false
-        await refreshRecommendation()
+        await refreshHealth()
     }
 
     // MARK: Session adjustment
@@ -263,6 +276,19 @@ final class AppStore {
     }
 
     // MARK: Recommendation and results
+
+    /// Reads Apple Health (sleep, resting heart rate, HRV) for the "Regeneracja" strip and recomputes the
+    /// recommendation, which reads the same data. Call at launch and whenever the app comes back to the foreground.
+    @MainActor
+    func refreshHealth() async {
+        syncHealthGate()
+        #if DEBUG
+        await HealthDebugSeeder.runIfRequested()
+        #endif
+        health = await services.healthKit.summaries(days: 8).first
+        healthLoaded = true
+        await refreshRecommendation()
+    }
 
     /// Today's saved check-in (nil when there is none yet).
     @MainActor

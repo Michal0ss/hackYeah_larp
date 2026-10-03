@@ -7,6 +7,7 @@ import Content
 struct FormaApp: App {
     @State private var store = AppStore()
     @State private var router = AppRouter()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -19,8 +20,12 @@ struct FormaApp: App {
                 // Newer catalog and thresholds from the backend; offline we keep the bundled or cached copy.
                 .task {
                     await store.loadSavedCheckIn()
-                    await store.refreshRecommendation()
+                    await store.refreshHealth()  // also recomputes the recommendation
                     if await ContentRepository.shared.refresh(using: store.services.api) { await store.contentDidUpdate() }
+                }
+                // New sleep or heart rate may have arrived while the app was in the background.
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active, store.onboardingCompleted { Task { await store.refreshHealth() } }
                 }
         }
     }
