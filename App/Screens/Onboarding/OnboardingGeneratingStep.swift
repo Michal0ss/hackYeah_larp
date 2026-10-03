@@ -71,6 +71,7 @@ struct GeneratingStepView: View {
         guard isDone, let plan = model.plan else {
             return "Plan układa AI z katalogu ćwiczeń, a aplikacja go sprawdza. Gdyby coś poszło nie tak, użyję planu z szablonu."
         }
+        if let notice = plan.notices.first { return notice.userMessage }
         return plan.source == .ai
             ? "Plan ułożony przez AI z katalogu ćwiczeń i sprawdzony przez aplikację."
             : "Plan z szablonu dobranego do Twojego celu, poziomu i sprzętu."

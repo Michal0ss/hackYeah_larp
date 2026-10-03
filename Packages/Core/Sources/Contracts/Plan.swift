@@ -182,14 +182,51 @@ public enum PlanSource: String, Codable, Sendable {
     case ai, template
 }
 
+/// Why a plan is not the plain plan from the AI. The plan generator sets them and the screens show the first one,
+/// so the user is never left wondering why the plan came from a template.
+public enum PlanNotice: String, Codable, Sendable, Equatable {
+    /// The AI did not answer in time or the server had a problem: the plan comes from the server's template.
+    case aiUnavailable
+    /// The AI proposed a plan that failed the checks (unknown exercise, missing equipment, ...).
+    case aiInvalidPlan
+    /// No connection to the server: the plan was built on the phone from the bundled template.
+    case offline
+    /// The free text "czego unikać" cannot be read by a template; only the ticked movements were left out.
+    case avoidTextNotApplied
+
+    /// Polish text for the user.
+    public var userMessage: String {
+        switch self {
+        case .aiUnavailable: return "Trener AI był niedostępny, więc plan pochodzi z gotowego szablonu."
+        case .aiInvalidPlan: return "Plan od trenera AI nie przeszedł sprawdzenia, więc użyłem planu z szablonu."
+        case .offline: return "Brak połączenia z serwerem. Plan ułożyłem na telefonie z szablonu, możesz go później ułożyć od nowa."
+        case .avoidTextNotApplied: return "Szablon nie czyta wpisanego tekstu „czego unikać”. Pominąłem tylko zaznaczone ruchy."
+        }
+    }
+}
+
 public struct TrainingPlan: Codable, Equatable, Sendable {
     public var createdAt: Date
     public var source: PlanSource
     public var sessions: [PlannedSession]
+    /// Notes on how this plan came to be (empty for a normal plan). Absent in plans saved by older versions.
+    public var notices: [PlanNotice]
 
-    public init(createdAt: Date, source: PlanSource, sessions: [PlannedSession]) {
+    public init(createdAt: Date, source: PlanSource, sessions: [PlannedSession], notices: [PlanNotice] = []) {
         self.createdAt = createdAt
         self.source = source
         self.sessions = sessions
+        self.notices = notices
+    }
+
+    private enum CodingKeys: String, CodingKey { case createdAt, source, sessions, notices }
+
+    // Plans saved before `notices` existed still decode; a notice this version does not know is dropped.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        source = try c.decode(PlanSource.self, forKey: .source)
+        sessions = try c.decode([PlannedSession].self, forKey: .sessions)
+        notices = (try c.decodeIfPresent([String].self, forKey: .notices) ?? []).compactMap(PlanNotice.init(rawValue:))
     }
 }

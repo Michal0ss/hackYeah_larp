@@ -44,7 +44,10 @@ final class AppStore {
         self.onboardingStorage = onboardingStorage
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
-        if arguments.contains("-reset-onboarding") { try? onboardingStorage.clear() }
+        if arguments.contains("-reset-onboarding") {
+            try? onboardingStorage.clear()
+            services.planStore.clear()
+        }
         #endif
         if let saved = onboardingStorage.load() {
             apply(saved)
@@ -58,6 +61,7 @@ final class AppStore {
     /// Called when the user taps "Przejdź do Dziś" at the end of onboarding.
     func completeOnboarding(_ result: OnboardingResult) {
         apply(result)
+        services.planStore.save(result.plan)
         do {
             try onboardingStorage.save(result)
             onboardingSaveFailed = false
@@ -69,7 +73,7 @@ final class AppStore {
 
     private func apply(_ result: OnboardingResult) {
         profile = result.profile
-        plan = result.plan
+        plan = services.planStore.templatePlan ?? result.plan
         healthHistory = result.health
         healthAccess = result.healthAccess
     }
@@ -94,6 +98,7 @@ final class AppStore {
     func rebuildPlan() async -> Bool {
         guard let new = try? await services.planGenerator.generatePlan(for: profile) else { return false }
         plan = new
+        services.planStore.save(new)
         restoredSessionIds = []
         try? onboardingStorage.save(OnboardingResult(profile: profile, health: healthHistory, plan: plan,
                                                      healthAccess: healthAccess ?? .sampleData))
@@ -107,6 +112,8 @@ final class AppStore {
     /// since the proposal was made. Today and Plan update on their own, they read `plan`.
     @MainActor
     func applyPlanChange(_ proposal: PlanChangeProposal) -> Result<PlanChangeProposal, PlanChangeError> {
+        // The plan holds the weekly pattern; a session finished this week is final.
+        guard !services.planStore.completedSessionIds().contains(proposal.sessionId) else { return .failure(.sessionDone) }
         let changer = PlanChanger(catalog: catalog, profile: profile)
         do {
             let result = try changer.apply(proposal, to: plan)
@@ -140,6 +147,7 @@ final class AppStore {
     /// next launch skip onboarding.
     private func persistPlan() {
         guard onboardingCompleted else { return }
+        services.planStore.save(plan)
         try? onboardingStorage.save(OnboardingResult(profile: profile, health: healthHistory, plan: plan,
                                                      healthAccess: healthAccess ?? .sampleData))
     }
@@ -148,6 +156,7 @@ final class AppStore {
     @MainActor
     func deleteAllData() async {
         try? onboardingStorage.clear()
+        services.planStore.clear()
         _ = try? await services.checkInStore.removeAll()
         services.localHistory.removeAll()
         services.consent.reset()
@@ -177,7 +186,8 @@ final class AppStore {
     /// The session the rule engine's decision applies to: today's, or the next one when today is free (the one the
     /// Today screen shows). Other sessions stay as planned.
     func adjustment(for session: PlannedSession) -> PlanAdjustment {
-        guard session.id == todaySession?.session.id, !restoredSessionIds.contains(session.id) else {
+        guard session.id == todaySession?.session.id, !restoredSessionIds.contains(session.id),
+              !services.planStore.completedSessionIds().contains(session.id) else {
             return PlanAdjustment(original: session, session: session, changes: [], isRestDay: false)
         }
         return PlanAdjuster(catalog: catalog).adjust(session, for: recommendation, technique: lastTechnique,
@@ -240,6 +250,9 @@ final class AppStore {
     func exercise(id: String) -> ExerciseItem? {
         catalog.first { $0.id == id }
     }
+
+    /// The plan with `done` on the sessions finished this week (the saved plan itself never carries it).
+    var resolvedPlan: TrainingPlan { services.planStore.resolved(plan) }
 
     /// Today's session, or the next planned one.
     var todaySession: (session: PlannedSession, isToday: Bool)? {

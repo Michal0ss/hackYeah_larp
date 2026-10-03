@@ -60,6 +60,13 @@ struct PlanView: View {
             Text("Plan").formaStyle(.largeTitle).foregroundStyle(FormaColor.ink)
             Text(store.plan.source == .ai ? "Plan ułożony przez trenera AI" : "Plan z gotowego szablonu")
                 .formaStyle(.subheadline).foregroundStyle(FormaColor.ink3)
+            // Why the plan is a template when the AI was meant to write it (the generator's notice).
+            if let notice = store.plan.notices.first {
+                InfoBanner(systemImage: "info.circle.fill") {
+                    Text(notice.userMessage).formaStyle(.footnote).foregroundStyle(FormaColor.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
     }
 
