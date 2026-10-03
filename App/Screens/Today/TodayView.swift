@@ -11,6 +11,7 @@ struct TodayView: View {
     @Environment(AppRouter.self) private var router
     @State private var showCheckIn = false
     @State private var liveLaunch: LiveSetLaunch?
+    @State private var showProfile = false
 
     var body: some View {
         ZStack {
@@ -38,6 +39,9 @@ struct TodayView: View {
         .sheet(isPresented: $showCheckIn) {
             CheckInView()
         }
+        .sheet(isPresented: $showProfile) {
+            ProfileView()
+        }
         .fullScreenCover(item: $liveLaunch) { launch in
             LiveSetFlow(exercise: launch.exercise, spec: launch.spec, totalSets: launch.sets) {
                 liveLaunch = nil
@@ -59,9 +63,19 @@ struct TodayView: View {
             Text(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide)).capitalized)
                 .formaStyle(.caption)
                 .foregroundStyle(FormaColor.ink3)
-            Text("Dziś")
-                .formaStyle(.largeTitle)
-                .foregroundStyle(FormaColor.ink)
+            HStack {
+                Text("Dziś")
+                    .formaStyle(.largeTitle)
+                    .foregroundStyle(FormaColor.ink)
+                Spacer()
+                Button { showProfile = true } label: {
+                    Image(systemName: "person.crop.circle").font(.system(size: 26))
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(FormaColor.ink2)
+                .accessibilityLabel("Profil i dane")
+            }
             if store.recommendation.isSimulated {
                 SimulatedBadge()
             }

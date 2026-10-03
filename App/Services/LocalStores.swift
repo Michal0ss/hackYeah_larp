@@ -61,6 +61,13 @@ final class LocalTechniqueHistory: TechniqueHistoryProviding, @unchecked Sendabl
         persist()
     }
 
+    /// "Usuń moje dane": forgets every recorded set and analysis.
+    func removeAll() {
+        lock.lock(); defer { lock.unlock() }
+        stored = Stored()
+        if let url { try? FileManager.default.removeItem(at: url) }
+    }
+
     private func persist() {
         guard let url, let data = try? JSONEncoder().encode(stored) else { return }
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
