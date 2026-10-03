@@ -52,7 +52,8 @@ final class LiveSetSession {
                                     isSimulated: source == .simulation,
                                     trackerConfig: PhaseTrackerConfig(values: ContentRepository.shared.numbers("tempo", "phaseTracker")),
                                     cooldownReps: ContentRepository.shared.numbers("tempo", "policy")["cooldownReps"].map(Int.init),
-                                    reference: reference)
+                                    reference: reference,
+                                    minBend: ContentRepository.shared.numbers("scoring", "clip")["minAngleChange"] ?? 20)
     }
 
     func start() {

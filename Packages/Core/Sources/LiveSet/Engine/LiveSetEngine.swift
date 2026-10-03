@@ -25,6 +25,9 @@ public final class LiveSetEngine {
     public private(set) var lastCue: String?
     public private(set) var latestFrame: PoseFrame?
     public private(set) var summary: SetSummary?
+    /// Technique score (0...100) from the repetitions counted so far, updated live. Nil until the
+    /// first repetition completes, same meaning as `SetSummary.techniqueScore`.
+    public private(set) var liveTechniqueScore: Int?
 
     /// The main joint angle of the exercise (knee of a squat, elbow of a push-up and a pull-up) in the latest frame,
     /// aspect corrected. Nil while the joints are not visible.
@@ -61,6 +64,8 @@ public final class LiveSetEngine {
 
     private let voice: CoachVoice
     private let assessor: TechniqueAssessing
+    /// Degrees the exercise's joint must bend between the start and the working end for a repetition to count.
+    private let minBend: Double
     private var signal: SquatSignal
     private var tracker = PhaseTracker()
     private var policy = CoachingPolicy()
@@ -82,7 +87,8 @@ public final class LiveSetEngine {
     public init(exerciseId: String, spec: TempoSpec, setIndex: Int = 1, voice: CoachVoice,
                 kind: MovementKind = .squat, assessor: TechniqueAssessing? = nil, isSimulated: Bool = false,
                 trackerConfig: PhaseTrackerConfig = PhaseTrackerConfig(), cooldownReps: Int? = nil,
-                reference: AngleReference = AngleReference()) {
+                reference: AngleReference = AngleReference(), minBend: Double = 20) {
+        self.minBend = minBend
         self.targetBand = kind.targetBand(reference)
         self.exerciseId = exerciseId
         self.kind = kind
@@ -247,24 +253,39 @@ public final class LiveSetEngine {
                 phaseStartedAt = Date()
                 announcePhase(phase)
             case var .repCompleted(rep):
-                rep = kind.exerciseRep(rep)
-                rep.startedAt -= setStart
-                reps.append(rep)
+                // The frames the technique is judged on: the working end and the start position of this repetition,
+                // each a robust pick near the moment (not one glitchy frame), the way a recorded clip does it. The
+                // tracker notices the movement a few tenths after it began, so the start is looked for from before.
+                var bottom: PoseFrame?
+                var top: PoseFrame?
                 if let best = repBest {
-                    // The frames the technique is judged on: the working end and the start position of this repetition,
-                    // each a robust pick near the moment (not one glitchy frame), the way a recorded clip does it.
-                    bottomFrames.append(kind.representativeFrame(in: recentFrames, around: best.frame.time, radius: 0.2, wantMin: true)
-                                        ?? best.frame)
-                    // The tracker notices the movement a few tenths after it began, so the start position is looked for
-                    // from before that moment.
-                    let start = rep.startedAt + setStart - 0.4
-                    let top = kind.representativeFrame(in: recentFrames, around: start, radius: 0.55, wantMin: false)
-                    if let top { startFrames.append(top) }
-                    if let bottom = bottomFrames.last { lastVerdict = verdict(index: reps.count, bottom: bottom, start: top) }
+                    bottom = kind.representativeFrame(in: recentFrames, around: best.frame.time, radius: 0.2, wantMin: true)
+                        ?? best.frame
+                    top = kind.representativeFrame(in: recentFrames, around: rep.startedAt - 0.4, radius: 0.55, wantMin: false)
                 }
                 repBest = nil
                 recentFrames.removeAll(keepingCapacity: true)
                 currentPhase = nil
+
+                // The depth signal alone cannot tell a squat from a jump, a step or the wrong exercise: any vigorous
+                // movement swings "depth" enough to look like a repetition. What defines the exercise is its own joint
+                // bending (knee, elbow), so a repetition in which that joint did not bend is not counted. It is a
+                // check of the movement, not of its quality: a shallow or ugly repetition still counts and is marked
+                // down afterwards ("Za płytko"). A joint that could not be measured (`nil`) never costs a repetition.
+                if let bottom, let top, kind.bends(from: top, to: bottom, atLeast: minBend) == false {
+                    lastCue = "nie liczę — to nie to ćwiczenie"
+                    continue
+                }
+                rep = kind.exerciseRep(rep)
+                rep.startedAt -= setStart
+                rep.index = reps.count + 1
+                reps.append(rep)
+                if let bottom {
+                    bottomFrames.append(bottom)
+                    if let top { startFrames.append(top) }
+                    lastVerdict = verdict(index: reps.count, bottom: bottom, start: top)
+                }
+                liveTechniqueScore = assessor.assess(bottomFrames: bottomFrames, startFrames: startFrames).score
                 // Shown on screen (LiveSetView) but not spoken: the only things said live are the
                 // phase cues below, so corrections don't talk over the next "w dół"/"w górę".
                 if let advice = policy.advice(after: rep, spec: spec) {

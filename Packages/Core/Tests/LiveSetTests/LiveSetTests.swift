@@ -192,6 +192,26 @@ final class SquatAssessorTests: XCTestCase {
         let result = BasicSquatAssessor().assess(bottomFrames: [bottom])
         XCTAssertNotNil(result.findings.first { $0.id == "depth_shallow" })
     }
+
+    func testBends_standingToBottomOfASquatBendsTheKnee() {
+        func leg(kneeX: Double) -> PoseFrame {
+            PoseFrame(time: 0, joints: [
+                Joint(name: .leftHip, x: 0.5, y: 0.5, confidence: 1),
+                Joint(name: .leftKnee, x: kneeX, y: 0.7, confidence: 1),
+                Joint(name: .leftAnkle, x: 0.5, y: 0.9, confidence: 1),
+            ])
+        }
+        // Straight leg (knee under the hip) against a clearly bent one (knee forward).
+        XCTAssertEqual(MovementKind.squat.bends(from: leg(kneeX: 0.5), to: leg(kneeX: 0.8), atLeast: 20), true)
+        // The same leg moved as a whole (a jump, a step): the knee did not bend.
+        XCTAssertEqual(MovementKind.squat.bends(from: leg(kneeX: 0.5), to: leg(kneeX: 0.5), atLeast: 20), false)
+    }
+
+    func testBends_missingJointsIsNil() {
+        let empty = PoseFrame(time: 0, joints: [])
+        XCTAssertNil(MovementKind.squat.bends(from: empty, to: empty, atLeast: 20))
+        XCTAssertNil(MovementKind.pushup.bends(from: empty, to: empty, atLeast: 20))
+    }
 }
 
 @MainActor
@@ -222,6 +242,26 @@ final class LiveSetEngineTests: XCTestCase {
         XCTAssertTrue(said.contains { $0.hasPrefix("Koniec serii") })
         // Corrections still happen (shown on screen as lastCue) but aren't spoken live anymore.
         XCTAssertFalse(said.contains("wolniej w dół"), "spoken: \(said)")
+
+        // Every counted repetition was a good squat, so the live score tracks the final one.
+        XCTAssertEqual(engine.liveTechniqueScore, summary.techniqueScore)
+    }
+
+    /// A movement can swing the depth signal exactly like a real repetition (jumping, a step, the wrong exercise)
+    /// without the exercise's own joint bending. Here the whole body moves up and down like the squatter's hips do,
+    /// rigidly, so the knee never bends: nothing may be counted.
+    func testRepsInWhichTheJointDoesNotBendAreNotCounted() {
+        let sim = SimulatedSquat()
+        let standing = sim.frame(at: 0)
+        let hip0 = standing.joint(.root)?.y ?? 0
+        let engine = LiveSetEngine(exerciseId: "squat", spec: .controlled, voice: RecordingVoice(), isSimulated: true)
+        for frame in sim.frames() {
+            let dy = (frame.joint(.root)?.y ?? hip0) - hip0
+            engine.ingest(PoseFrame(time: frame.time, joints: standing.joints.map { var j = $0; j.y += dy; return j }))
+        }
+        XCTAssertEqual(engine.reps.count, 0)
+        XCTAssertNil(engine.liveTechniqueScore)
+        XCTAssertEqual(engine.lastCue, "nie liczę — to nie to ćwiczenie")
     }
 
     func testBadFramingSpeaksHintAndDoesNotStart() {

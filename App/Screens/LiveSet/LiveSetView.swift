@@ -272,6 +272,9 @@ struct LiveSetView: View {
                     NumberText("\(engine.reps.count)", size: 72)
                     Text(engine.reps.count == 1 ? "powtórzenie" : (2...4).contains(engine.reps.count % 10) && !(12...14).contains(engine.reps.count % 100) ? "powtórzenia" : "powtórzeń")
                         .formaStyle(.caption).foregroundStyle(FormaColor.ink3)
+                    if let score = engine.liveTechniqueScore {
+                        Text("\(score)% poprawnej techniki").formaStyle(.caption).foregroundStyle(FormaColor.ink3)
+                    }
                 }
                 Spacer()
                 phaseTimer

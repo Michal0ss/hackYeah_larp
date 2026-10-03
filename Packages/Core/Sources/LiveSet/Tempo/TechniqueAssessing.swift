@@ -20,6 +20,7 @@ public protocol TechniqueAssessing: Sendable {
     /// pull-up), so the full range of the movement can be checked, not only its working end. An assessor that does
     /// not use them falls back to `assess(bottomFrames:)`.
     func assess(bottomFrames: [PoseFrame], startFrames: [PoseFrame]) -> TechniqueAssessment
+
 }
 
 public extension TechniqueAssessing {
@@ -47,6 +48,7 @@ public struct BasicSquatAssessor: TechniqueAssessing {
         depthTolerance = reference.squatDepthTolerance
         kneeParallelMax = reference.squatKneeParallelMax
     }
+
 
     public func assess(bottomFrames: [PoseFrame]) -> TechniqueAssessment {
         var deepEnough = 0

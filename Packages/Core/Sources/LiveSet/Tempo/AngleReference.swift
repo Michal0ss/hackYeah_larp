@@ -107,3 +107,13 @@ public extension MovementKind {
         return wantMin ? candidates[rank].frame : candidates[candidates.count - 1 - rank].frame
     }
 }
+
+public extension MovementKind {
+    /// Whether the joint that defines the exercise (knee, elbow) bends by at least `degrees` between the start position
+    /// and the working end. Nil when the joint cannot be measured in one of the frames.
+    func bends(from start: PoseFrame, to bottom: PoseFrame, atLeast degrees: Double, minConfidence: Double = 0.15) -> Bool? {
+        guard let a = primaryAngle(in: start, minConfidence: minConfidence),
+              let b = primaryAngle(in: bottom, minConfidence: minConfidence) else { return nil }
+        return abs(a - b) >= degrees
+    }
+}

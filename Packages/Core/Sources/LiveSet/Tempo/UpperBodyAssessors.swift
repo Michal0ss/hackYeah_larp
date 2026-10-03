@@ -23,6 +23,7 @@ public struct BasicPushupAssessor: TechniqueAssessing {
         idealElbowAngle = reference.pushupElbowIdeal
     }
 
+
     public func assess(bottomFrames: [PoseFrame]) -> TechniqueAssessment {
         assess(bottomFrames: bottomFrames, startFrames: [])
     }
@@ -123,6 +124,7 @@ public struct BasicPullupAssessor: TechniqueAssessing {
         maxElbowAngle = reference.pullupElbowTopMax
         minHangElbowAngle = reference.pullupElbowHangMin
     }
+
 
     public func assess(bottomFrames: [PoseFrame]) -> TechniqueAssessment {
         assess(bottomFrames: bottomFrames, startFrames: [])
