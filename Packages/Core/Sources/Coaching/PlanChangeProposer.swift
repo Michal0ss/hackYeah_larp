@@ -25,7 +25,7 @@ public struct PlanChangeProposer: Sendable {
             return Self.failure("Użytkownik nie ma jeszcze planu.")
         }
         guard let kind = Self.kind(input["kind"]?.stringValue) else {
-            return Self.failure("Nieznany rodzaj zmiany. Dozwolone: swap_exercise, lighter_session, move_session, skip_session.")
+            return Self.failure("Nieznany rodzaj zmiany. Dozwolone: swap_exercise, lighter_session, move_session, skip_session, add_exercise, remove_exercise, edit_exercise.")
         }
         let changer = PlanChanger(catalog: catalog.exercises, profile: await profile())
         do {
@@ -33,7 +33,10 @@ public struct PlanChangeProposer: Sendable {
                                                exerciseId: input["exerciseId"]?.stringValue,
                                                replacementExerciseId: input["replacementExerciseId"]?.stringValue,
                                                newWeekday: input["newWeekday"]?.intValue,
-                                               reason: input["reason"]?.stringValue, in: plan)
+                                               reason: input["reason"]?.stringValue,
+                                               sets: input["sets"]?.intValue, repsMin: input["repsMin"]?.intValue,
+                                               repsMax: input["repsMax"]?.intValue,
+                                               restSeconds: input["restSeconds"]?.intValue, in: plan)
             let fields: [String: JSONValue] = [
                 "status": .string("proposed"),
                 "summary": .string(proposal.summary),
@@ -71,6 +74,9 @@ public struct PlanChangeProposer: Sendable {
         case "lighter_session": return .lighterSession
         case "move_session": return .moveSession
         case "skip_session": return .skipSession
+        case "add_exercise": return .addExercise
+        case "remove_exercise": return .removeExercise
+        case "edit_exercise": return .editExercise
         default: return nil
         }
     }
