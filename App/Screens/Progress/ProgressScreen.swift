@@ -3,7 +3,8 @@ import Contracts
 import DesignSystem
 import Insights
 
-/// "Postępy": technique score over time, recovery and mood over time, recent sets, and the way to care.
+/// "Postępy": technique score over time, weight progress of the most-logged exercise, recovery and mood
+/// over time, recent sets, and the way to care.
 /// Owner: Wiktor.
 struct ProgressScreen: View {
     @Environment(AppStore.self) private var store
@@ -28,6 +29,9 @@ struct ProgressScreen: View {
                         }
                         TechniqueCard(progress: model.report.technique, simulated: model.isMixed && model.techniqueSimulated,
                                       onAnalyse: { router.tab = .analysis })
+                        if let strength = model.report.strength {
+                            StrengthCard(progress: strength)
+                        }
                         RecoveryMoodCard(report: model.report,
                                          simulated: model.isMixed && (model.recoverySimulated || model.moodSimulated),
                                          onCheckIn: { showCheckIn = true })
