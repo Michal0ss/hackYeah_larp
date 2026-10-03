@@ -7,6 +7,7 @@ import Content
 struct FormaApp: App {
     @State private var store = AppStore()
     @State private var router = AppRouter()
+    @State private var account = AccountStore()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -14,10 +15,12 @@ struct FormaApp: App {
             RootView()
                 .environment(store)
                 .environment(router)
+                .environment(account)
                 // Dark is the default look. A settings switch can come later.
                 .preferredColorScheme(.dark)
                 .tint(FormaColor.voltText)
                 // Newer catalog and thresholds from the backend; offline we keep the bundled or cached copy.
+                .task { await account.restore() }
                 .task {
                     await store.loadSavedCheckIn()
                     await store.refreshHealth()  // also recomputes the recommendation
@@ -31,14 +34,18 @@ struct FormaApp: App {
     }
 }
 
-/// Onboarding on the first launch, then the tab bar.
+/// Sign-in choice and onboarding on the first launch, then the tab bar.
 struct RootView: View {
     @Environment(AppStore.self) private var store
+    @Environment(AccountStore.self) private var account
 
     var body: some View {
         ZStack {
             if store.onboardingCompleted {
                 RootTabView()
+                    .transition(.opacity)
+            } else if account.needsChoice {
+                LoginView()
                     .transition(.opacity)
             } else {
                 OnboardingFlow(services: store.services) { result in
@@ -47,5 +54,6 @@ struct RootView: View {
                 .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.3), value: account.needsChoice)
     }
 }
