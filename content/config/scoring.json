@@ -16,6 +16,8 @@
   },
   "thresholds": {
     "maxTorsoLeanDegrees": 45,
-    "depthToleranceFrame": 0.02
+    "depthToleranceFrame": 0.02,
+    "repeatabilityToleranceDegrees": 15,
+    "minControlledDescentSeconds": 1.0
   }
 }
