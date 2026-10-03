@@ -14,9 +14,11 @@ struct PlanView: View {
     /// How many weeks the strip is moved from the week of the shown session.
     @State private var weekShift = 0
     @State private var rebuilding = false
-    @State private var liveLaunch: LiveSetLaunch?
+    @State private var workout: WorkoutLaunch?
     @State private var editing: PlannedSession?
     @State private var addingSession = false
+    @State private var logSession: PlannedSession?
+    @State private var repeating: PlannedSession?
 
     private static let dayLetters = ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"]
     private static var calendar: Calendar { TrainingPlan.calendar }
@@ -53,7 +55,12 @@ struct PlanView: View {
                         let adjustment = store.adjustment(for: session)
                         SessionDetail(adjustment: adjustment, restored: store.isRestored(session),
                                       onToggle: { store.toggleOriginal(session) }, onEdit: { editing = session },
-                                      onRestore: { store.edit(.restore, sessionId: session.id) }) { start($0, in: adjustment.session) }
+                                      onRestore: { store.edit(.restore, sessionId: session.id) },
+                                      onStartWorkout: { workout = WorkoutLaunch(session: adjustment.session) },
+                                      onShowLog: { logSession = session },
+                                      onRepeat: { repeating = session }) {
+                            start($0, in: adjustment.session)
+                        }
                         Button { addingSession = true } label: {
                             Label("Dodaj własną sesję", systemImage: "plus").frame(maxWidth: .infinity)
                         }
@@ -71,8 +78,22 @@ struct PlanView: View {
         .overlay(alignment: .bottom) { undoBar }
         .sheet(item: $editing) { SessionEditSheet(sessionId: $0.id) }
         .sheet(isPresented: $addingSession) { AddSessionSheet() }
-        .fullScreenCover(item: $liveLaunch) { launch in
-            LiveSetFlow(exercise: launch.exercise, spec: launch.spec, totalSets: launch.sets) { liveLaunch = nil }
+        .sheet(item: $logSession) { WorkoutLogSheet(session: $0) }
+        .confirmationDialog("Powtórzyć trening?", isPresented: Binding(get: { repeating != nil }, set: { if !$0 { repeating = nil } }),
+                            titleVisibility: .visible) {
+            Button("Usuń zapisane serie i zacznij od nowa", role: .destructive) {
+                if let session = repeating {
+                    store.resetWorkout(sessionId: session.id)
+                    workout = WorkoutLaunch(session: store.adjustment(for: session).session)
+                }
+                repeating = nil
+            }
+            Button("Anuluj", role: .cancel) { repeating = nil }
+        } message: {
+            Text("Zapisane serie tej sesji (powtórzenia, ciężar, poprawki) zostaną usunięte, a sesja przestanie być wykonana.")
+        }
+        .fullScreenCover(item: $workout) { launch in
+            WorkoutRunnerView(session: launch.session, startExercise: launch.startExercise) { workout = nil }
         }
     }
 
@@ -184,10 +205,10 @@ struct PlanView: View {
             .padding(FormaSpacing.xl).frame(maxWidth: .infinity, alignment: .leading).glassCard()
     }
 
+    /// The play button of an exercise starts the workout from that exercise.
     private func start(_ planned: PlannedExercise, in session: PlannedSession) {
-        guard let tempo = planned.tempo, let exercise = store.exercise(id: planned.exerciseId) else { return }
-        // The session is already adjusted (PlanAdjuster), so its sets are the ones to do.
-        liveLaunch = LiveSetLaunch(exercise: exercise, spec: tempo, sets: planned.sets)
+        guard let index = session.exercises.firstIndex(where: { $0.exerciseId == planned.exerciseId }) else { return }
+        workout = WorkoutLaunch(session: session, startExercise: index)
     }
 }
 
@@ -198,6 +219,9 @@ private struct SessionDetail: View {
     let onToggle: () -> Void
     let onEdit: () -> Void
     let onRestore: () -> Void
+    let onStartWorkout: () -> Void
+    let onShowLog: () -> Void
+    let onRepeat: () -> Void
     let onStart: (PlannedExercise) -> Void
 
     private var session: PlannedSession { adjustment.session }
@@ -227,7 +251,14 @@ private struct SessionDetail: View {
             AdjustmentNote(adjustment: adjustment, restored: restored, onToggle: onToggle)
             if session.status == .skipped {
                 Button(action: onRestore) { Text("Przywróć sesję").frame(maxWidth: .infinity) }.buttonStyle(.formaGlass)
-            } else if session.status != .done {
+            } else if session.status == .done {
+                Button(action: onShowLog) { Label("Zobacz zapis treningu", systemImage: "list.bullet.clipboard").frame(maxWidth: .infinity) }
+                    .buttonStyle(.formaGlass)
+                Button(action: onRepeat) { Label("Powtórz trening", systemImage: "arrow.counterclockwise").frame(maxWidth: .infinity) }
+                    .buttonStyle(.formaPrimary)
+            } else {
+                Button(action: onStartWorkout) { Label("Zacznij trening", systemImage: "play.fill").frame(maxWidth: .infinity) }
+                    .buttonStyle(.formaPrimary)
                 Button(action: onEdit) { Label("Edytuj sesję", systemImage: "slider.horizontal.3").frame(maxWidth: .infinity) }
                     .buttonStyle(.formaGlass)
             }
@@ -250,15 +281,15 @@ private struct SessionDetail: View {
             Spacer()
             Text("\(item.sets) × \(item.repsMin)–\(item.repsMax)\(unit)")
                 .font(.formaNumber(15)).monospacedDigit().foregroundStyle(FormaColor.ink2)
-            // The live coach reads a squat signal (hip depth), so it is offered for squat-pattern exercises only.
-            if let exercise, MovementKind.kind(for: exercise) != nil, item.tempo != nil {
+            // Starts the workout from this exercise (the earlier ones are left out).
+            if session.status != .done, session.status != .skipped {
                 Button { onStart(item) } label: {
                     Image(systemName: "play.fill").font(.system(size: 14, weight: .bold))
                         .frame(width: 38, height: 38)
                         .foregroundStyle(FormaColor.onVolt)
                         .background(FormaColor.volt, in: Circle())
                 }
-                .accessibilityLabel("Zacznij serię z trenerem")
+                .accessibilityLabel("Zacznij trening od tego ćwiczenia")
             }
         }
         .padding(.vertical, 10)

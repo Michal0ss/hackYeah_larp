@@ -12,7 +12,8 @@ struct TodayView: View {
     @Environment(AppStore.self) private var store
     @Environment(AppRouter.self) private var router
     @State private var showCheckIn = false
-    @State private var liveLaunch: LiveSetLaunch?
+    @State private var workout: WorkoutLaunch?
+    @State private var repeating: PlannedSession?
     @State private var showProfile = false
     @State private var showCare = false
     @State private var showHealthData = false
@@ -33,7 +34,8 @@ struct TodayView: View {
                         let adjustment = store.adjustment(for: entry.session)
                         SessionCard(adjustment: adjustment, isToday: entry.isToday,
                                     restored: store.isRestored(entry.session),
-                                    onStart: { startSet(in: adjustment.session) },
+                                    onStart: { workout = WorkoutLaunch(session: adjustment.session) },
+                                    onRepeat: { repeating = entry.session },
                                     onToggle: { store.toggleOriginal(entry.session) })
                     }
                     RecoveryStrip(health: store.health, loaded: store.healthLoaded, report: store.healthReport,
@@ -60,21 +62,22 @@ struct TodayView: View {
             if let care = careModel.care { CareView(assessment: care, simulated: careModel.careSimulated) }
         }
         .task(id: store.recommendation) { await careModel.load(services: store.services) }
-        .fullScreenCover(item: $liveLaunch) { launch in
-            LiveSetFlow(exercise: launch.exercise, spec: launch.spec, totalSets: launch.sets) {
-                liveLaunch = nil
+        .confirmationDialog("Powtórzyć trening?", isPresented: Binding(get: { repeating != nil }, set: { if !$0 { repeating = nil } }),
+                            titleVisibility: .visible) {
+            Button("Usuń zapisane serie i zacznij od nowa", role: .destructive) {
+                if let session = repeating {
+                    store.resetWorkout(sessionId: session.id)
+                    workout = WorkoutLaunch(session: store.adjustment(for: session).session)
+                }
+                repeating = nil
             }
+            Button("Anuluj", role: .cancel) { repeating = nil }
+        } message: {
+            Text("Zapisane serie tej sesji (powtórzenia, ciężar, poprawki) zostaną usunięte, a sesja przestanie być wykonana.")
         }
-    }
-
-    /// Starts the live coach for the first exercise of the session that has a target tempo.
-    private func startSet(in session: PlannedSession) {
-        guard let planned = session.exercises.first(where: { item in
-                  item.tempo != nil && store.exercise(id: item.exerciseId).flatMap(MovementKind.kind(for:)) != nil }),
-              let tempo = planned.tempo,
-              let exercise = store.exercise(id: planned.exerciseId) else { return }
-        // The session is already adjusted (PlanAdjuster), so its sets are the ones to do.
-        liveLaunch = LiveSetLaunch(exercise: exercise, spec: tempo, sets: planned.sets)
+        .fullScreenCover(item: $workout) { launch in
+            WorkoutRunnerView(session: launch.session, startExercise: launch.startExercise) { workout = nil }
+        }
     }
 
     private var header: some View {
@@ -198,6 +201,7 @@ private struct SessionCard: View {
     let isToday: Bool
     let restored: Bool
     let onStart: () -> Void
+    let onRepeat: () -> Void
     let onToggle: () -> Void
 
     private var session: PlannedSession { adjustment.session }
@@ -239,11 +243,17 @@ private struct SessionCard: View {
 
             AdjustmentNote(adjustment: adjustment, restored: restored, onToggle: onToggle)
 
-            if session.exercises.contains(where: { item in
-                item.tempo != nil && store.exercise(id: item.exerciseId).flatMap(MovementKind.kind(for:)) != nil }) {
+            if session.status == .done {
+                Label("Wykonana", systemImage: "checkmark.circle.fill")
+                    .formaStyle(.headline).foregroundStyle(FormaColor.goText)
+                    .padding(.top, FormaSpacing.xs)
+                Button(action: onRepeat) {
+                    Label("Powtórz trening", systemImage: "arrow.counterclockwise").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.formaGlass)
+            } else if session.status != .skipped {
                 Button(action: onStart) {
-                    Label("Zacznij serię z trenerem", systemImage: "play.fill")
-                        .frame(maxWidth: .infinity)
+                    Label("Zacznij trening", systemImage: "play.fill").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.formaPrimary)
                 .padding(.top, FormaSpacing.xs)

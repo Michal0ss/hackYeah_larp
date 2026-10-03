@@ -52,6 +52,7 @@ struct CoachConsentCard: View {
 
 /// Empty conversation: what the coach can do, and questions to start with.
 struct CoachEmptyState: View {
+    var questions = CoachChat.starterQuestions
     let onAsk: (String) -> Void
 
     var body: some View {
@@ -59,7 +60,7 @@ struct CoachEmptyState: View {
             Text("Zapytaj o plan, ćwiczenia, zamienniki albo o to, czy dziś trenować. Trener zna Twój plan i wyniki techniki.")
                 .formaStyle(.callout).foregroundStyle(FormaColor.ink2)
                 .fixedSize(horizontal: false, vertical: true)
-            ForEach(CoachChat.starterQuestions, id: \.self) { question in
+            ForEach(questions, id: \.self) { question in
                 Button { onAsk(question) } label: {
                     HStack {
                         Text(question).formaStyle(.body).foregroundStyle(FormaColor.ink)

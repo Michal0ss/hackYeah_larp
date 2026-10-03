@@ -13,6 +13,7 @@ from app.content.store import ContentStore
 from app.schemas.api import (
     CoachContext,
     Consent,
+    LoggedSetDigest,
     SessionDigest,
     SetDigest,
     TechniqueDigest,
@@ -240,6 +241,21 @@ def describe_last_set(last: SetDigest) -> str:
     return text
 
 
+def describe_logged_set(logged: LoggedSetDigest) -> str:
+    """The numbers the user typed for the last set, with the planned range so the model can tell easy from hard."""
+    parts: list[str] = []
+    if logged.reps is not None:
+        word = _plural(logged.reps, "powtórzenie", "powtórzenia", "powtórzeń")
+        parts.append(f"{logged.reps} {word}")
+    if logged.seconds is not None:
+        parts.append(f"{logged.seconds} s")
+    parts.append(f"ciężar {_decimal(logged.weight_kg)} kg" if logged.weight_kg else "bez wpisanego ciężaru")
+    text = f"- Ostatnia seria (nr {logged.set_index}), wpisana przez użytkownika: " + ", ".join(parts)
+    if logged.planned_min is not None and logged.planned_max is not None:
+        text += f" (w planie {logged.planned_min}-{logged.planned_max})"
+    return text + ". Ciężar znasz tylko stąd: nie zgaduj go, gdy go nie ma."
+
+
 def describe_workout(workout: WorkoutContext, content: ContentStore) -> str:
     lines = [f"- Użytkownik jest teraz na ekranie: {SCREEN_LABELS[workout.screen]}."]
     name = _name(content, workout.exercise_id)
@@ -252,10 +268,15 @@ def describe_workout(workout: WorkoutContext, content: ContentStore) -> str:
         lines.append(f"- Ćwiczenie: {name}{position}")
     if workout.last_set:
         lines.append(describe_last_set(workout.last_set))
+    if workout.logged_set:
+        lines.append(describe_logged_set(workout.logged_set))
     if workout.screen in IN_WORKOUT_SCREENS:
         lines.append(
-            "- To trening w toku: odpowiadaj w najwyżej 3 zdaniach, bez wstępu, z jedną konkretną wskazówką na "
-            "następną serię (albo na odpoczynek). Odnieś się do liczb z ostatniej serii."
+            "- To trening w toku, użytkownik czyta odpowiedź między seriami: najwyżej 3 krótkie zdania (do 45 słów), "
+            "bez wstępu, z jedną konkretną wskazówką na następną serię (albo na odpoczynek). Odnieś się do jednej, "
+            "najważniejszej liczby z ostatniej serii, nie do wszystkich. Pytanie dotyczy tej serii, więc nie wplataj "
+            "snu ani innych danych o regeneracji, chyba że pytanie dotyczy ciężaru, liczby serii albo odpoczynku. "
+            "O ograniczeniach użytkownika (np. unikany ruch) wspominaj tylko wtedy, gdy dotyczą pytania."
         )
     return "\n".join(lines)
 

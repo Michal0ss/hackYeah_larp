@@ -54,6 +54,14 @@ public protocol SessionCompletionProviding: Sendable {
 
 extension PlanStore: SessionCompletionProviding {}
 
+/// The sets the user typed or corrected, with their weight when they entered one.
+public protocol LoggedSetProviding: Sendable {
+    /// Newest first.
+    var sets: [LoggedSet] { get }
+}
+
+extension TrainingLogStore: LoggedSetProviding {}
+
 /// Runs the coach tools against the shared service protocols, so they work on sample data and on the real services.
 ///
 /// The consent rule is applied here as well as on the server: a health tool without consent returns an error and
@@ -68,6 +76,7 @@ public struct CoachTools: CoachToolRunning {
     private let feedback: SessionFeedbackStoring?
     private let proposer: PlanChangeProposer?
     private let log: SessionCompletionProviding?
+    private let loggedSets: LoggedSetProviding?
     private let hasHealthConsent: @Sendable () -> Bool
     private let calendar: Calendar
     private let now: @Sendable () -> Date
@@ -76,7 +85,7 @@ public struct CoachTools: CoachToolRunning {
                 checkIns: CheckInProviding, technique: TechniqueHistoryProviding,
                 recommendation: RecommendationProviding, feedback: SessionFeedbackStoring? = nil,
                 proposer: PlanChangeProposer? = nil, log: SessionCompletionProviding? = nil,
-                hasHealthConsent: @escaping @Sendable () -> Bool,
+                loggedSets: LoggedSetProviding? = nil, hasHealthConsent: @escaping @Sendable () -> Bool,
                 calendar: Calendar = .current, now: @escaping @Sendable () -> Date = { Date() }) {
         self.plan = plan
         self.catalog = catalog
@@ -87,6 +96,7 @@ public struct CoachTools: CoachToolRunning {
         self.feedback = feedback
         self.proposer = proposer
         self.log = log
+        self.loggedSets = loggedSets
         self.hasHealthConsent = hasHealthConsent
         self.calendar = calendar
         self.now = now
@@ -197,8 +207,22 @@ public struct CoachTools: CoachToolRunning {
             if let technique = set.techniqueScore { fields["techniqueScore"] = .number(Double(technique)) }
             return .object(fields)
         }
+        // Sets the user did, with the weight only where they typed one.
+        let typed: [JSONValue] = (loggedSets?.sets ?? []).filter { $0.date >= since }.prefix(40).map { set in
+            var fields: [String: JSONValue] = [
+                "date": .string(Self.dayFormatter.string(from: set.date)),
+                "exerciseId": .string(set.exerciseId),
+                "name": .string(name(of: set.exerciseId)),
+                "setNumber": .number(Double(set.setIndex)),
+            ]
+            if let reps = set.reps { fields["reps"] = .number(Double(reps)) }
+            if let seconds = set.seconds { fields["seconds"] = .number(Double(seconds)) }
+            if let weight = set.weightKg { fields["weightKg"] = .number(weight) }
+            return .object(fields)
+        }
         let content = Self.json([
             "days": .number(Double(days)),
+            "setsLogged": .array(typed),
             "sessionsFinished": .array(sessions),
             "setsWithLiveCoach": .array(sets),
             "setsWithLiveCoachTotal": .number(Double(allSets.count)),

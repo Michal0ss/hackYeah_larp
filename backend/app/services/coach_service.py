@@ -14,7 +14,7 @@ from typing import Any
 
 from app.ai.gateway import AIGateway, ChatEvent, Finished, TextDelta, ToolCall
 from app.ai.knowledge import knowledge_block, load_knowledge
-from app.ai.prompts import coach_system_prompt
+from app.ai.prompts import IN_WORKOUT_SCREENS, coach_system_prompt
 from app.ai.tools import TOOLS, is_health_tool, normalise_tool_input, tools_for
 from app.config import Settings
 from app.content.store import ContentStore
@@ -43,6 +43,8 @@ class Conversation:
     red_flag: bool
     # The user's profile from the request context; tool inputs are checked against it (equipment, level, avoid tags).
     profile: UserProfile | None = None
+    # The question was asked in the middle of a workout: a short answer, so the model thinks as little as it can.
+    in_workout: bool = False
 
 
 def _invalid(message: str = "Nieprawidłowa kolejność wiadomości w rozmowie.") -> ApiError:
@@ -124,6 +126,9 @@ def prepare_conversation(request: CoachChatRequest, content: ContentStore, setti
         tools=tools_for(consent.health),
         red_flag=_last_user_text_has_red_flag(messages[-1]),
         profile=request.context.profile if request.context else None,
+        in_workout=bool(
+            request.context and request.context.workout and request.context.workout.screen in IN_WORKOUT_SCREENS
+        ),
     )
 
 
@@ -175,6 +180,7 @@ async def chat_events(
         messages=conversation.messages,
         tools=conversation.tools,
         max_tokens=settings.coach_max_tokens,
+        fast=conversation.in_workout,
     ):
         if isinstance(event, ToolCall):
             if event.name not in offered:

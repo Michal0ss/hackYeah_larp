@@ -102,10 +102,11 @@ def _inline_refs(schema: dict[str, Any]) -> dict[str, Any]:
     return resolve(schema)
 
 
-def _thinking(model: str) -> types.ThinkingConfig | None:
-    """Little thinking: latency matters and thinking tokens eat the output limit. Families take different knobs."""
+def _thinking(model: str, fast: bool = False) -> types.ThinkingConfig | None:
+    """Little thinking: latency matters and thinking tokens eat the output limit. Families take different knobs.
+    `fast` (a question asked in the middle of a workout) thinks as little as the model allows."""
     if model.startswith("gemini-3"):
-        return types.ThinkingConfig(thinking_level="low")
+        return types.ThinkingConfig(thinking_level="minimal" if fast else "low")
     if model.startswith("gemini-2.5") and "pro" not in model:
         return types.ThinkingConfig(thinking_budget=0)
     return None
@@ -335,6 +336,7 @@ class GeminiGateway:
         tools: list[dict[str, Any]],
         max_tokens: int,
         sent: list[bool],
+        fast: bool = False,
     ) -> AsyncIterator[ChatEvent]:
         """One model's answer. `sent[0]` becomes true as soon as an event went out (no fallback after that)."""
         config = types.GenerateContentConfig(
@@ -342,7 +344,7 @@ class GeminiGateway:
             max_output_tokens=max_tokens,
             tools=self.to_tools(tools),
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
-            thinking_config=_thinking(model),
+            thinking_config=_thinking(model, fast),
         )
         started = time.perf_counter()
         calls: list[ToolCall] = []
@@ -415,12 +417,13 @@ class GeminiGateway:
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
         max_tokens: int,
+        fast: bool = False,
     ) -> AsyncIterator[ChatEvent]:
         chain = self._chain(model)
         for index, candidate in enumerate(chain):
             sent = [False]
             try:
-                async for event in self._stream_once(candidate, system, messages, tools, max_tokens, sent):
+                async for event in self._stream_once(candidate, system, messages, tools, max_tokens, sent, fast):
                     yield event
                 return
             except AIUnavailable as exc:

@@ -626,6 +626,87 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "LoggedSetDigest": {
+        "description": "What the user typed for a set (Swift: LoggedSetDigest): numbers only. The weight is present only when the\nuser entered it. Training data, not health data.",
+        "properties": {
+          "plannedMax": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plannedmax"
+          },
+          "plannedMin": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plannedmin"
+          },
+          "reps": {
+            "anyOf": [
+              {
+                "maximum": 200.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reps"
+          },
+          "seconds": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seconds"
+          },
+          "setIndex": {
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Setindex",
+            "type": "integer"
+          },
+          "weightKg": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 500.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weightkg"
+          }
+        },
+        "required": [
+          "setIndex"
+        ],
+        "title": "LoggedSetDigest",
+        "type": "object"
+      },
       "PlanGenerateRequest": {
         "properties": {
           "profile": {
@@ -1403,6 +1484,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/SetDigest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "loggedSet": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoggedSetDigest"
               },
               {
                 "type": "null"

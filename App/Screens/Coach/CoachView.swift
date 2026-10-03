@@ -6,6 +6,11 @@ import SwiftUI
 /// "Trener": chat with the AI trainer. It knows the plan and the technique results, and, after the user agreed,
 /// the health summaries. It does not diagnose. Owner: Maciek.
 struct CoachView: View {
+    /// Set when the coach is opened from a workout: where the user is and what the last set was.
+    var workout: WorkoutContext?
+    /// Set when shown as a sheet over a workout: adds a close button.
+    var onClose: (() -> Void)?
+
     @Environment(AppStore.self) private var store
     @Environment(AppRouter.self) private var router
     @State private var model: CoachViewModel?
@@ -28,6 +33,7 @@ struct CoachView: View {
                 self.model = model
                 voice = VoiceChatController(viewModel: model)
             }
+            model?.workout = workout
             await model?.load()
         }
         .onDisappear { voice?.endSession() }
@@ -56,10 +62,20 @@ struct CoachView: View {
     private func header(_ model: CoachViewModel) -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: FormaSpacing.s) {
-                Text("Twój doradca").formaStyle(.caption).foregroundStyle(FormaColor.ink3)
-                Text("Trener").formaStyle(.largeTitle).foregroundStyle(FormaColor.ink)
+                Text(workout == nil ? "Twój doradca" : "W trakcie treningu").formaStyle(.caption).foregroundStyle(FormaColor.ink3)
+                Text(workout == nil ? "Trener" : "Zapytaj trenera").formaStyle(.largeTitle).foregroundStyle(FormaColor.ink)
             }
             Spacer()
+            if let onClose {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(FormaColor.ink)
+                        .frame(width: 44, height: 44)
+                        .background(FormaColor.well, in: Circle())
+                }
+                .accessibilityLabel("Wróć do treningu")
+            }
             Menu {
                 if model.consent.granted {
                     Button("Wycofaj zgodę i wyczyść rozmowę", systemImage: "hand.raised") { model.setConsent(false) }
@@ -93,7 +109,7 @@ struct CoachView: View {
                 LazyVStack(alignment: .leading, spacing: FormaSpacing.m) {
                     consentArea(model)
                     if model.messages.isEmpty, !model.isResponding {
-                        CoachEmptyState { model.send($0) }
+                        CoachEmptyState(questions: CoachChat.quickQuestions(for: model.workout)) { model.send($0) }
                     }
                     ForEach(model.messages) { message in
                         CoachBubble(message: message)
@@ -103,7 +119,7 @@ struct CoachView: View {
                                              onApply: { model.applyProposal(proposal.id) },
                                              onDismiss: { model.dismissProposal(proposal.id) },
                                              onUndo: { model.undoProposal(proposal.id) },
-                                             onShowPlan: { router.tab = .plan })
+                                             onShowPlan: { if let onClose { onClose() } else { router.tab = .plan } })
                         }
                     }
                     if model.isResponding {

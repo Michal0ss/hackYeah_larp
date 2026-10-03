@@ -8,6 +8,8 @@ struct SetSummaryView: View {
     let summary: SetSummary
     let exerciseName: String
     let totalSets: Int
+    /// False when the summary is shown as details on top of the screen after a set (it has its own buttons).
+    var showsActions = true
     let onNextSet: () -> Void
     let onClose: () -> Void
 
@@ -21,7 +23,7 @@ struct SetSummaryView: View {
                     framingCard
                     tempoCard
                     repsCard
-                    actions
+                    if showsActions { actions }
                 }
                 .padding(.horizontal, FormaSpacing.screen)
                 .padding(.top, FormaSpacing.l)
