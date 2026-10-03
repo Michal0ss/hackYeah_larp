@@ -1,6 +1,7 @@
 import SwiftUI
 import Contracts
 import DesignSystem
+import Insights
 import Onboarding
 
 /// "Dziś": the recommendation of the day, today's session and the recovery strip.
@@ -19,9 +20,11 @@ struct TodayView: View {
                     header
                     RecommendationCard(recommendation: store.recommendation)
                     if let entry = store.todaySession {
-                        SessionCard(session: entry.session, isToday: entry.isToday,
-                                    adapted: store.recommendation.decision != .train,
-                                    onStart: { startSet(in: entry.session) })
+                        let adjustment = store.adjustment(for: entry.session)
+                        SessionCard(adjustment: adjustment, isToday: entry.isToday,
+                                    restored: store.isRestored(entry.session),
+                                    onStart: { startSet(in: adjustment.session) },
+                                    onToggle: { store.toggleOriginal(entry.session) })
                     }
                     RecoveryStrip(today: store.today, checkIn: store.checkIn)
                     actions
@@ -47,9 +50,8 @@ struct TodayView: View {
         guard let planned = session.exercises.first(where: { $0.tempo != nil }),
               let tempo = planned.tempo,
               let exercise = store.exercise(id: planned.exerciseId) else { return }
-        // "3 serie zamiast 4" when the recommendation lightens the day.
-        let sets = max(1, planned.sets - (store.recommendation.decision == .train ? 0 : 1))
-        liveLaunch = LiveSetLaunch(exercise: exercise, spec: tempo, sets: sets)
+        // The session is already adjusted (PlanAdjuster), so its sets are the ones to do.
+        liveLaunch = LiveSetLaunch(exercise: exercise, spec: tempo, sets: planned.sets)
     }
 
     private var header: some View {
@@ -153,10 +155,14 @@ struct LiveSetLaunch: Identifiable {
 
 private struct SessionCard: View {
     @Environment(AppStore.self) private var store
-    let session: PlannedSession
+    let adjustment: PlanAdjustment
     let isToday: Bool
-    let adapted: Bool
+    let restored: Bool
     let onStart: () -> Void
+    let onToggle: () -> Void
+
+    private var session: PlannedSession { adjustment.session }
+    private var adapted: Bool { adjustment.isChanged }
 
     var body: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.m) {
@@ -191,6 +197,8 @@ private struct SessionCard: View {
                     }
                 }
             }
+
+            AdjustmentNote(adjustment: adjustment, restored: restored, onToggle: onToggle)
 
             if session.exercises.contains(where: { $0.tempo != nil }) {
                 Button(action: onStart) {
