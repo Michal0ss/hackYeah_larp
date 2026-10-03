@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "note": "Wartości inżynierskie na demo (PROJECT.md 6.2 i 6.4). Do strojenia na prawdziwych nagraniach. Właściciel: Bartek.",
+  "quality": {
+    "minVisibleRatio": 0.85,
+    "minBodyHeight": 0.5,
+    "maxPeople": 1,
+    "minReps": 3,
+    "minFps": 24
+  },
+  "weights": {
+    "depth": 0.35,
+    "torso": 0.3,
+    "repeatability": 0.2,
+    "tempo": 0.15
+  },
+  "thresholds": {
+    "maxTorsoLeanDegrees": 45,
+    "depthToleranceFrame": 0.02
+  }
+}

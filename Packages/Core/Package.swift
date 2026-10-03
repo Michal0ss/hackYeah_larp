@@ -34,7 +34,7 @@ let package = Package(
         // Maciek: API client, tools, chat.
         .target(name: "Coaching", dependencies: ["Contracts", "Plan", "Content"]),
         // Maciek: exercise catalog and texts.
-        .target(name: "Content", dependencies: ["Contracts"], resources: [.process("Resources")]),
+        .target(name: "Content", dependencies: ["Contracts", "API"], resources: [.process("Resources")]),
         // Michał: live set coaching (camera pose, tempo engine, voice cues, set summary).
         .target(name: "LiveSet", dependencies: ["Contracts"]),
         // Test targets exist for every module so nobody has to edit this file to add tests.
