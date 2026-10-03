@@ -207,7 +207,7 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie.
 | Ekrany Postępy i Opieka | Wiktor | `feat/wiktor-progress-care-screens` | do zrobienia | |
 | Katalog i szablony | Maciek | `feat/maciek-catalog-templates` | do zrobienia | |
 | Magazyn planu | Maciek | `feat/maciek-plan-store` | do zrobienia | |
-| Backend z prawdziwym modelem (prompty, narzędzia, jakość planu) | Maciek | `feat/maciek-backend-ai` | do zrobienia | |
+| Backend z prawdziwym modelem (prompty, narzędzia, jakość planu) | Maciek | `feat/maciek-backend-ai` | w toku (draft PR) | dostawca: Gemini; bramka i testy gotowe, sprawdzone na atrapie klienta; czeka na uruchomienie z kluczem, strojenie promptów i koszt |
 | Generator planu (Swift, wywołuje backend) | Maciek | `feat/maciek-plan-generator` | do zrobienia | |
 | Czat trenera (Swift: SSE, narzędzia, zgoda) | Maciek | `feat/maciek-coach-chat` | do zrobienia | |
 | Ekrany Plan i Trener | Maciek | `feat/maciek-plan-coach-screens` | do zrobienia | |
