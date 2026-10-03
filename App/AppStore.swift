@@ -54,6 +54,7 @@ final class AppStore {
             try? onboardingStorage.clear()
             services.planStore.clear()
             services.trainingLog.clear()
+            services.sessionFeedbackStore.clear()
         }
         #endif
         if let saved = onboardingStorage.load() {
@@ -227,6 +228,7 @@ final class AppStore {
     func resetWorkout(sessionId: UUID) {
         services.planStore.removeCompletion(sessionId: sessionId)
         services.trainingLog.removeSets(forSession: sessionId)
+        services.sessionFeedbackStore.remove(forSession: sessionId)
         Task { await refreshRecommendation() }
     }
 
@@ -245,6 +247,7 @@ final class AppStore {
         try? onboardingStorage.clear()
         services.planStore.clear()
         services.trainingLog.clear()
+        services.sessionFeedbackStore.clear()
         _ = try? await services.checkInStore.removeAll()
         services.localHistory.removeAll()
         services.consent.reset()

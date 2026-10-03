@@ -81,10 +81,14 @@ final class WorkoutModel {
     func endEarly() { run.finish() }
 
     /// "Zapisz i zakończ": the session counts as done when at least one set was done.
-    func save() {
+    func save(feedback: SessionFeedback? = nil) {
         guard !saved else { return }
         saved = true
         guard run.completedSets > 0 else { return }
+        if let feedback {
+            let feedbackStore = store.services.sessionFeedback
+            Task { await feedbackStore.save(feedback) }
+        }
         store.services.planStore.recordCompletion(sessionId: session.id, completedSets: run.completedSets,
                                                   plannedSets: run.plannedSets)
         Task { await store.refreshRecommendation() }

@@ -56,10 +56,8 @@ struct WorkoutRunnerView: View {
             SetReviewView(model: model, onAskCoach: { coachContext = model.coachContext(screen: .rest) },
                           onClose: { confirmExit = true })
         case .finished:
-            WorkoutFinishedView(model: model, onDone: {
-                model.save()
-                onClose()
-            })
+            WorkoutFinishedView(model: model, onAskCoach: { coachContext = model.coachContext(screen: .sessionFeedback) },
+                                onDone: onClose)
         }
     }
 
@@ -154,7 +152,9 @@ private struct WorkoutOverviewView: View {
 
 private struct WorkoutFinishedView: View {
     let model: WorkoutModel
+    let onAskCoach: () -> Void
     let onDone: () -> Void
+    @State private var draft = SessionFeedbackDraft()
 
     var body: some View {
         ScrollView {
@@ -174,7 +174,19 @@ private struct WorkoutFinishedView: View {
                     Text("Nie zapisano żadnej serii, więc sesja nie liczy się jako wykonana.")
                         .formaStyle(.subheadline).foregroundStyle(FormaColor.ink3)
                 }
-                Button(action: onDone) {
+                if model.run.completedSets > 0 {
+                    SessionFeedbackCard(draft: $draft, sessionId: model.session.id,
+                                        completedSets: model.run.completedSets, plannedSets: model.run.plannedSets)
+                    Button(action: onAskCoach) {
+                        Label("Zapytaj trenera", systemImage: "bubble.left.and.text.bubble.right").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.formaGlass)
+                }
+                Button {
+                    model.save(feedback: draft.build(sessionId: model.session.id, completedSets: model.run.completedSets,
+                                                     plannedSets: model.run.plannedSets))
+                    onDone()
+                } label: {
                     Text(model.run.completedSets == 0 ? "Zamknij" : "Zapisz i zakończ").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.formaPrimary)
