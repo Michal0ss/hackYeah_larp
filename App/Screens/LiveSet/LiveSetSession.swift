@@ -46,7 +46,9 @@ final class LiveSetSession {
         self.source = source
         self.isFrontCamera = UserDefaults.standard.bool(forKey: Self.frontCameraKey)
         self.engine = LiveSetEngine(exerciseId: exercise.id, spec: spec, setIndex: setIndex,
-                                    voice: BankedCoachVoice(), kind: kind, isSimulated: source == .simulation,
+                                    voice: BankedCoachVoice(), kind: kind,
+                                    assessor: kind.assessor(reference: AngleReference(values: ContentRepository.shared.numbers("scoring", "angles"))),
+                                    isSimulated: source == .simulation,
                                     trackerConfig: PhaseTrackerConfig(values: ContentRepository.shared.numbers("tempo", "phaseTracker")),
                                     cooldownReps: ContentRepository.shared.numbers("tempo", "policy")["cooldownReps"].map(Int.init))
     }

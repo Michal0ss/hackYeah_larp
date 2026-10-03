@@ -33,35 +33,42 @@ public struct SquatSignal {
 
     /// Height (0 = top of the frame) of the point that follows the movement, and torso length, if visible.
     /// Squat: the hips. Push-up and pull-up: the neck (shoulder line).
-    static func measure(_ frame: PoseFrame, kind: MovementKind = .squat) -> (hipY: Double, torso: Double)? {
+    /// The torso length is measured in image-height units (see `PoseGeometry`), so a portrait video does not stretch it.
+    /// Public: Analysis reuses it to find repetitions in a recorded clip.
+    public static func measure(_ frame: PoseFrame, kind: MovementKind = .squat,
+                               minConfidence: Double = 0.3) -> (hipY: Double, torso: Double)? {
         if kind != .squat {
-            guard let neck = frame.joint(.neck) ?? shoulderMid(frame),
-                  let root = frame.joint(.root) ?? frame.joint(.leftHip) ?? frame.joint(.rightHip) else { return nil }
-            let torso = hypot(neck.x - root.x, neck.y - root.y)
+            guard let neck = frame.joint(.neck, minConfidence: minConfidence) ?? shoulderMid(frame, minConfidence: minConfidence),
+                  let root = frame.joint(.root, minConfidence: minConfidence) ?? frame.joint(.leftHip, minConfidence: minConfidence)
+                      ?? frame.joint(.rightHip, minConfidence: minConfidence) else { return nil }
+            let torso = frame.distance(neck, root)
             guard torso > 0.02 else { return nil }
             return (neck.y, torso)
         }
         let hipY: Double
-        if let l = frame.joint(.leftHip), let r = frame.joint(.rightHip) {
+        if let l = frame.joint(.leftHip, minConfidence: minConfidence), let r = frame.joint(.rightHip, minConfidence: minConfidence) {
             hipY = (l.y + r.y) / 2
-        } else if let root = frame.joint(.root) {
+        } else if let root = frame.joint(.root, minConfidence: minConfidence) {
             hipY = root.y
-        } else if let any = frame.joint(.leftHip) ?? frame.joint(.rightHip) {
+        } else if let any = frame.joint(.leftHip, minConfidence: minConfidence) ?? frame.joint(.rightHip, minConfidence: minConfidence) {
             hipY = any.y
         } else {
             return nil
         }
-        guard let neck = frame.joint(.neck), let root = frame.joint(.root) ?? frame.joint(.leftHip) ?? frame.joint(.rightHip) else {
+        guard let neck = frame.joint(.neck, minConfidence: minConfidence),
+              let root = frame.joint(.root, minConfidence: minConfidence) ?? frame.joint(.leftHip, minConfidence: minConfidence)
+                  ?? frame.joint(.rightHip, minConfidence: minConfidence) else {
             return nil
         }
-        let torso = hypot(neck.x - root.x, neck.y - root.y)
+        let torso = frame.distance(neck, root)
         guard torso > 0.02 else { return nil }
         return (hipY, torso)
     }
 
-    private static func shoulderMid(_ frame: PoseFrame) -> Joint? {
-        guard let l = frame.joint(.leftShoulder), let r = frame.joint(.rightShoulder) else {
-            return frame.joint(.leftShoulder) ?? frame.joint(.rightShoulder)
+    private static func shoulderMid(_ frame: PoseFrame, minConfidence: Double) -> Joint? {
+        guard let l = frame.joint(.leftShoulder, minConfidence: minConfidence),
+              let r = frame.joint(.rightShoulder, minConfidence: minConfidence) else {
+            return frame.joint(.leftShoulder, minConfidence: minConfidence) ?? frame.joint(.rightShoulder, minConfidence: minConfidence)
         }
         return Joint(name: .neck, x: (l.x + r.x) / 2, y: (l.y + r.y) / 2, confidence: min(l.confidence, r.confidence))
     }
