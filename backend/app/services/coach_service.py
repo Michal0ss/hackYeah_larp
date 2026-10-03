@@ -28,6 +28,7 @@ from app.schemas.api import (
     ToolUseOut,
     Usage,
 )
+from app.schemas.domain import UserProfile
 from app.services.safety import RED_FLAG_NOTICE, detect_red_flags
 
 log = get_logger("coach")
@@ -39,6 +40,8 @@ class Conversation:
     messages: list[dict[str, Any]]
     tools: list[dict[str, Any]]
     red_flag: bool
+    # The user's profile from the request context; tool inputs are checked against it (equipment, level, avoid tags).
+    profile: UserProfile | None = None
 
 
 def _invalid(message: str = "Nieprawidłowa kolejność wiadomości w rozmowie.") -> ApiError:
@@ -119,6 +122,7 @@ def prepare_conversation(request: CoachChatRequest, content: ContentStore, setti
         messages=prepared,
         tools=tools_for(consent.health),
         red_flag=_last_user_text_has_red_flag(messages[-1]),
+        profile=request.context.profile if request.context else None,
     )
 
 
@@ -157,7 +161,9 @@ async def chat_events(
                 log.warning("tool_call_dropped", extra={"tool": event.name[:64]})
                 dropped = True
                 continue
-            yield ToolCall(event.id, event.name, normalise_tool_input(event.name, event.input, content))
+            yield ToolCall(
+                event.id, event.name, normalise_tool_input(event.name, event.input, content, conversation.profile)
+            )
         elif isinstance(event, Finished) and dropped and event.stop_reason == "tool_use":
             yield Finished("end_turn", event.input_tokens, event.output_tokens)
         else:

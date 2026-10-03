@@ -108,12 +108,17 @@ public struct ExerciseItem: Codable, Equatable, Sendable, Identifiable {
     public var timed: Bool?
     /// Movement pattern from the catalog (squat, hinge, lunge, push, pull, core, cardio). Absent in older catalogs.
     public var pattern: String?
+    /// Movements this exercise contains, matched against `UserProfile.avoidTags` (e.g. a lunge has `deepLunges`).
+    /// Absent in older catalogs and in sample data.
+    public var movementTags: [MovementTag]?
 
     public init(id: String, name: String, muscleGroup: String, equipment: Equipment, level: TrainingLevel,
                 summary: String, videoURL: URL? = nil, substituteIds: [String] = [],
-                supportsAnalysis: Bool = false, defaultTempo: TempoSpec? = nil, timed: Bool? = nil, pattern: String? = nil) {
+                supportsAnalysis: Bool = false, defaultTempo: TempoSpec? = nil, timed: Bool? = nil, pattern: String? = nil,
+                movementTags: [MovementTag]? = nil) {
         self.timed = timed
         self.pattern = pattern
+        self.movementTags = movementTags
         self.id = id
         self.name = name
         self.muscleGroup = muscleGroup

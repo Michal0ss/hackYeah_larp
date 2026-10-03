@@ -5,12 +5,18 @@ local data and sends the result back as a `tool_result` block. Health data there
 server: it passes through only as summaries the app chose to send, and only after consent.
 
 To add a tool: add it to TOOLS, handle it in the app (Coaching module), document it in backend/README.md.
+
+Tools only read, with one exception that still never writes: `propose_plan_change` makes the app show a card with a
+proposed change, and the plan changes only when the user taps "Zastosuj" on it.
 """
 
 from dataclasses import dataclass
 from typing import Any
 
 from app.content.store import ContentStore
+from app.schemas.domain import UserProfile
+from app.services.plan_builder import allowed_for
+from app.services.safety import check_generated_text, sanitize_free_text
 
 
 @dataclass(frozen=True)
@@ -26,6 +32,8 @@ class CoachTool:
 
 
 _NO_INPUT: dict[str, Any] = {"type": "object", "properties": {}}
+
+PLAN_CHANGE_KINDS = ("swap_exercise", "lighter_session", "move_session")
 
 TOOLS: dict[str, CoachTool] = {
     tool.name: tool
@@ -98,6 +106,33 @@ TOOLS: dict[str, CoachTool] = {
             },
             needs_health_consent=True,
         ),
+        CoachTool(
+            name="propose_plan_change",
+            description=(
+                "Proposes ONE change to the user's weekly plan. It does not change the plan: the app shows the "
+                "user a card, and the plan changes only if the user taps the button. Use it only when the user "
+                "asks for a change or agrees to your suggestion, never as a reaction to pain or an injury. "
+                "kinds: swap_exercise (replace exerciseId with replacementExerciseId in the session planned on "
+                "weekday), lighter_session (one set less in every exercise that has more than two sets, in the "
+                "session on weekday), move_session (move the session from weekday to newWeekday, which must be a "
+                "day without a session). weekday and newWeekday: 1 = Monday ... 7 = Sunday. Use exercise ids from "
+                "the catalog; a replacement must come from the list of exercises that fit this person. "
+                "Afterwards tell the user in one or two sentences what you propose and why, and that they can "
+                "accept it on the card; never say the plan is already changed."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "kind": {"type": "string", "enum": list(PLAN_CHANGE_KINDS)},
+                    "weekday": {"type": "integer", "description": "Weekday of the session to change, 1 to 7."},
+                    "exerciseId": {"type": "string", "description": "swap_exercise: the exercise to replace."},
+                    "replacementExerciseId": {"type": "string", "description": "swap_exercise: the new exercise."},
+                    "newWeekday": {"type": "integer", "description": "move_session: the new weekday, 1 to 7."},
+                    "reason": {"type": "string", "description": "One short sentence in Polish: why."},
+                },
+                "required": ["kind", "weekday"],
+            },
+        ),
     )
 }
 
@@ -118,8 +153,48 @@ def _clamped_int(value: Any, low: int, high: int, default: int) -> int:
     return max(low, min(high, int(value)))
 
 
-def normalise_tool_input(name: str, raw: dict[str, Any], content: ContentStore) -> dict[str, Any]:
+def _weekday(value: Any) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int | float) or int(value) != value:
+        return None
+    return int(value) if 1 <= int(value) <= 7 else None
+
+
+def _normalise_plan_change(raw: dict[str, Any], content: ContentStore, profile: UserProfile | None) -> dict[str, Any]:
+    """Only valid parts survive. The app checks the proposal against the real plan and answers the model with an error
+    when something is missing, so a dropped field here is never silently turned into a change."""
+    cleaned: dict[str, Any] = {}
+    kind = raw.get("kind")
+    if kind in PLAN_CHANGE_KINDS:
+        cleaned["kind"] = kind
+    if (weekday := _weekday(raw.get("weekday"))) is not None:
+        cleaned["weekday"] = weekday
+    if (new_weekday := _weekday(raw.get("newWeekday"))) is not None and kind == "move_session":
+        cleaned["newWeekday"] = new_weekday
+    if kind == "swap_exercise":
+        exercise_id = raw.get("exerciseId")
+        if isinstance(exercise_id, str) and exercise_id in content.by_id:
+            cleaned["exerciseId"] = exercise_id
+        replacement = raw.get("replacementExerciseId")
+        if isinstance(replacement, str) and replacement in content.by_id and replacement != exercise_id:
+            # With a profile the replacement must also fit the person (equipment, level, movements to avoid).
+            if profile is None or replacement in {e.id for e in allowed_for(profile, content)}:
+                cleaned["replacementExerciseId"] = replacement
+    reason = raw.get("reason")
+    # The reason is shown to the user as a quote, so it must pass the same checks as other generated copy (no
+    # diagnoses, medicines, promises, links); a text that does not is simply left out.
+    if isinstance(reason, str):
+        text = sanitize_free_text(reason, 160)
+        if text and not check_generated_text(text, max_total=160):
+            cleaned["reason"] = text
+    return cleaned
+
+
+def normalise_tool_input(
+    name: str, raw: dict[str, Any], content: ContentStore, profile: UserProfile | None = None
+) -> dict[str, Any]:
     """Keeps only known keys with valid values, so the app never receives malformed model output."""
+    if name == "propose_plan_change":
+        return _normalise_plan_change(raw, content, profile)
     if name in ("get_recovery_summary", "get_checkins"):
         return {"days": _clamped_int(raw.get("days"), 1, 14, 7)}
     if name == "get_session_feedback":

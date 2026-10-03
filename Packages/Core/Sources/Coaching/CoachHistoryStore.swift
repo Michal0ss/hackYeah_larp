@@ -42,6 +42,18 @@ public actor CoachHistoryStore {
         save()
     }
 
+    /// Stores the new state of a proposal (accepted, dismissed, undone) in the message it belongs to.
+    public func update(_ proposal: PlanChangeProposal) {
+        loadIfNeeded()
+        for message in messages.indices {
+            if let index = messages[message].proposals.firstIndex(where: { $0.id == proposal.id }) {
+                messages[message].proposals[index] = proposal
+                save()
+                return
+            }
+        }
+    }
+
     public func clear() {
         messages = []
         loaded = true

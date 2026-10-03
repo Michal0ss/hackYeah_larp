@@ -3,6 +3,7 @@ import Observation
 import Contracts
 import Insights
 import Onboarding
+import Plan
 
 /// In-memory app state. It starts on sample data (marked as simulated in the UI).
 /// Owners replace the pieces with real sources: Wiktor (recovery, check-in, recommendation),
@@ -98,6 +99,49 @@ final class AppStore {
                                                      healthAccess: healthAccess ?? .sampleData))
         await refreshRecommendation()
         return true
+    }
+
+    // MARK: Plan changes accepted from the coach
+
+    /// Makes a change the coach proposed and the user accepted. The plan is checked again first: it may have changed
+    /// since the proposal was made. Today and Plan update on their own, they read `plan`.
+    @MainActor
+    func applyPlanChange(_ proposal: PlanChangeProposal) -> Result<PlanChangeProposal, PlanChangeError> {
+        let changer = PlanChanger(catalog: catalog, profile: profile)
+        do {
+            let result = try changer.apply(proposal, to: plan)
+            plan = result.plan
+            persistPlan()
+            return .success(result.proposal)
+        } catch let error as PlanChangeError {
+            return .failure(error)
+        } catch {
+            return .failure(.planChanged)
+        }
+    }
+
+    /// Puts the session back as it was before the accepted change (only if nothing else touched it since).
+    @MainActor
+    func undoPlanChange(_ proposal: PlanChangeProposal) -> Result<PlanChangeProposal, PlanChangeError> {
+        let changer = PlanChanger(catalog: catalog, profile: profile)
+        do {
+            let result = try changer.undo(proposal, in: plan)
+            plan = result.plan
+            persistPlan()
+            return .success(result.proposal)
+        } catch let error as PlanChangeError {
+            return .failure(error)
+        } catch {
+            return .failure(.planChanged)
+        }
+    }
+
+    /// Saves the plan with the profile. Before onboarding is done nothing is written: a saved profile would make the
+    /// next launch skip onboarding.
+    private func persistPlan() {
+        guard onboardingCompleted else { return }
+        try? onboardingStorage.save(OnboardingResult(profile: profile, health: healthHistory, plan: plan,
+                                                     healthAccess: healthAccess ?? .sampleData))
     }
 
     /// Removes everything the app stored on this phone and starts onboarding again.

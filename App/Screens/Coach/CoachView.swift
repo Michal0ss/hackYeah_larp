@@ -7,6 +7,7 @@ import SwiftUI
 /// the health summaries. It does not diagnose. Owner: Maciek.
 struct CoachView: View {
     @Environment(AppStore.self) private var store
+    @Environment(AppRouter.self) private var router
     @State private var model: CoachViewModel?
     @State private var confirmClear = false
     @FocusState private var inputFocused: Bool
@@ -84,6 +85,13 @@ struct CoachView: View {
                     }
                     ForEach(model.messages) { message in
                         CoachBubble(message: message)
+                        ForEach(message.proposals) { proposal in
+                            PlanProposalCard(proposal: proposal, error: model.proposalErrors[proposal.id],
+                                             onApply: { model.applyProposal(proposal.id) },
+                                             onDismiss: { model.dismissProposal(proposal.id) },
+                                             onUndo: { model.undoProposal(proposal.id) },
+                                             onShowPlan: { router.tab = .plan })
+                        }
                     }
                     if model.isResponding {
                         CoachWritingBubble(text: model.streamingText, checking: model.checking)
