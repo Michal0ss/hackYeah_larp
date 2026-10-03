@@ -212,7 +212,7 @@ Nawigacja: pasek zakładek **Dziś · Plan · Analiza · Trener · Postępy**. O
 - **Zawartość:** okno rozmowy, kilka gotowych pytań na start („Czy dziś ćwiczyć nogi?”, „Czym zastąpić przysiad?”, „Jak poprawić technikę?”), informacja, że to nie jest porada medyczna.
 - **Dostęp trenera do aplikacji:** stały kontekst (decyzja dnia, profil, plan i ostatnia analiza techniki, a w trakcie treningu także ekran i ostatnia seria) plus narzędzia, przez które pyta o historię, regenerację (z Apple Health), check-iny, feedback po treningach i wyniki analiz (patrz 7.6). Użytkownik widzi pod odpowiedzią, z jakich danych trener skorzystał (np. „na podstawie: sen z 7 dni, ostatnia analiza przysiadu”).
 - **Zgoda na dane zdrowotne:** ekran zgody przed pierwszą rozmową (patrz 7.6).
-- **Zasady odpowiedzi:** patrz 7.6. Przy wzmiance o bólu, urazie lub niepokojących objawach trener nie zgaduje przyczyny, tylko odsyła do specjalisty i pokazuje kartę „Warto rozważyć konsultację”.
+- **Zasady odpowiedzi:** patrz 7.6. Odpowiedź jest pokazywana jako prosty tekst: pogrubienie, kursywa i listy (kropki) są renderowane, gdy model mimo instrukcji ich użyje, nagłówek staje się pogrubioną linią, a linki z odpowiedzi nie są klikalne (widać tylko ich tekst), bo tekst modelu jest niezaufany. Przy wzmiance o bólu, urazie lub niepokojących objawach trener nie zgaduje przyczyny, tylko odsyła do specjalisty i pokazuje kartę „Warto rozważyć konsultację”.
 - **Stany:** błąd połączenia lub modelu (krótki komunikat i ponowienie), trwa odpowiedź (wskaźnik pisania), pusta rozmowa (gotowe pytania).
 
 ### 5.9 Seria na żywo
