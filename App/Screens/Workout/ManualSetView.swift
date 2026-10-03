@@ -72,6 +72,7 @@ struct ManualSetView: View {
             .padding(.bottom, FormaSpacing.xxl)
         }
         .scrollIndicators(.hidden)
+        .scrollDismissesKeyboard(.interactively)
         .onAppear {
             // The weight of the last time is offered, not assumed: it is saved only when the toggle is on.
             if weight == nil, let last = model.lastWeight(exercise.id) { weight = last }
@@ -134,13 +135,17 @@ struct ManualSetView: View {
 }
 
 /// The numbers of a set: reps (or seconds) and an optional weight. Used when doing a set by hand and when correcting one.
+/// The weight is added with a button, changed with the steps or typed in, and taken away with another button.
 struct SetNumbersEditor: View {
     let timed: Bool
     @Binding var value: Int
     /// nil = no weight.
     @Binding var weight: Double?
-    /// What the weight switches on to.
+    /// What "Dodaj ciężar" starts from.
     var suggestedWeight: Double?
+
+    @State private var weightText = ""
+    @FocusState private var typing: Bool
 
     private var step: Int { timed ? 5 : 1 }
     private var range: ClosedRange<Int> { timed ? 1...LoggedSetLimits.seconds.upperBound : 0...LoggedSetLimits.reps.upperBound }
@@ -156,20 +161,49 @@ struct SetNumbersEditor: View {
                 .frame(maxWidth: .infinity)
                 roundButton("plus", timed ? "Więcej sekund" : "Więcej powtórzeń") { value = min(range.upperBound, value + step) }
             }
-            Toggle(isOn: Binding(get: { weight != nil }, set: { weight = $0 ? (weight ?? suggestedWeight ?? 5) : nil })) {
+            weightSection
+        }
+        .onAppear { weightText = Self.text(weight) }
+        .onChange(of: weight) { _, new in if !typing { weightText = Self.text(new) } }
+    }
+
+    @ViewBuilder
+    private var weightSection: some View {
+        if weight != nil {
+            VStack(alignment: .leading, spacing: FormaSpacing.m) {
                 Text("Ciężar").formaStyle(.headline).foregroundStyle(FormaColor.ink)
-            }
-            .tint(FormaColor.volt)
-            if let current = weight {
                 HStack(spacing: FormaSpacing.s) {
                     weightButton("−2,5", -2.5)
                     weightButton("−0,5", -0.5)
-                    Text(WorkoutFormat.weight(current)).font(.formaNumber(20)).monospacedDigit()
-                        .foregroundStyle(FormaColor.ink).frame(maxWidth: .infinity)
+                    HStack(spacing: 4) {
+                        TextField("0", text: $weightText)
+                            .keyboardType(.decimalPad)
+                            .focused($typing)
+                            .multilineTextAlignment(.trailing)
+                            .font(.formaNumber(20)).monospacedDigit().foregroundStyle(FormaColor.ink)
+                            .onChange(of: weightText) { _, text in
+                                if typing, let parsed = Self.parse(text) { weight = parsed }
+                            }
+                        Text("kg").font(.formaNumber(16)).foregroundStyle(FormaColor.ink3)
+                    }
+                    .frame(maxWidth: .infinity)
                     weightButton("+0,5", 0.5)
                     weightButton("+2,5", 2.5)
                 }
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Gotowe") { typing = false }
+                    }
+                }
+                Button("Bez ciężaru") { typing = false; weight = nil }
+                    .formaStyle(.subheadline).foregroundStyle(FormaColor.ink3)
             }
+        } else {
+            Button { weight = suggestedWeight ?? 5 } label: {
+                Label("Dodaj ciężar", systemImage: "plus").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.formaGlass)
         }
     }
 
@@ -183,12 +217,30 @@ struct SetNumbersEditor: View {
 
     private func weightButton(_ title: String, _ delta: Double) -> some View {
         Button {
+            typing = false
             weight = min(LoggedSetLimits.weightKg.upperBound, max(0.5, (weight ?? 0) + delta))
         } label: {
             Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(FormaColor.ink)
-                .padding(.horizontal, 8).frame(height: 36).background(FormaColor.well, in: Capsule())
+                .padding(.horizontal, 10).frame(minWidth: 44, minHeight: 44).background(FormaColor.well, in: Capsule())
         }
         .buttonStyle(.plain).accessibilityLabel("Ciężar \(title) kilograma")
+    }
+
+    /// "12,5" for 12.5, "12" for 12, "" for none.
+    static func text(_ weight: Double?) -> String {
+        guard let weight else { return "" }
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "pl_PL")
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: weight)) ?? ""
+    }
+
+    /// Accepts a comma or a dot; nil for anything that is not a number above zero.
+    static func parse(_ text: String) -> Double? {
+        let cleaned = text.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces)
+        guard let number = Double(cleaned), number > 0 else { return nil }
+        return min(number, LoggedSetLimits.weightKg.upperBound)
     }
 }
 
