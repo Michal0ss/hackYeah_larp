@@ -1,6 +1,7 @@
 import SwiftUI
 import Observation
 import Contracts
+import Insights
 import Onboarding
 
 /// In-memory app state. It starts on sample data (marked as simulated in the UI).
@@ -67,6 +68,34 @@ final class AppStore {
     }
 
     var today: RecoverySnapshot? { recovery.first }
+
+    // MARK: Session adjustment
+
+    /// Sessions for which the user chose the original plan over today's lighter version.
+    private(set) var restoredSessionIds: Set<UUID> = []
+
+    var todayPlanWeekday: Int {
+        let weekday = Calendar(identifier: .iso8601).component(.weekday, from: Date())
+        return weekday == 1 ? 7 : weekday - 1
+    }
+
+    /// The session the rule engine's decision applies to: today's, or the next one when today is free (the one the
+    /// Today screen shows). Other sessions stay as planned.
+    func adjustment(for session: PlannedSession) -> PlanAdjustment {
+        guard session.id == todaySession?.session.id, !restoredSessionIds.contains(session.id) else {
+            return PlanAdjustment(original: session, session: session, changes: [], isRestDay: false)
+        }
+        return PlanAdjuster(catalog: catalog).adjust(session, for: recommendation, technique: lastTechnique,
+                                                     equipment: profile.equipment)
+    }
+
+    func isRestored(_ session: PlannedSession) -> Bool { restoredSessionIds.contains(session.id) }
+
+    /// "Przywróć oryginał" and back.
+    func toggleOriginal(_ session: PlannedSession) {
+        if restoredSessionIds.contains(session.id) { restoredSessionIds.remove(session.id) }
+        else { restoredSessionIds.insert(session.id) }
+    }
 
     // MARK: Recommendation and results
 

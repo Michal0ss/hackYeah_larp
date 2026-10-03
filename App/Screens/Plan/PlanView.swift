@@ -1,6 +1,7 @@
 import SwiftUI
 import Contracts
 import DesignSystem
+import Insights
 import Onboarding
 
 /// Week plan: a day strip, the selected session and its exercises. Built by Michał while Maciek works on the
@@ -34,7 +35,9 @@ struct PlanView: View {
                     header
                     weekStrip
                     if let session = selected {
-                        SessionDetail(session: session, adapted: isAdapted(session)) { start($0, in: session) }
+                        let adjustment = store.adjustment(for: session)
+                        SessionDetail(adjustment: adjustment, restored: store.isRestored(session),
+                                      onToggle: { store.toggleOriginal(session) }) { start($0, in: adjustment.session) }
                     } else {
                         emptyState
                     }
@@ -90,23 +93,22 @@ struct PlanView: View {
             .padding(FormaSpacing.xl).frame(maxWidth: .infinity, alignment: .leading).glassCard()
     }
 
-    /// Today's session is lightened when the recommendation is not "train".
-    private func isAdapted(_ session: PlannedSession) -> Bool {
-        session.weekday == todayWeekday && store.recommendation.decision != .train
-    }
-
     private func start(_ planned: PlannedExercise, in session: PlannedSession) {
         guard let tempo = planned.tempo, let exercise = store.exercise(id: planned.exerciseId) else { return }
-        let sets = max(1, planned.sets - (isAdapted(session) ? 1 : 0))
-        liveLaunch = LiveSetLaunch(exercise: exercise, spec: tempo, sets: sets)
+        // The session is already adjusted (PlanAdjuster), so its sets are the ones to do.
+        liveLaunch = LiveSetLaunch(exercise: exercise, spec: tempo, sets: planned.sets)
     }
 }
 
 private struct SessionDetail: View {
     @Environment(AppStore.self) private var store
-    let session: PlannedSession
-    let adapted: Bool
+    let adjustment: PlanAdjustment
+    let restored: Bool
+    let onToggle: () -> Void
     let onStart: (PlannedExercise) -> Void
+
+    private var session: PlannedSession { adjustment.session }
+    private var adapted: Bool { adjustment.isChanged }
 
     var body: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.m) {
@@ -114,7 +116,7 @@ private struct SessionDetail: View {
                 SectionLabel(Self.dayNames[session.weekday - 1])
                 Spacer()
                 if adapted {
-                    Label("Lżejsza dziś", systemImage: "slider.horizontal.3")
+                    Label(adjustment.isRestDay ? "Odpoczynek" : "Lżejsza dziś", systemImage: "slider.horizontal.3")
                         .font(.system(size: 13, weight: .bold)).foregroundStyle(FormaColor.moderateText)
                 }
             }
@@ -126,6 +128,7 @@ private struct SessionDetail: View {
                     if index < session.exercises.count - 1 { Divider().overlay(FormaColor.line) }
                 }
             }
+            AdjustmentNote(adjustment: adjustment, restored: restored, onToggle: onToggle)
         }
         .padding(FormaSpacing.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
