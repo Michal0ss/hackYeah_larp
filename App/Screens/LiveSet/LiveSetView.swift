@@ -27,6 +27,8 @@ struct LiveSetView: View {
 
     @Environment(AppStore.self) private var store
     @State private var session: LiveSetSession
+    /// Numbers, colours and pose export for checking the analysis on a real phone.
+    @State private var diagnostics = false
 
     init(exercise: ExerciseItem, spec: TempoSpec, setIndex: Int, totalSets: Int,
          onNextSet: @escaping () -> Void, onClose: @escaping () -> Void) {
@@ -69,6 +71,7 @@ struct LiveSetView: View {
             background
             VStack(spacing: 0) {
                 topBar
+                if diagnostics { DiagnosticsHUD(engine: engine).padding(.top, FormaSpacing.s) }
                 Spacer()
                 panel
             }
@@ -92,7 +95,7 @@ struct LiveSetView: View {
                 } else {
                     AmbientBackground()
                 }
-                SkeletonOverlay(frame: engine.latestFrame)
+                SkeletonOverlay(frame: engine.latestFrame, debug: diagnostics)
                     .frame(width: video.width, height: video.height)
                     .position(x: video.midX, y: video.midY)
                 LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .center, endPoint: .bottom)
@@ -149,6 +152,15 @@ struct LiveSetView: View {
                 }
                 .accessibilityLabel("Zakończ serię")
             }
+            Button {
+                diagnostics.toggle()
+                engine.recordsFrames = diagnostics
+            } label: {
+                Image(systemName: diagnostics ? "ladybug.fill" : "ladybug")
+                    .foregroundStyle(diagnostics ? FormaColor.volt : .white)
+                    .frame(width: 36, height: 36)
+            }
+            .accessibilityLabel("Diagnostyka")
             Image(systemName: engine.headphonesConnected ? "headphones" : "speaker.wave.2.fill")
                 .foregroundStyle(.white)
                 .frame(width: 36, height: 36)
