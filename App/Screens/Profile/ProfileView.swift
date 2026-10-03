@@ -40,7 +40,7 @@ struct ProfileView: View {
                 Task { await store.deleteAllData(); dismiss() }
             }
         } message: {
-            Text("Profil, plan, historia zdrowia, check-iny i wyniki serii znikną z tego telefonu.")
+            Text("Profil, plan, historia zdrowia, check-iny, wyniki serii, rozmowa z trenerem i zgoda na dane zdrowotne znikną z tego telefonu.")
         }
     }
 

@@ -73,6 +73,9 @@ public enum CoachChatError: Error, Equatable, Sendable {
 /// answer: between answers only the plain text is kept, so health data from an old tool call never travels again
 /// (and never outlives a withdrawn consent).
 public struct CoachChat: Sendable {
+    /// Added to the sources of an answer that used sample data; the screen shows it as the "Dane przykładowe" badge.
+    public static let simulatedSourceLabel = "Dane przykładowe"
+
     /// Questions offered in an empty conversation.
     public static let starterQuestions = [
         "Czy dziś ćwiczyć nogi?",
@@ -139,9 +142,11 @@ public struct CoachChat: Sendable {
         for round in 0...maxToolRounds {
             try Task.checkCancellation()
             let consent = hasHealthConsent()
+            let today = consent ? await recommendation.todayRecommendation() : nil
+            // The recommendation travels with the request, so the answer may rest on it: mark sample data as such.
+            simulated = simulated || (today?.isSimulated ?? false)
             let request = ChatRequest(messages: messages,
-                                      context: ChatContext(profile: await profile(),
-                                                           todayRecommendation: consent ? await recommendation.todayRecommendation() : nil),
+                                      context: ChatContext(profile: await profile(), todayRecommendation: today),
                                       healthConsent: consent)
 
             var roundText = ""

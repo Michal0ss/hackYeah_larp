@@ -106,6 +106,8 @@ final class AppStore {
         try? onboardingStorage.clear()
         _ = try? await services.checkInStore.removeAll()
         services.localHistory.removeAll()
+        services.consent.reset()
+        await services.coachHistory.clear()
         await (services.recommendationText as? RecommendationTexter)?.clearCache()
         profile = SampleData.profile
         plan = SampleData.plan

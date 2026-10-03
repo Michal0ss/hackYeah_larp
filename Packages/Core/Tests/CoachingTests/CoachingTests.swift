@@ -428,6 +428,13 @@ final class CoachChatTests: XCTestCase {
         XCTAssertEqual(backend.requests[1].messages.last?.blocks.count, 2)
     }
 
+    func testAnswerBasedOnASimulatedRecommendationInTheContextIsMarkedToo() async throws {
+        let withConsent = try await collect(makeChat(FakeBackend([answer("Lżej dziś.")]), consent: true).reply(to: "Hej", history: []))
+        XCTAssertEqual(withConsent.reply?.isSimulated, true)  // SampleData.recommendation is simulated
+        let withoutConsent = try await collect(makeChat(FakeBackend([answer("Cześć.")]), consent: false).reply(to: "Hej", history: []))
+        XCTAssertEqual(withoutConsent.reply?.isSimulated, false)  // nothing simulated was sent
+    }
+
     func testSampleDataMarksTheAnswerAsSimulated() async throws {
         let tools = FakeTools()
         tools.outputs["get_recovery_summary"] = CoachToolOutput(content: "{}", sourceLabel: "regeneracja z 7 dni", isSimulated: true)
