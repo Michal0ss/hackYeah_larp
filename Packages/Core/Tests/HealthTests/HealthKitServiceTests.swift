@@ -6,9 +6,11 @@ private struct FakeSource: HealthSampleSource {
     var isAvailable = true
     var accessResult = true
     var samplesResult: Result<HealthSamples, Error> = .success(HealthSamples())
+    var activityResult: Result<[DailyActivity], Error> = .success([])
 
     func requestAccess() async -> Bool { accessResult }
     func samples(from start: Date, to end: Date) async throws -> HealthSamples { try samplesResult.get() }
+    func dailyActivity(from start: Date, to end: Date) async throws -> [DailyActivity] { try activityResult.get() }
 }
 
 private struct Boom: Error {}
@@ -180,6 +182,73 @@ final class HealthKitServiceTests: XCTestCase {
         let s = HealthKitService(source: FakeSource(), aggregator: aggregator, gate: gate, readLog: log)
         _ = await s.summaries(days: 3)
         XCTAssertNil(log.last)
+    }
+
+    // MARK: Overview for the "Dane zdrowotne" panel
+
+    private func realActivity() -> [DailyActivity] {
+        let today = calendar.startOfDay(for: now)
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today)!
+        // Deliberately out of order, with a start time inside the day: the service must normalise both.
+        return [DailyActivity(date: today.addingTimeInterval(3_600), steps: 4_200, activeEnergyKcal: 180, distanceKm: 3.1),
+                DailyActivity(date: twoDaysAgo, steps: 9_900, exerciseMinutes: 41)]
+    }
+
+    func testOverviewIsRealWithOneEntryPerDayNewestFirst() async {
+        let s = service(FakeSource(samplesResult: .success(realToday()), activityResult: .success(realActivity())))
+        let overview = await s.overview(days: 5)
+        let today = calendar.startOfDay(for: now)
+        XCTAssertFalse(overview.isSimulated)
+        XCTAssertEqual(overview.activity.count, 5)
+        XCTAssertEqual(overview.activity.map(\.date), (0..<5).map { calendar.date(byAdding: .day, value: -$0, to: today)! })
+        XCTAssertEqual(overview.today?.steps, 4_200)
+        XCTAssertEqual(overview.activity[1].isEmpty, true)
+        XCTAssertEqual(overview.activity[2].steps, 9_900)
+        XCTAssertEqual(overview.activity[2].exerciseMinutes, 41)
+        XCTAssertEqual(overview.recovery.count, 1)
+        XCTAssertFalse(overview.recovery[0].isSimulated)
+        XCTAssertTrue(overview.hasData)
+    }
+
+    func testOverviewOfEmptyHealthIsNoDataNeverSample() async {
+        let overview = await service(FakeSource()).overview(days: 7)
+        XCTAssertFalse(overview.isSimulated)
+        XCTAssertEqual(overview.activity.count, 7)
+        XCTAssertTrue(overview.activity.allSatisfy(\.isEmpty))
+        XCTAssertTrue(overview.recovery.isEmpty)
+        XCTAssertFalse(overview.hasData)
+    }
+
+    func testOverviewWhenTheActivityReadFailsIsNoDataNeverSample() async {
+        let overview = await service(FakeSource(activityResult: .failure(Boom()))).overview(days: 3)
+        XCTAssertFalse(overview.isSimulated)
+        XCTAssertTrue(overview.activity.allSatisfy(\.isEmpty))
+    }
+
+    func testOverviewIsSimulatedSampleWhenTheGateIsClosedOrHealthIsUnavailable() async {
+        let gate = HealthDataGate()
+        gate.allowsRealData = false
+        let fixedNow = now
+        let closed = HealthKitService(source: FakeSource(activityResult: .success(realActivity())), aggregator: aggregator,
+                                      gate: gate, readLog: HealthReadLog(), now: { fixedNow })
+        let fromClosed = await closed.overview(days: 7)
+        XCTAssertTrue(fromClosed.isSimulated)
+        XCTAssertEqual(fromClosed.activity.count, 7)
+        XCTAssertTrue(fromClosed.recovery.allSatisfy(\.isSimulated))
+        XCTAssertFalse(fromClosed.recovery.isEmpty)
+
+        let unavailable = await service(FakeSource(isAvailable: false)).overview(days: 7)
+        XCTAssertTrue(unavailable.isSimulated)
+        XCTAssertFalse(unavailable.activity.isEmpty)
+    }
+
+    func testOverviewWithFallbackOffAndNothingToReadIsEmpty() async {
+        let overview = await service(FakeSource(isAvailable: false), fallback: false).overview(days: 7)
+        XCTAssertTrue(overview.activity.isEmpty)
+        XCTAssertTrue(overview.recovery.isEmpty)
+        XCTAssertFalse(overview.isSimulated)
+        let none = await service(FakeSource()).overview(days: 0)
+        XCTAssertEqual(none, HealthOverview())
     }
 
     func testRequestAccessForwardsResultAndHandlesUnavailable() async {

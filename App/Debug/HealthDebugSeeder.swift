@@ -3,8 +3,9 @@ import Foundation
 import HealthKit
 
 /// Debug builds only. The simulator's Health is empty, so this writes a fortnight of believable sleep, resting heart
-/// rate and HRV into it. That lets the whole real read path (permission, queries, aggregation, strip) be checked
-/// without a phone and a watch.
+/// rate and HRV, and a week of steps, active energy, distance and flights into it (exercise minutes cannot be written). That lets the
+/// whole real read path (permission, queries, aggregation, card, "Dane zdrowotne" panel) be checked without a phone
+/// and a watch.
 ///
 ///     xcrun simctl launch <device> <bundle id> -seed-health          write the data (asks for Health permission once)
 ///     xcrun simctl launch <device> <bundle id> -seed-health-clear    remove what this wrote
@@ -26,13 +27,22 @@ enum HealthDebugSeeder {
         }
     }
 
+    /// What the seeder writes and removes. Exercise minutes are left out on purpose: HealthKit does not let an app
+    /// write them (only the watch does), so asking for share access to them throws.
     private static var types: Set<HKSampleType> {
-        [HKCategoryType(.sleepAnalysis), HKQuantityType(.restingHeartRate), HKQuantityType(.heartRateVariabilitySDNN)]
+        [HKCategoryType(.sleepAnalysis), HKQuantityType(.restingHeartRate), HKQuantityType(.heartRateVariabilitySDNN),
+         HKQuantityType(.stepCount), HKQuantityType(.activeEnergyBurned), HKQuantityType(.distanceWalkingRunning),
+         HKQuantityType(.flightsClimbed)]
+    }
+
+    /// What the app itself reads, so the permission sheet covers every type the panel shows.
+    private static var readTypes: Set<HKObjectType> {
+        Set(types.map { $0 as HKObjectType }).union([HKQuantityType(.appleExerciseTime)])
     }
 
     private static func clear() async {
         let store = HKHealthStore()
-        guard (try? await store.requestAuthorization(toShare: types, read: types)) != nil else { return }
+        guard (try? await store.requestAuthorization(toShare: types, read: readTypes)) != nil else { return }
         await deleteSeeded(in: store)
     }
 
@@ -43,7 +53,7 @@ enum HealthDebugSeeder {
 
     private static func seed() async {
         let store = HKHealthStore()
-        guard (try? await store.requestAuthorization(toShare: types, read: types)) != nil else { return }
+        guard (try? await store.requestAuthorization(toShare: types, read: readTypes)) != nil else { return }
         await deleteSeeded(in: store)
 
         let calendar = Calendar.current
@@ -84,6 +94,29 @@ enum HealthDebugSeeder {
                 samples.append(HKQuantitySample(type: HKQuantityType(.heartRateVariabilitySDNN),
                                                 quantity: HKQuantity(unit: milliseconds, doubleValue: Double(hrvMeans[offset]) + delta),
                                                 start: moment, end: moment, metadata: metadata))
+            }
+        }
+
+        // Activity: three walks a day (morning, noon, evening) that add up to the day's totals.
+        let dailySteps = [6_840, 9_120, 11_350, 7_420, 8_030, 10_210, 5_640, 8_760]
+        let dailyEnergy = [310.0, 420, 520, 340, 380, 470, 260, 400]
+        let dailyMeters = [4_900.0, 6_600, 8_200, 5_300, 5_800, 7_400, 4_000, 6_300]
+        let dailyFlights = [8.0, 12, 15, 9, 10, 14, 6, 11]
+        let shares = [(7, 0.30), (12, 0.30), (18, 0.40)]
+        for offset in 0..<dailySteps.count {
+            let day = calendar.date(byAdding: .day, value: -offset, to: today) ?? today
+            for (hour, share) in shares {
+                let start = at(day, hour), end = at(day, hour, 40)
+                guard end > start else { continue }
+                func add(_ identifier: HKQuantityTypeIdentifier, _ unit: HKUnit, _ total: Double) {
+                    samples.append(HKQuantitySample(type: HKQuantityType(identifier),
+                                                    quantity: HKQuantity(unit: unit, doubleValue: total * share),
+                                                    start: start, end: end, metadata: metadata))
+                }
+                add(.stepCount, .count(), Double(dailySteps[offset]))
+                add(.activeEnergyBurned, .kilocalorie(), dailyEnergy[offset])
+                add(.distanceWalkingRunning, .meter(), dailyMeters[offset])
+                add(.flightsClimbed, .count(), dailyFlights[offset])
             }
         }
         try? await store.save(samples)

@@ -217,6 +217,9 @@ struct AppleHealthStepView: View {
                 Divider().overlay(FormaColor.line)
                 row(symbol: "waveform.path.ecg", fill: FormaColor.volt, icon: FormaColor.voltText,
                     title: "Zmienność rytmu serca (HRV)", text: "Porównujemy z Twoją średnią z ostatnich dni.")
+                Divider().overlay(FormaColor.line)
+                row(symbol: "figure.walk", fill: FormaColor.moderate, icon: FormaColor.moderateText,
+                    title: "Aktywność", text: "Kroki, kalorie i dystans pokażemy w panelu Dane zdrowotne.")
             }
             .padding(.horizontal, 16)
             .glassCard()

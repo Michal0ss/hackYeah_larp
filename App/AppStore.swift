@@ -19,7 +19,7 @@ final class AppStore {
     /// Bumped when newer content arrives from the backend, so screens that read `catalog` refresh.
     private(set) var contentRevision = 0
     var catalog: [ExerciseItem] { _ = contentRevision; return services.catalog.exercises }
-    /// The newest day with numbers from Apple Health for the "Regeneracja" strip. Sample data (flagged as simulated)
+    /// The newest day with numbers from Apple Health for the "Dane zdrowotne" card. Sample data (flagged as simulated)
     /// while Health has nothing or the user chose sample data. nil until the first read finished.
     private(set) var health: HealthDaySummary?
     private(set) var healthLoaded = false
@@ -280,7 +280,16 @@ final class AppStore {
 
     // MARK: Recommendation and results
 
-    /// Reads Apple Health (sleep, resting heart rate, HRV) for the "Regeneracja" strip and recomputes the
+    /// The data for the "Dane zdrowotne" panel. Asks for the activity types the first time (an existing install was
+    /// only asked for sleep, resting heart rate and HRV); when everything was answered before, no sheet shows.
+    @MainActor
+    func loadHealthOverview() async -> HealthOverview {
+        syncHealthGate()
+        if healthAccess == .granted { _ = await services.healthKit.requestAccess() }
+        return await services.healthKit.overview(days: 7)
+    }
+
+    /// Reads Apple Health (sleep, resting heart rate, HRV) for the "Dane zdrowotne" card and recomputes the
     /// recommendation, which reads the same data. Call at launch and whenever the app comes back to the foreground.
     @MainActor
     func refreshHealth() async {
