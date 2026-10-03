@@ -136,11 +136,19 @@ final class VoiceChatController {
     }
 
     private func handleViewModelChange() {
-        guard readRepliesAloud else { return }
         if viewModel.isResponding {
+            guard readRepliesAloud else { return }
             for sentence in sentenceStream.newSentences(in: viewModel.streamingText) { speak(sentence) }
-        } else if let remainder = sentenceStream.remainder(in: viewModel.streamingText) {
-            speak(remainder)
+        } else {
+            // The reply is finished and the view model has already cleared `streamingText`, so the last sentence (it
+            // ends the text with nothing after it, which is why `newSentences` held it back) comes from the finished
+            // message. Without this the last sentence of every answer would stay unspoken.
+            if readRepliesAloud, let last = viewModel.messages.last, last.role == .coach,
+               let rest = sentenceStream.remainder(in: last.text) {
+                speak(rest)
+            }
+            // The next reply starts from its first sentence, whether the question was spoken or typed.
+            sentenceStream = SentenceStream()
         }
     }
 
