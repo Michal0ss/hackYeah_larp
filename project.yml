@@ -42,6 +42,8 @@ targets:
         product: Coaching
       - package: Core
         product: Content
+      - package: Core
+        product: LiveSet
     info:
       path: App/Info.plist
       properties:

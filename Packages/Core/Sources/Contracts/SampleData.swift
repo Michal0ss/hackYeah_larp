@@ -66,7 +66,7 @@ public enum SampleData {
     public static let catalog: [ExerciseItem] = [
         ExerciseItem(id: "squat", name: "Przysiad", muscleGroup: "Nogi", equipment: .dumbbells, level: .intermediate,
                      summary: "Podstawowy wzorzec ruchu dla nóg i pośladków.",
-                     substituteIds: ["goblet_squat", "box_squat"], supportsAnalysis: true),
+                     substituteIds: ["goblet_squat", "box_squat"], supportsAnalysis: true, defaultTempo: .controlled),
         ExerciseItem(id: "goblet_squat", name: "Przysiad kielichowy", muscleGroup: "Nogi", equipment: .dumbbells, level: .beginner,
                      summary: "Przysiad z hantlem przy klatce. Pomaga utrzymać wyprostowany tułów.",
                      substituteIds: ["box_squat"]),
@@ -94,7 +94,8 @@ public enum SampleData {
         source: .template,
         sessions: [
             PlannedSession(weekday: 1, title: "Nogi", exercises: [
-                PlannedExercise(exerciseId: "squat", sets: 4, repsMin: 6, repsMax: 8, restSeconds: 120),
+                PlannedExercise(exerciseId: "squat", sets: 4, repsMin: 6, repsMax: 8, restSeconds: 120,
+                                tempo: TempoSpec(eccentric: 3, bottomPause: 1, concentric: 2)),
                 PlannedExercise(exerciseId: "romanian_deadlift", sets: 3, repsMin: 8, repsMax: 10, restSeconds: 90),
                 PlannedExercise(exerciseId: "lunge", sets: 3, repsMin: 10, repsMax: 12, restSeconds: 60),
                 PlannedExercise(exerciseId: "plank", sets: 3, repsMin: 30, repsMax: 45, restSeconds: 45),

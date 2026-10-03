@@ -3,7 +3,8 @@
 Aplikacja na iPhone'a: trener, plan treningowy i doradca w jednym. Ocenia technikę ćwiczenia z filmu (na telefonie), łączy ją z regeneracją i samopoczuciem w rekomendację dnia, ma plan od AI i czat z trenerem AI.
 
 - Opis produktu i zasady: [PROJECT.md](PROJECT.md)
-- Kto co robi: [WORKINGPLAN.md](WORKINGPLAN.md)
+- Kto co robi, gałęzie i zadania: [WORKINGPLAN.md](WORKINGPLAN.md)
+- Reguły pracy w repo (dla ludzi i dla Claude'a): [CLAUDE.md](CLAUDE.md)
 
 ## Szybki start
 
@@ -32,6 +33,7 @@ Packages/Core/        cała logika w modułach (jedna biblioteka = jeden właśc
   Analysis            Bartek: Vision, jakość nagrania, powtórzenia, wynik
   Health, Insights    Wiktor: HealthKit, check-in, silnik reguł, opieka
   Plan, Coaching, Content   Maciek: plan, czat z trenerem AI, katalog ćwiczeń
+  LiveSet             Michał: seria na żywo (fazy ruchu, tempo, głos, kamera, podsumowanie)
 Config/               ustawienia budowania (Local i Secrets są poza repo)
 project.yml           opis projektu dla XcodeGen
 ```

@@ -7,6 +7,9 @@ import Contracts
 /// Maciek (profile, plan), Bartek (technique results).
 @Observable
 final class AppStore {
+    /// Service implementations. Sample ones until the owners plug in the real ones (App/Services/AppServices.swift).
+    var services = AppServices()
+
     var profile: UserProfile = SampleData.profile
     var plan: TrainingPlan = SampleData.plan
     var catalog: [ExerciseItem] = SampleData.catalog

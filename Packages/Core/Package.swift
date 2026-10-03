@@ -15,23 +15,34 @@ let package = Package(
         .library(name: "Plan", targets: ["Plan"]),
         .library(name: "Coaching", targets: ["Coaching"]),
         .library(name: "Content", targets: ["Content"]),
+        .library(name: "LiveSet", targets: ["LiveSet"]),
     ],
     targets: [
         // Shared types between modules. Changes only with team agreement.
         .target(name: "Contracts"),
         .target(name: "DesignSystem", dependencies: ["Contracts"]),
-        // Bartek: pose extraction, quality gate, reps, scoring.
-        .target(name: "Analysis", dependencies: ["Contracts"]),
+        // Bartek: pose extraction from video files, quality gate, reps, scoring. May reuse LiveSet (PhaseTracker, SquatSignal).
+        .target(name: "Analysis", dependencies: ["Contracts", "LiveSet"], resources: [.process("Resources")]),
         // Wiktor: HealthKit, check-in storage, sample recovery data.
         .target(name: "Health", dependencies: ["Contracts"]),
         // Wiktor: rule engine, plan adjuster, care pathway.
         .target(name: "Insights", dependencies: ["Contracts"]),
         // Maciek: plan generation, validation, templates.
-        .target(name: "Plan", dependencies: ["Contracts", "Content"]),
+        .target(name: "Plan", dependencies: ["Contracts", "Content"], resources: [.process("Resources")]),
         // Maciek: API client, tools, chat.
         .target(name: "Coaching", dependencies: ["Contracts", "Plan", "Content"]),
         // Maciek: exercise catalog and texts.
-        .target(name: "Content", dependencies: ["Contracts"]),
+        .target(name: "Content", dependencies: ["Contracts"], resources: [.process("Resources")]),
+        // Michał: live set coaching (camera pose, tempo engine, voice cues, set summary).
+        .target(name: "LiveSet", dependencies: ["Contracts"]),
+        // Test targets exist for every module so nobody has to edit this file to add tests.
         .testTarget(name: "ContractsTests", dependencies: ["Contracts"]),
+        .testTarget(name: "LiveSetTests", dependencies: ["LiveSet", "Contracts"]),
+        .testTarget(name: "AnalysisTests", dependencies: ["Analysis", "Contracts"]),
+        .testTarget(name: "HealthTests", dependencies: ["Health", "Contracts"]),
+        .testTarget(name: "InsightsTests", dependencies: ["Insights", "Contracts"]),
+        .testTarget(name: "PlanTests", dependencies: ["Plan", "Content", "Contracts"]),
+        .testTarget(name: "CoachingTests", dependencies: ["Coaching", "Plan", "Content", "Contracts"]),
+        .testTarget(name: "ContentTests", dependencies: ["Content", "Contracts"]),
     ]
 )

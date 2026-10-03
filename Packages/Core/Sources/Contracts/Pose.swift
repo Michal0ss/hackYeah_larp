@@ -38,4 +38,9 @@ public struct PoseFrame: Codable, Equatable, Sendable {
         self.time = time
         self.joints = joints
     }
+
+    /// The joint if it was detected with at least `minConfidence`.
+    public func joint(_ name: JointName, minConfidence: Double = 0.3) -> Joint? {
+        joints.first { $0.name == name && $0.confidence >= minConfidence }
+    }
 }

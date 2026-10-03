@@ -8,6 +8,7 @@ struct TodayView: View {
     @Environment(AppStore.self) private var store
     @Environment(AppRouter.self) private var router
     @State private var showCheckIn = false
+    @State private var liveLaunch: LiveSetLaunch?
 
     var body: some View {
         ZStack {
@@ -18,7 +19,8 @@ struct TodayView: View {
                     RecommendationCard(recommendation: store.recommendation)
                     if let entry = store.todaySession {
                         SessionCard(session: entry.session, isToday: entry.isToday,
-                                    adapted: store.recommendation.decision != .train)
+                                    adapted: store.recommendation.decision != .train,
+                                    onStart: { startSet(in: entry.session) })
                     }
                     RecoveryStrip(today: store.today, checkIn: store.checkIn)
                     actions
@@ -32,6 +34,21 @@ struct TodayView: View {
         .sheet(isPresented: $showCheckIn) {
             CheckInView()
         }
+        .fullScreenCover(item: $liveLaunch) { launch in
+            LiveSetFlow(exercise: launch.exercise, spec: launch.spec, totalSets: launch.sets) {
+                liveLaunch = nil
+            }
+        }
+    }
+
+    /// Starts the live coach for the first exercise of the session that has a target tempo.
+    private func startSet(in session: PlannedSession) {
+        guard let planned = session.exercises.first(where: { $0.tempo != nil }),
+              let tempo = planned.tempo,
+              let exercise = store.exercise(id: planned.exerciseId) else { return }
+        // "3 serie zamiast 4" when the recommendation lightens the day.
+        let sets = max(1, planned.sets - (store.recommendation.decision == .train ? 0 : 1))
+        liveLaunch = LiveSetLaunch(exercise: exercise, spec: tempo, sets: sets)
     }
 
     private var header: some View {
@@ -126,11 +143,19 @@ private struct RecommendationCard: View {
     }
 }
 
+struct LiveSetLaunch: Identifiable {
+    let id = UUID()
+    let exercise: ExerciseItem
+    let spec: TempoSpec
+    let sets: Int
+}
+
 private struct SessionCard: View {
     @Environment(AppStore.self) private var store
     let session: PlannedSession
     let isToday: Bool
     let adapted: Bool
+    let onStart: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.m) {
@@ -164,6 +189,15 @@ private struct SessionCard: View {
                         Divider().overlay(FormaColor.line)
                     }
                 }
+            }
+
+            if session.exercises.contains(where: { $0.tempo != nil }) {
+                Button(action: onStart) {
+                    Label("Zacznij serię z trenerem", systemImage: "play.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.formaPrimary)
+                .padding(.top, FormaSpacing.xs)
             }
         }
         .padding(FormaSpacing.xl)

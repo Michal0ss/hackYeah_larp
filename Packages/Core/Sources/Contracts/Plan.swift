@@ -45,10 +45,12 @@ public struct ExerciseItem: Codable, Equatable, Sendable, Identifiable {
     public var substituteIds: [String]
     /// True when the app can analyse technique for this exercise (demo: only the squat).
     public var supportsAnalysis: Bool
+    /// Tempo used by the live coach and by the plan generator when nothing else is set.
+    public var defaultTempo: TempoSpec?
 
     public init(id: String, name: String, muscleGroup: String, equipment: Equipment, level: TrainingLevel,
                 summary: String, videoURL: URL? = nil, substituteIds: [String] = [],
-                supportsAnalysis: Bool = false) {
+                supportsAnalysis: Bool = false, defaultTempo: TempoSpec? = nil) {
         self.id = id
         self.name = name
         self.muscleGroup = muscleGroup
@@ -58,6 +60,7 @@ public struct ExerciseItem: Codable, Equatable, Sendable, Identifiable {
         self.videoURL = videoURL
         self.substituteIds = substituteIds
         self.supportsAnalysis = supportsAnalysis
+        self.defaultTempo = defaultTempo
     }
 }
 
@@ -68,13 +71,17 @@ public struct PlannedExercise: Codable, Equatable, Sendable, Identifiable {
     public var repsMin: Int
     public var repsMax: Int
     public var restSeconds: Int
+    /// Target tempo for the live coach. nil = no tempo coaching for this exercise.
+    public var tempo: TempoSpec?
 
-    public init(exerciseId: String, sets: Int, repsMin: Int, repsMax: Int, restSeconds: Int) {
+    public init(exerciseId: String, sets: Int, repsMin: Int, repsMax: Int, restSeconds: Int,
+                tempo: TempoSpec? = nil) {
         self.exerciseId = exerciseId
         self.sets = sets
         self.repsMin = repsMin
         self.repsMax = repsMax
         self.restSeconds = restSeconds
+        self.tempo = tempo
     }
 }
 

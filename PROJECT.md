@@ -2,7 +2,7 @@
 
 > Wersja robocza, 2026-10-03. Dokument dla całego zespołu **i dla agentów AI pracujących przy projekcie**. Opisuje, co budujemy, dlaczego, jak ma to działać i jak się organizujemy. Przeczytaj go w całości, zanim zaczniesz pracować.
 >
-> **Kodu nie piszemy przed 23:00 3 października** (regulamin, pkt 5: zespół zaczyna rozwiązywać zadanie nie wcześniej niż o 23:00 3.10). Dotyczy to też agentów AI. Kwestię wcześniejszego przygotowania potwierdzamy z organizatorami na Discordzie HackYeah.
+> **Decyzja zespołu (3.10): pracujemy od razu, bez czekania na 23:00.** Regulamin (pkt 5) mówi o rozpoczęciu rozwiązywania zadania nie wcześniej niż o 23:00 3.10, więc to ryzyko bierzemy świadomie. Michał potwierdza sprawę z organizatorami na Discordzie HackYeah.
 >
 > Pozycje oznaczone **[do ustalenia]** czekają na decyzję zespołu.
 
@@ -75,7 +75,8 @@ Aplikacja na iPhone'a, która jest **twoim trenerem, planem treningowym i doradc
 3. **Zbiera dane o regeneracji** z Apple Health (sen, tętno spoczynkowe, zmienność rytmu serca) i krótki check-in samopoczucia.
 4. **Łączy to w jedną rekomendację dnia**: trenuj według planu, zmodyfikuj dzisiejszy trening albo odpuść, z krótkim uzasadnieniem (które czynniki na to wpłynęły). Rekomendacja zmienia dzisiejszą sesję w planie.
 5. **Jest doradcą (trener AI w czacie):** można zapytać o plan, ćwiczenie, zamiennik albo o to, czy ćwiczyć dziś. Trener zna twój plan, ostatni wynik techniki, regenerację i samopoczucie.
-6. **Pokazuje drogę do opieki:** gdy ten sam problem techniczny albo sygnał powtarza się w kilku analizach, aplikacja podpowiada, że warto rozważyć konsultację ze specjalistą, i pomaga znaleźć fizjoterapeutę w pobliżu.
+6. **Prowadzi serię na żywo (trener tempa):** kamera śledzi ruch, a trener w słuchawkach liczy tempo ćwiczenia zsynchronizowane z fazami ruchu („w dół: jeden, dwa, trzy... trzymaj... w górę: jeden, dwa"). Między seriami pokazuje komentarz o technice, jakości nagrania i szybkości. Obraz z kamery jest analizowany i od razu odrzucany, nic nie jest nagrywane.
+7. **Pokazuje drogę do opieki:** gdy ten sam problem techniczny albo sygnał powtarza się w kilku analizach, aplikacja podpowiada, że warto rozważyć konsultację ze specjalistą, i pomaga znaleźć fizjoterapeutę w pobliżu.
 
 Hasło robocze: **„Twój trener, plan i doradca. Twoje dane mówią, co masz dziś zrobić.”** **[do ustalenia]**
 
@@ -117,14 +118,15 @@ Ton: spokojny, konkretny, wspierający. Bez straszenia i bez moralizowania.
 ### 4.1 W zakresie (musi działać na prawdziwym iPhonie)
 
 1. **Start (onboarding):** krótki profil: cel, poziom, liczba dni w tygodniu, czas sesji, sprzęt, opcjonalnie „czego unikać” (np. ograniczenie kolana).
-2. **Plan treningowy:** plan na tydzień (3–4 sesje) wygenerowany przez AI z katalogu ćwiczeń, zapisany w aplikacji. Widok planu i widok dzisiejszej sesji (ćwiczenia, serie, powtórzenia, przerwy), oznaczanie wykonania.
+2. **Plan treningowy:** plan na tydzień (3–4 sesje) wygenerowany przez AI z katalogu ćwiczeń, zapisany w aplikacji. Widok planu i widok dzisiejszej sesji (ćwiczenia, serie, powtórzenia, przerwy, **tempo**), oznaczanie wykonania.
 3. **Ekran „Dziś”:** dzisiejsza sesja z planu, sen, tętno spoczynkowe, zmienność rytmu serca, samopoczucie i jedna rekomendacja dnia.
 4. **Check-in samopoczucia** (ok. 15 sekund): nastrój, stres, energia w skali 1–5.
-5. **Analiza przysiadu:** instrukcja ustawienia telefonu (ujęcie z boku) → nagranie albo film z galerii → **ocena jakości nagrania** → wynik 0–100, 2–3 uwagi, film wzorcowy (link) i jeden zamiennik ćwiczenia.
-6. **Rekomendacja dnia** łącząca technikę, regenerację i samopoczucie, z uzasadnieniem. Gdy decyzja to „Zmodyfikuj”, dzisiejsza sesja w planie zmienia się (lżejsze serie, zamiennik).
-7. **Trener AI (czat):** pytania o plan, ćwiczenia, zamienniki i to, czy trenować dziś. Odpowiedzi opierają się na profilu, planie, regeneracji i ostatniej analizie.
-8. **Opieka:** gdy ten sam problem się powtarza, podpowiedź rozważenia konsultacji i wyszukiwanie fizjoterapeutów w okolicy.
-9. **Postępy:** wykres wyników techniki i regeneracji w czasie, historia wykonanych sesji.
+5. **Seria na żywo z trenerem tempa:** telefon stoi bokiem, kamera śledzi ruch, w słuchawkach słychać liczenie faz powtórzenia zgodnie z zaplanowanym tempem (np. 3-1-2-0) oraz krótkie korekty („wolniej w dół”, „głębiej”). Po serii podsumowanie: technika, jakość nagrania i szybkość (sekcje 5.9, 5.10, 6.7).
+6. **Analiza przysiadu z filmu:** instrukcja ustawienia telefonu (ujęcie z boku) → nagranie albo film z galerii → **ocena jakości nagrania** → wynik 0–100, 2–3 uwagi, film wzorcowy (link) i jeden zamiennik ćwiczenia.
+7. **Rekomendacja dnia** łącząca technikę, regenerację i samopoczucie, z uzasadnieniem. Gdy decyzja to „Zmodyfikuj”, dzisiejsza sesja w planie zmienia się (lżejsze serie, zamiennik).
+8. **Trener AI (czat):** pytania o plan, ćwiczenia, zamienniki i to, czy trenować dziś. Odpowiedzi opierają się na profilu, planie, regeneracji i ostatniej analizie.
+9. **Opieka:** gdy ten sam problem się powtarza, podpowiedź rozważenia konsultacji i wyszukiwanie fizjoterapeutów w okolicy.
+10. **Postępy:** wykres wyników techniki i regeneracji w czasie, historia wykonanych sesji.
 
 ### 4.2 Priorytety, gdy zabraknie czasu
 
@@ -133,13 +135,14 @@ Zakres jest duży jak na jeden dzień, więc ustalamy kolejność. Wyższy pozio
 | Priorytet | Co | Uwaga |
 |---|---|---|
 | **1. Rdzeń** | Analiza przysiadu z oceną jakości nagrania, regeneracja i check-in, rekomendacja dnia, ekran „Dziś” | Bez tego nie ma produktu |
-| **2. Plan** | Onboarding, plan na tydzień, widok dzisiejszej sesji | Gdy generowanie AI zawiedzie, działa plan z gotowego szablonu |
-| **3. Trener AI** | Czat z kontekstem użytkownika | Działa przez internet. Przy błędzie połączenia aplikacja pokazuje to wprost i pozwala ponowić |
-| **4. Dopełnienie** | Opieka (MapKit), wykres postępów, przyciski „Zastosuj w planie” w czacie | Jeśli zostanie czas |
+| **2. Seria na żywo** | Liczenie tempa w słuchawkach, fazy ruchu z kamery, podsumowanie serii | Sama seria nie wymaga internetu ani nagrywania. Na symulatorze testujemy z symulowanym ruchem, kamerę tylko na prawdziwym iPhonie |
+| **3. Plan** | Onboarding, plan na tydzień, widok dzisiejszej sesji | Gdy generowanie AI zawiedzie, działa plan z gotowego szablonu |
+| **4. Trener AI** | Czat z kontekstem użytkownika | Działa przez internet. Przy błędzie połączenia aplikacja pokazuje to wprost i pozwala ponowić |
+| **5. Dopełnienie** | Opieka (MapKit), wykres postępów, przyciski „Zastosuj w planie” w czacie | Jeśli zostanie czas |
 
 ### 4.3 Poza zakresem (na slajd „Co dalej”)
 
-Analiza wielu ćwiczeń (w demo tylko przysiad), analiza na żywo w trakcie serii, wieloletnia progresja i kalendarz, powiadomienia, tryb trenera dla trenerów, Garmin, konta i płatności, Android.
+Analiza wielu ćwiczeń (w demo tylko przysiad), analiza na żywo innych ćwiczeń niż przysiad, wieloletnia progresja i kalendarz, powiadomienia, tryb trenera dla trenerów, Garmin, konta i płatności, Android.
 
 ## 5. Opis ekranów i przepływów
 
@@ -199,7 +202,20 @@ Nawigacja: pasek zakładek **Dziś · Plan · Analiza · Trener · Postępy**. O
 - **Zasady odpowiedzi:** patrz 7.6. Przy wzmiance o bólu, urazie lub niepokojących objawach trener nie zgaduje przyczyny, tylko odsyła do specjalisty i pokazuje kartę „Warto rozważyć konsultację”.
 - **Stany:** błąd połączenia lub modelu (krótki komunikat i ponowienie), trwa odpowiedź (wskaźnik pisania), pusta rozmowa (gotowe pytania).
 
-### 5.9 Zasady designu
+### 5.9 Seria na żywo
+
+- **Cel:** poprowadzić serię głosem, tak żeby nie trzeba było patrzeć w ekran.
+- **Etapy:** ustawienie telefonu (lista warunków kadru z podpowiedzią, np. „Odejdź krok do tyłu, nie widzę stóp”) → kalibracja pozycji wyjściowej („Stój prosto i nieruchomo”) → seria → podsumowanie.
+- **W trakcie serii:** podgląd z kamerą i szkieletem, duży licznik powtórzeń, pierścień bieżącej fazy z czasem („W dół 1,8 s”), ostatnie słowo trenera, przycisk „Zakończ”. Seria kończy się też sama po kilku sekundach bez ruchu.
+- **Głos:** liczenie fazy raz na sekundę, w pierwszym powtórzeniu z nazwą fazy; krótkie korekty po powtórzeniu (najwyżej jedna, z przerwą kilku powtórzeń); przy złym kadrze podpowiedź głosowa o ustawieniu telefonu.
+- **Stany:** brak zgody na kamerę, brak słuchawek (dźwięk z głośnika, z ostrzeżeniem), zły kadr, brak wykrytych powtórzeń.
+
+### 5.10 Podsumowanie serii
+
+- **Cel:** między seriami pokazać, co poprawić, w trzech kartach: **Technika** (wynik i uwagi), **Jakość nagrania** (ocena kadru i podpowiedź) oraz **Szybkość i tempo** (wynik, średnie czasy faz kontra cel, uwagi).
+- **Dodatkowo:** lista powtórzeń z czasami faz, przyciski „Następna seria” i „Zakończ trening”.
+
+### 5.11 Zasady designu
 
 - Jedna główna akcja na ekran.
 - Kolor stanu (zielony, żółty, czerwony) nigdy nie jest jedynym nośnikiem informacji: zawsze też tekst lub ikona.
@@ -264,6 +280,25 @@ Każda uwaga to struktura: identyfikator problemu (np. `torso_lean_high`), nasil
 ### 6.6 Zamiennik ćwiczenia
 
 Przy niskim wyniku w danej składowej aplikacja proponuje zamiennik z krótkiej, ręcznie przygotowanej tabeli (np. głębokość lub tułów → przysiad kielichowy, przysiad do pudła). Do każdego zamiennika: krótki opis i link do filmu wzorcowego. **Źródło filmów wzorcowych [do ustalenia]**: najlepiej własne nagranie albo materiał z jasną licencją, a nie film z internetu użyty bez zgody.
+
+### 6.7 Seria na żywo: tempo i głos
+
+**Tempo** zapisujemy jako cztery liczby w sekundach: faza ekscentryczna (opuszczanie) – pauza na dole – faza koncentryczna (wstawanie) – pauza na górze, np. **3-1-2-0**. Tempo należy do pozycji w planie (`PlannedExercise.tempo`).
+
+**Jak działa:**
+1. Kamera (tylna, 720p) podaje klatki do Apple Vision. Każda klatka jest zamieniana na punkty ciała i **od razu odrzucana**, nic nie jest zapisywane.
+2. **Kadr:** te same punkty sprawdzają na żywo, czy cała sylwetka jest widoczna, czy ma odpowiednią wielkość i czy telefon stoi bokiem. Gdy nie, trener podpowiada głosem. W trakcie serii nie sprawdzamy wielkości sylwetki, bo przy przysiadzie głowa naturalnie schodzi niżej.
+3. **Kalibracja:** około sekundy bez ruchu wyznacza pozycję wyjściową i długość tułowia.
+4. **Sygnał ruchu:** głębokość bioder poniżej pozycji wyjściowej, w długościach tułowia. Po wygładzeniu rozpoznajemy fazy: w dół, pauza na dole, w górę.
+5. **Głos:** po wykryciu fazy trener liczy sekundy tej fazy („jeden, dwa, trzy”). Gdy faza skończy się wcześniej niż w planie, liczenie się urywa i zaczyna się następna.
+6. **Korekty** po powtórzeniu: „wolniej w dół”, „spokojniej w górę”, „przytrzymaj na dole”, „głębiej” oraz rzadka pochwała. Najwyżej jedna na powtórzenie, z przerwą kilku powtórzeń.
+7. **Podsumowanie serii:** czasy faz kontra cel, wynik tempa 0–100, ocena techniki z klatki w najniższym punkcie każdego powtórzenia (głębokość, pochylenie tułowia) i ocena jakości kadru.
+
+**Dokładność (do uzczciwienia w prezentacji):** fazy są wykrywane z opóźnieniem rzędu 0,2 s, a czasy faz mierzymy z błędem około ±0,3–0,5 s. Dlatego tolerancja tempa to co najmniej ±0,5 s lub 20%. Progi (prędkość, głębokość, tolerancje) to wartości inżynierskie do strojenia na prawdziwych nagraniach. Przetestowaliśmy je na symulowanym ruchu; na kamerze trzeba je jeszcze sprawdzić.
+
+**Ograniczenia na demo:** tylko przysiad z boku, jedna osoba w kadrze, telefon nieruchomo. Wykrywanie fazy dla innych ćwiczeń wymaga własnego sygnału ruchu.
+
+**Prywatność:** obraz jest przetwarzany na telefonie i nie jest zapisywany ani wysyłany. Sama seria nie wymaga internetu. Do czatu i planu AI nie trafiają klatki, tylko ewentualnie wyniki serii.
 
 ## 7. Jak powstaje rekomendacja, plan i odpowiedzi trenera
 
@@ -344,7 +379,7 @@ Model (Claude Haiku 4.5) dostaje **gotową strukturę** z silnika reguł (decyzj
 | `get_checkins` | nastrój, stres, energia z ostatnich N dni |
 | `get_technique_results` | ostatnie analizy: wynik, uwagi, trend |
 | `get_exercise_info` | opis ćwiczenia, zamienniki, link do filmu wzorcowego z katalogu |
-| `propose_plan_change` (priorytet 4) | **propozycja** zmiany sesji (np. zamiennik). Zmiana wchodzi do planu dopiero po kliknięciu przez użytkownika „Zastosuj” |
+| `propose_plan_change` (priorytet 5) | **propozycja** zmiany sesji (np. zamiennik). Zmiana wchodzi do planu dopiero po kliknięciu przez użytkownika „Zastosuj” |
 
 Narzędzia tylko **czytają** dane. Model nie ma narzędzia, które samo zmieniłoby plan lub dane.
 
@@ -442,6 +477,9 @@ CoachContextBuilder (profil + plan + regeneracja + analiza + decyzja) ─→ Coa
 | `ChatMessage` | rola (użytkownik lub trener), tekst, czas |
 | `CoachContext` | stały kontekst rozmowy: krótki profil, dzisiejsza `DailyRecommendation` z czynnikami |
 | `CoachTool` | nazwa, opis i schemat parametrów narzędzia (np. `get_recovery_history(days)`), funkcja wykonywana lokalnie, wynik jako podsumowanie. Lista narzędzi w 7.6 |
+| `TempoSpec` | czasy faz w sekundach: ekscentryczna, pauza na dole, koncentryczna, pauza na górze (opis „3-1-2-0”) |
+| `RepTempo` | zmierzony czas faz jednego powtórzenia, największa głębokość, czy pełny zakres |
+| `SetSummary` | podsumowanie serii: powtórzenia, wynik i uwagi tempa, wynik i uwagi techniki, ocena kadru |
 | `DataConsent` | zgoda na przekazanie danych zdrowotnych modelowi (tak/nie, data), możliwość wycofania |
 
 Reguła: moduł, który zmienia kontrakt, informuje zespół i aktualizuje ten opis.
@@ -457,7 +495,7 @@ Bez rozpisywania na godziny. Kolejność jest ważniejsza niż zegar: przechodzi
 - Sprawdzenie na **pustej aplikacji testowej poza projektem**, że instalacja na iPhonie i uprawnienia HealthKit działają.
 - Potwierdzenie z organizatorami, że wcześniejsze planowanie jest w porządku.
 
-**Gotowe, gdy:** każdy może zbudować pustą aplikację na telefon. **Kodu projektu nie piszemy.**
+**Gotowe, gdy:** każdy może zbudować pustą aplikację na telefon. Od tej pory pracujemy na gałęziach (patrz WORKINGPLAN.md).
 
 ### Krok 1: Start i fundament
 
@@ -517,7 +555,7 @@ Zespół do 6 osób, role można łączyć.
 
 | Rola | Zadania | Własność w repo |
 |---|---|---|
-| **A. Szkielet i UI** | projekt Xcode, nawigacja, system wizualny, ekran „Dziś” | aplikacja, `DesignSystem` |
+| **A. Szkielet i UI** | projekt Xcode, nawigacja, system wizualny, ekran „Dziś”, **seria na żywo** (tempo, głos, podsumowanie serii) | aplikacja, `DesignSystem`, `LiveSet` |
 | **B. Analiza ruchu** | Vision, ocena jakości nagrania, powtórzenia, kąty, wynik | `Analysis` |
 | **C. Dane i silnik wniosków** | HealthKit, dane przykładowe, check-in, silnik reguł, ścieżka do opieki | `Health`, `Insights` |
 | **D. Plan i trener AI** | katalog ćwiczeń, generowanie i walidacja planu, szablony planów, czat z kontekstem, prompty, szablony tekstów, zastrzeżenia | `Plan`, `Coaching`, `Content` |
@@ -529,7 +567,7 @@ Rola D jest najbardziej obciążona (plan i czat), więc przy mniejszym zespole 
 ### 11.2 Zasady dla wszystkich (ludzie i agenci AI)
 
 1. **Przeczytaj ten dokument w całości**, zanim zaczniesz pracę.
-2. **Nie pisz kodu przed 23:00 3.10.** Agent uruchomiony wcześniej ma wyłącznie rozmawiać i planować.
+2. **Pracujemy od razu** (decyzja zespołu, patrz początek dokumentu). Każde zadanie na własnej gałęzi `feat/<imię>-<temat>`, małe PR-y do `main`.
 3. **Trzymaj się zakresu z sekcji 4.** Pomysły spoza zakresu zapisz w sekcji 14, nie implementuj.
 4. **Pracuj w swoim module.** Zmiana kontraktu (sekcja 9) lub cudzego modułu wymaga uzgodnienia z zespołem.
 5. **Nie commituj kluczy ani danych osobowych.** Klucz API tylko w `Secrets.xcconfig` poza repo.
@@ -584,7 +622,9 @@ Język slajdów i opisu: polski lub angielski **[do ustalenia]**.
 | Konflikty w repo | Małe commity, podział modułów, pakiet Swift |
 | Brak czasu | Zamrożenie funkcji, gdy przepływ działa, i zgłoszenie z zapasem przed terminem |
 | Stwierdzenia medyczne w treści | Każdy tekst sprawdzany pod kątem „sygnał, nie diagnoza” (sekcja 3.6) |
-| Spór o czas rozpoczęcia pracy | Potwierdzić z organizatorami przed startem. Nie commitować kodu przed 23:00 |
+| Spór o czas rozpoczęcia pracy (regulamin: start nie wcześniej niż 23:00 3.10) | Michał potwierdza z organizatorami; ryzyko znane i zaakceptowane przez zespół. Jeśli organizatorzy się nie zgodzą, ustalamy z nimi, co jest dopuszczalne |
+| Seria na żywo: opóźnienie lub szum wykrywania faz, kamera działa tylko na prawdziwym iPhonie | Tolerancja tempa ±0,5 s lub 20%, strojenie progów na prawdziwych nagraniach, test z symulowanym ruchem na symulatorze, nagranie demo jako zapas |
+| Głos nie nadąża za ruchem albo dźwięk idzie z głośnika | Liczenie zsynchronizowane z fazami, a nie z zegarem; komunikat o braku słuchawek; w razie awarii podsumowanie po serii |
 | Film wzorcowy z internetu bez licencji | Własne nagranie albo materiał z jasną licencją |
 | Zakres jest duży jak na jeden dzień (plan, czat, analiza, dane) | Priorytety z sekcji 4.2, plan z szablonu jako zapas, czat jako element, który można ograniczyć |
 | Model wygeneruje niepoprawny plan albo wymyśli ćwiczenie | Katalog jako jedyne źródło `id`, walidacja kodem, plan z szablonu przy błędzie |
@@ -603,7 +643,7 @@ Język slajdów i opisu: polski lub angielski **[do ustalenia]**.
 - Dystrybucja do większej grupy testerów przez TestFlight (płatne konto Apple Developer, polityka prywatności).
 - Dokładniejsze punkty ciała (MediaPipe, 33 punkty z piętami i stopami) oraz progi ocen strojone z trenerem lub fizjoterapeutą na nagraniach testowych.
 - Dane z zegarków: Apple Health na start, później Garmin (bezpośrednie API Garmina jest od wiosny 2026 zamknięte dla nowych wniosków, więc dopiero po wznowieniu programu albo przez pośrednika).
-- Analiza na żywo w trakcie serii, tryb trenera (podopieczny wysyła wyniki, nie filmy), Android.
+- Seria na żywo dla kolejnych ćwiczeń (własny sygnał ruchu), tryb trenera (podopieczny wysyła wyniki, nie filmy), Android.
 - Konta, subskrypcje i serwer pośredniczący dla modelu językowego.
 
 ## 15. Otwarte decyzje
@@ -614,8 +654,10 @@ Język slajdów i opisu: polski lub angielski **[do ustalenia]**.
 - [ ] Kto z zespołu ma Xcode 26 i założy projekt.
 - [ ] Wersje iOS i modele iPhone'ów w zespole (czy cel iOS 17 wystarcza).
 - [ ] Czy zostajemy przy przysiadzie jako jedynym analizowanym ćwiczeniu.
+- [ ] Domyślne tempo dla każdego ćwiczenia w katalogu i czy plan z AI ma je ustawiać (Maciek).
+- [ ] Którą kamerą prowadzimy serię (domyślnie tylna) i czy dodajemy głos męski/żeński do wyboru.
 - [ ] Które ćwiczenia wchodzą do katalogu (ok. 12–15) i kto go przygotowuje.
-- [ ] Czy czat trenera ma tylko odpowiadać, czy też proponować zmiany w planie z przyciskiem „Zastosuj” (priorytet 4).
+- [ ] Czy czat trenera ma tylko odpowiadać, czy też proponować zmiany w planie z przyciskiem „Zastosuj” (priorytet 5).
 - [x] Wywołania modelu idą bezpośrednio z aplikacji (klucz w `Secrets.xcconfig`, limit wydatków na kluczu). Serwer pośredniczący i Supabase dopiero po hackathonie (sekcja 8.1).
 - [ ] Który model w czacie (Haiku 4.5 czy Sonnet 5) po próbie szybkości i jakości.
 - [ ] Czy w demo trener pracuje na danych przykładowych, na prawdziwych danych z telefonu, czy na obu (przełącznik).
