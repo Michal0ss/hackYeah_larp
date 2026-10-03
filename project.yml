@@ -57,8 +57,11 @@ targets:
         NSCameraUsageDescription: "Kamera służy do nagrywania ćwiczenia, które analizujemy na telefonie. Film nie opuszcza urządzenia."
         NSHealthShareUsageDescription: "Odczytujemy sen, tętno spoczynkowe i zmienność rytmu serca, żeby dopasować rekomendację dnia."
         NSLocationWhenInUseUsageDescription: "Lokalizacja pomaga znaleźć fizjoterapeutów w pobliżu."
-        AnthropicBaseURL: $(ANTHROPIC_BASE_URL)
-        AnthropicAPIKey: $(ANTHROPIC_API_KEY)
+        NSLocalNetworkUsageDescription: "Aplikacja łączy się z serwerem deweloperskim w sieci lokalnej."
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        FormaAPIURL: $(FORMA_API_URL)
+        FormaAPIToken: $(FORMA_API_TOKEN)
     entitlements:
       path: App/Forma.entitlements
       properties:

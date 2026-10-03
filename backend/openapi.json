@@ -1,0 +1,1340 @@
+{
+  "components": {
+    "schemas": {
+      "CareFlag": {
+        "properties": {
+          "reason": {
+            "maxLength": 300,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "CareFlag",
+        "type": "object"
+      },
+      "CatalogResponse": {
+        "properties": {
+          "exercises": {
+            "items": {
+              "$ref": "#/components/schemas/ExerciseItem"
+            },
+            "title": "Exercises",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "exercises"
+        ],
+        "title": "CatalogResponse",
+        "type": "object"
+      },
+      "ChatMessage": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "text": "#/components/schemas/TextBlock",
+                      "tool_result": "#/components/schemas/ToolResultBlock",
+                      "tool_use": "#/components/schemas/ToolUseBlock"
+                    },
+                    "propertyName": "type"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TextBlock"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ToolUseBlock"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ToolResultBlock"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content"
+          },
+          "role": {
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "ChatMessage",
+        "type": "object"
+      },
+      "CoachChatRequest": {
+        "properties": {
+          "consent": {
+            "$ref": "#/components/schemas/Consent"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoachContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "minItems": 1,
+            "title": "Messages",
+            "type": "array"
+          },
+          "stream": {
+            "default": true,
+            "title": "Stream",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "title": "CoachChatRequest",
+        "type": "object"
+      },
+      "CoachChatResponse": {
+        "properties": {
+          "stopReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stopreason"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "toolUses": {
+            "items": {
+              "$ref": "#/components/schemas/ToolUseOut"
+            },
+            "title": "Tooluses",
+            "type": "array"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CoachChatResponse",
+        "type": "object"
+      },
+      "CoachContext": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/UserProfile"
+          },
+          "todayRecommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DailyRecommendation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "profile"
+        ],
+        "title": "CoachContext",
+        "type": "object"
+      },
+      "ConfigResponse": {
+        "description": "Remote configuration. Each section is owned by one person (see content/README.md).",
+        "properties": {
+          "insights": {
+            "additionalProperties": true,
+            "title": "Insights",
+            "type": "object"
+          },
+          "scoring": {
+            "additionalProperties": true,
+            "title": "Scoring",
+            "type": "object"
+          },
+          "tempo": {
+            "additionalProperties": true,
+            "title": "Tempo",
+            "type": "object"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "scoring",
+          "insights",
+          "tempo"
+        ],
+        "title": "ConfigResponse",
+        "type": "object"
+      },
+      "Consent": {
+        "description": "The user's consent to pass health data (as summaries) to the model. Mirrors DataConsent in the app.",
+        "properties": {
+          "health": {
+            "default": false,
+            "title": "Health",
+            "type": "boolean"
+          }
+        },
+        "title": "Consent",
+        "type": "object"
+      },
+      "DailyRecommendation": {
+        "properties": {
+          "careFlag": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CareFlag"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "date": {
+            "format": "date-time",
+            "title": "Date",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "train",
+              "adapt",
+              "rest"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "factors": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationFactor"
+            },
+            "maxItems": 10,
+            "title": "Factors",
+            "type": "array"
+          },
+          "headline": {
+            "maxLength": 120,
+            "title": "Headline",
+            "type": "string"
+          },
+          "isSimulated": {
+            "default": false,
+            "title": "Issimulated",
+            "type": "boolean"
+          },
+          "suggestedAction": {
+            "maxLength": 300,
+            "title": "Suggestedaction",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "decision",
+          "headline",
+          "factors",
+          "suggestedAction"
+        ],
+        "title": "DailyRecommendation",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ErrorField"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "requestId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requestid"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorEnvelope": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorEnvelope",
+        "type": "object"
+      },
+      "ErrorField": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "message"
+        ],
+        "title": "ErrorField",
+        "type": "object"
+      },
+      "ExerciseItem": {
+        "properties": {
+          "defaultTempo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TempoSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "equipment": {
+            "enum": [
+              "none",
+              "dumbbells",
+              "gym"
+            ],
+            "title": "Equipment",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "beginner",
+              "intermediate"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "movementTags": {
+            "items": {
+              "enum": [
+                "jumps",
+                "deepLunges",
+                "overheadPress",
+                "barbellDeadlift",
+                "deepSquats",
+                "loadedPushups"
+              ],
+              "type": "string"
+            },
+            "title": "Movementtags",
+            "type": "array"
+          },
+          "muscleGroup": {
+            "title": "Musclegroup",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "pattern": {
+            "enum": [
+              "squat",
+              "hinge",
+              "lunge",
+              "push",
+              "pull",
+              "core",
+              "cardio"
+            ],
+            "title": "Pattern",
+            "type": "string"
+          },
+          "substituteIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Substituteids",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "supportsAnalysis": {
+            "default": false,
+            "title": "Supportsanalysis",
+            "type": "boolean"
+          },
+          "timed": {
+            "default": false,
+            "title": "Timed",
+            "type": "boolean"
+          },
+          "videoURL": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Videourl"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "muscleGroup",
+          "equipment",
+          "level",
+          "summary",
+          "pattern"
+        ],
+        "title": "ExerciseItem",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "aiMode": {
+            "enum": [
+              "mock",
+              "anthropic"
+            ],
+            "title": "Aimode",
+            "type": "string"
+          },
+          "contentVersion": {
+            "title": "Contentversion",
+            "type": "string"
+          },
+          "env": {
+            "title": "Env",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "env",
+          "aiMode",
+          "contentVersion"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "PlanGenerateRequest": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/UserProfile"
+          }
+        },
+        "required": [
+          "profile"
+        ],
+        "title": "PlanGenerateRequest",
+        "type": "object"
+      },
+      "PlanGenerateResponse": {
+        "properties": {
+          "plan": {
+            "$ref": "#/components/schemas/TrainingPlan"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plan"
+        ],
+        "title": "PlanGenerateResponse",
+        "type": "object"
+      },
+      "PlannedExercise": {
+        "properties": {
+          "exerciseId": {
+            "title": "Exerciseid",
+            "type": "string"
+          },
+          "repsMax": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Repsmax",
+            "type": "integer"
+          },
+          "repsMin": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Repsmin",
+            "type": "integer"
+          },
+          "restSeconds": {
+            "maximum": 600.0,
+            "minimum": 0.0,
+            "title": "Restseconds",
+            "type": "integer"
+          },
+          "sets": {
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Sets",
+            "type": "integer"
+          },
+          "tempo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TempoSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "exerciseId",
+          "sets",
+          "repsMin",
+          "repsMax",
+          "restSeconds"
+        ],
+        "title": "PlannedExercise",
+        "type": "object"
+      },
+      "PlannedSession": {
+        "properties": {
+          "adaptationNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adaptationnote"
+          },
+          "exercises": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedExercise"
+            },
+            "title": "Exercises",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "default": "planned",
+            "enum": [
+              "planned",
+              "done",
+              "adapted"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 60,
+            "title": "Title",
+            "type": "string"
+          },
+          "weekday": {
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Weekday",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "weekday",
+          "title",
+          "exercises"
+        ],
+        "title": "PlannedSession",
+        "type": "object"
+      },
+      "RecommendationFactor": {
+        "properties": {
+          "isNegative": {
+            "title": "Isnegative",
+            "type": "boolean"
+          },
+          "source": {
+            "enum": [
+              "sleep",
+              "hrv",
+              "restingHeartRate",
+              "checkIn",
+              "technique"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 200,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "text",
+          "isNegative"
+        ],
+        "title": "RecommendationFactor",
+        "type": "object"
+      },
+      "RecommendationTextRequest": {
+        "properties": {
+          "recommendation": {
+            "$ref": "#/components/schemas/DailyRecommendation"
+          }
+        },
+        "required": [
+          "recommendation"
+        ],
+        "title": "RecommendationTextRequest",
+        "type": "object"
+      },
+      "RecommendationTextResponse": {
+        "properties": {
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "ai",
+              "template"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "headline",
+          "explanation",
+          "source"
+        ],
+        "title": "RecommendationTextResponse",
+        "type": "object"
+      },
+      "TempoSpec": {
+        "description": "Seconds per phase: eccentric - pause at the bottom - concentric - pause at the top.",
+        "properties": {
+          "bottomPause": {
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Bottompause",
+            "type": "number"
+          },
+          "concentric": {
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Concentric",
+            "type": "number"
+          },
+          "eccentric": {
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Eccentric",
+            "type": "number"
+          },
+          "topPause": {
+            "default": 0,
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Toppause",
+            "type": "number"
+          }
+        },
+        "required": [
+          "eccentric",
+          "bottomPause",
+          "concentric"
+        ],
+        "title": "TempoSpec",
+        "type": "object"
+      },
+      "TextBlock": {
+        "properties": {
+          "text": {
+            "maxLength": 4000,
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "text",
+            "default": "text",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "TextBlock",
+        "type": "object"
+      },
+      "ToolResultBlock": {
+        "properties": {
+          "content": {
+            "maxLength": 20000,
+            "title": "Content",
+            "type": "string"
+          },
+          "isError": {
+            "default": false,
+            "title": "Iserror",
+            "type": "boolean"
+          },
+          "toolUseId": {
+            "maxLength": 100,
+            "title": "Tooluseid",
+            "type": "string"
+          },
+          "type": {
+            "const": "tool_result",
+            "default": "tool_result",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "toolUseId",
+          "content"
+        ],
+        "title": "ToolResultBlock",
+        "type": "object"
+      },
+      "ToolUseBlock": {
+        "properties": {
+          "id": {
+            "maxLength": 100,
+            "title": "Id",
+            "type": "string"
+          },
+          "input": {
+            "additionalProperties": true,
+            "title": "Input",
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 64,
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "const": "tool_use",
+            "default": "tool_use",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ToolUseBlock",
+        "type": "object"
+      },
+      "ToolUseOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "input": {
+            "additionalProperties": true,
+            "title": "Input",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "input"
+        ],
+        "title": "ToolUseOut",
+        "type": "object"
+      },
+      "TrainingPlan": {
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedSession"
+            },
+            "title": "Sessions",
+            "type": "array"
+          },
+          "source": {
+            "enum": [
+              "ai",
+              "template"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "source",
+          "sessions"
+        ],
+        "title": "TrainingPlan",
+        "type": "object"
+      },
+      "Usage": {
+        "properties": {
+          "inputTokens": {
+            "default": 0,
+            "title": "Inputtokens",
+            "type": "integer"
+          },
+          "outputTokens": {
+            "default": 0,
+            "title": "Outputtokens",
+            "type": "integer"
+          }
+        },
+        "title": "Usage",
+        "type": "object"
+      },
+      "UserProfile": {
+        "description": "What the app may send about the user. It never contains the health history (that stays on the phone).",
+        "properties": {
+          "avoid": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Avoid",
+            "type": "string"
+          },
+          "avoidTags": {
+            "items": {
+              "enum": [
+                "jumps",
+                "deepLunges",
+                "overheadPress",
+                "barbellDeadlift",
+                "deepSquats",
+                "loadedPushups"
+              ],
+              "type": "string"
+            },
+            "maxItems": 6,
+            "title": "Avoidtags",
+            "type": "array"
+          },
+          "daysPerWeek": {
+            "maximum": 5.0,
+            "minimum": 2.0,
+            "title": "Daysperweek",
+            "type": "integer"
+          },
+          "easyStart": {
+            "default": false,
+            "title": "Easystart",
+            "type": "boolean"
+          },
+          "equipment": {
+            "enum": [
+              "none",
+              "dumbbells",
+              "gym"
+            ],
+            "title": "Equipment",
+            "type": "string"
+          },
+          "gear": {
+            "items": {
+              "enum": [
+                "none",
+                "dumbbells",
+                "kettlebell",
+                "gym"
+              ],
+              "type": "string"
+            },
+            "maxItems": 4,
+            "title": "Gear",
+            "type": "array"
+          },
+          "goal": {
+            "enum": [
+              "strength",
+              "physique",
+              "fitness",
+              "returnToMovement"
+            ],
+            "title": "Goal",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "beginner",
+              "intermediate"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "sessionMinutes": {
+            "maximum": 120.0,
+            "minimum": 15.0,
+            "title": "Sessionminutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "goal",
+          "level",
+          "daysPerWeek",
+          "sessionMinutes",
+          "equipment"
+        ],
+        "title": "UserProfile",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "\nBackend of the Forma app. Stateless: no database, no stored videos, no stored health data.\n\n* `GET /health`: liveness (no auth)\n* `/v1/*`: needs `Authorization: Bearer <app token>` when `FORMA_APP_TOKENS` is set; send a stable random\n  `X-Device-Id` (UUID) so rate limits are per device\n* every error is `{\"error\": {\"code\", \"message\", \"requestId\"}}`\n",
+    "title": "Forma API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness and basic facts (no auth)",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/v1/catalog": {
+      "get": {
+        "operationId": "getCatalog",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "304": {
+            "description": "Not modified (If-None-Match matched)."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Missing or invalid app token."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid request."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Rate limit exceeded (see Retry-After)."
+          }
+        },
+        "summary": "Exercise catalog",
+        "tags": [
+          "content"
+        ]
+      }
+    },
+    "/v1/coach/chat": {
+      "post": {
+        "description": "Stateless: send the whole conversation every time. The model may ask for a tool; the **app** runs it on local data and posts again with a `tool_result` block.\n\n`stream: true` (default) answers with `text/event-stream`:\n\n- `event: delta` `data: {\"text\": \"...\"}` a piece of the answer\n- `event: tool_use` `data: {\"id\", \"name\", \"input\"}` the model wants a tool (a `done` event follows)\n- `event: done` `data: {\"stopReason\", \"usage\": {\"inputTokens\", \"outputTokens\"}}` last event\n- `event: error` `data: {\"code\", \"message\", \"requestId\"}` terminal error after the stream started\n\n`stream: false` answers with one JSON object. Problems detected before the model is called (invalid conversation, consent, limits) are normal HTTP errors in both modes.",
+        "operationId": "coachChat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoachChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachChatResponse"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "JSON when `stream` is false, `text/event-stream` otherwise."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Missing or invalid app token."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid request."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Rate limit exceeded (see Retry-After)."
+          },
+          "503": {
+            "description": "The model is unavailable (non-streaming only; a stream sends an `error` event)."
+          }
+        },
+        "summary": "AI trainer chat (SSE stream or one JSON response)",
+        "tags": [
+          "coach"
+        ]
+      }
+    },
+    "/v1/config": {
+      "get": {
+        "operationId": "getConfig",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "304": {
+            "description": "Not modified (If-None-Match matched)."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Missing or invalid app token."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid request."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Rate limit exceeded (see Retry-After)."
+          }
+        },
+        "summary": "Remote configuration (scoring, insights, tempo)",
+        "tags": [
+          "content"
+        ]
+      }
+    },
+    "/v1/plans/generate": {
+      "post": {
+        "description": "The model proposes a plan, the server validates it against the catalog and the profile. When the model is unavailable or its plan is invalid the response is a template plan (`plan.source = template`) with a warning, never an error. Warnings: `ai_unavailable`, `ai_invalid_plan`, `ai_mock`, `avoid_text_not_applied`.",
+        "operationId": "generatePlan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanGenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanGenerateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Missing or invalid app token."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid request."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Rate limit exceeded (see Retry-After)."
+          }
+        },
+        "summary": "Generate a weekly plan for a profile",
+        "tags": [
+          "plans"
+        ]
+      }
+    },
+    "/v1/texts/recommendation": {
+      "post": {
+        "description": "The decision is made on the phone; this only rewrites the text. The result is safety-checked and falls back to a template text (`source = template`) with a warning, never an error. Warnings: `ai_unavailable`, `ai_text_rejected`, `ai_mock`.",
+        "operationId": "recommendationText",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendationTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationTextResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Missing or invalid app token."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid request."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Rate limit exceeded (see Retry-After)."
+          }
+        },
+        "summary": "Friendly wording for today's recommendation",
+        "tags": [
+          "texts"
+        ]
+      }
+    }
+  }
+}

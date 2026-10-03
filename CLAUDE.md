@@ -9,11 +9,12 @@ Aplikacja iOS (SwiftUI) na hackathon HackYeah, kategoria Sport & Healthcare: tre
 ```bash
 brew install xcodegen
 cp Config/Local.xcconfig.example Config/Local.xcconfig       # swój Team ID i unikalny bundle id
-cp Config/Secrets.xcconfig.example Config/Secrets.xcconfig   # klucz API, nigdy do repo
+cp Config/Secrets.xcconfig.example Config/Secrets.xcconfig   # token backendu, nigdy do repo
 xcodegen generate && open Forma.xcodeproj
 ```
 
 Testy logiki (szybkie, bez symulatora): `cd Packages/Core && swift test`.
+Backend (opcjonalnie, działa bez klucza): `cd backend && make install && make dev`, a przed PR dotykającym `backend/` lub `content/` `make check`.
 Budowanie aplikacji: `xcodegen generate && xcodebuild -project Forma.xcodeproj -scheme Forma -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`.
 Plik `Forma.xcodeproj` jest generowany i nie wchodzi do repo. Po `git pull` z nowymi plikami uruchom `xcodegen generate`.
 
@@ -27,6 +28,8 @@ Plik `Forma.xcodeproj` jest generowany i nie wchodzi do repo. Po `git pull` z no
 | `Packages/Core/Sources/Analysis`, `App/Screens/Analysis` | Bartek | analiza filmu, jakość nagrania, scoring |
 | `Packages/Core/Sources/Health`, `Insights`, `App/Screens/Progress`, `App/Screens/Care` | Wiktor | HealthKit, check-in (zapis), silnik reguł, opieka, postępy |
 | `Packages/Core/Sources/Plan`, `Coaching`, `Content`, `App/Screens/Plan`, `App/Screens/Coach` | Maciek | katalog, plan, klient modelu, czat trenera |
+
+| `backend/` i `content/` | rdzeń: Michał; AI, plan, czat, katalog: Maciek; teksty i bezpieczeństwo tekstów, `insights.json`: Wiktor; `scoring.json`: Bartek | wspólny backend FastAPI; dokładny podział plików w WORKINGPLAN.md („Co gdzie żyje”), uruchomienie i zasady w [backend/README.md](backend/README.md) |
 
 Edytuj tylko swoje ścieżki. Cudze moduły czytaj, ale nie zmieniaj; jeśli czegoś potrzebujesz, dopisz prośbę w opisie PR albo napisz do właściciela.
 
@@ -63,7 +66,8 @@ W `Contracts/Services.swift` są protokoły usług (`PlanProviding`, `RecoveryPr
 
 - **Żadnych diagnoz ani twierdzeń medycznych.** Piszemy „sygnał", „warto rozważyć konsultację". Każdy nowy tekst zdrowotny przechodzi tę kontrolę (PROJECT.md, 3.6).
 - **Wideo i obrazy nie opuszczają telefonu.** Do sieci wychodzą liczby, podsumowania i tekst wpisany przez użytkownika. Dane zdrowotne trafiają do modelu wyłącznie po zgodzie (`DataConsent`) i jako podsumowania.
-- **Klucz API nigdy w repozytorium.** Tylko `Config/Secrets.xcconfig` (poza gitem). Przed commitem sprawdź `git diff` pod kątem kluczy.
+- **Klucz do modelu nigdy w repozytorium ani w aplikacji.** Żyje tylko w środowisku serwera (`ANTHROPIC_API_KEY`). Aplikacja zna adres i token backendu (`Config/Secrets.xcconfig`, poza gitem). Przed commitem sprawdź `git diff` pod kątem kluczy.
+- **Model wołamy tylko przez backend** (`backend/`). Backend nie loguje treści, waliduje wszystko, co zwraca model, i ma szablon zapasowy. Zmiana API = zmiana schematu + `make openapi` + zgodna zmiana po stronie Swifta.
 - Decyzję dnia podaje **silnik reguł**, nie model językowy. Plan i trener używają wyłącznie ćwiczeń z katalogu.
 - Mówimy uczciwie, co działa, a co jest symulowane. Nie obiecujemy dokładności, której nie zmierzyliśmy.
 

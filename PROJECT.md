@@ -97,7 +97,7 @@ Aplikacje do oceny techniki z filmu już istnieją (m.in. Gymscore, CueForm, Lif
 ### 3.5 Czego nie robimy
 
 - **Żadnej diagnozy ani twierdzeń medycznych.** Używamy słów „sygnał”, „warto skonsultować”, „może wskazywać”. W aplikacji jest widoczne zastrzeżenie, że to nie jest porada medyczna.
-- **Nie wysyłamy wideo ani obrazów** poza telefon. Do modelu językowego trafiają tylko liczby i podsumowania (w tym dane zdrowotne, **wyłącznie po wyraźnej zgodzie użytkownika**), dane profilu i tekst, który użytkownik sam wpisze w czacie. Informujemy o tym w aplikacji.
+- **Nie wysyłamy wideo ani obrazów** poza telefon. Do modelu językowego (przez nasz serwer, który niczego nie zapisuje i nie loguje treści) trafiają tylko liczby i podsumowania (w tym dane zdrowotne, **wyłącznie po wyraźnej zgodzie użytkownika**), dane profilu bez historii zdrowia i tekst, który użytkownik sam wpisze w czacie. Informujemy o tym w aplikacji.
 - **Trener AI nie diagnozuje i nie zaleca leczenia.** Przy bólu, urazie lub niepokojących objawach odsyła do specjalisty.
 - **Nie dodajemy zakresu spoza sekcji 4.** Konta, płatności, analiza wielu ćwiczeń, długoterminowa progresja, Android: to mapa drogowa, nie demo.
 - **Nie podajemy danych przykładowych jako prawdziwych.** Każdy ekran z symulowanymi danymi jest wyraźnie oznaczony.
@@ -364,7 +364,7 @@ Aplikacja nie mówi, co jest przyczyną, tylko że **warto porozmawiać ze specj
 
 ### 7.5 Rola modelu językowego w rekomendacji dnia
 
-Model (Claude Haiku 4.5) dostaje **gotową strukturę** z silnika reguł (decyzja, czynniki, uwagi) i tylko **formułuje tekst** po polsku w naszym tonie (sekcja 3.6). Nie wybiera decyzji, nie dodaje nowych zaleceń ani nie widzi żadnego obrazu. Tekst jest sprawdzany pod kątem zakazanych sformułowań. Gdy wywołanie modelu się nie powiedzie (błąd API, limit, słabe łącze), ten sam wynik opisują **gotowe szablony tekstu**, więc rekomendacja dnia zawsze się wyświetla.
+Model (Claude Haiku 4.5) dostaje **gotową strukturę** z silnika reguł (decyzja, czynniki, uwagi) i tylko **formułuje tekst** po polsku w naszym tonie (sekcja 3.6). Nie wybiera decyzji, nie dodaje nowych zaleceń ani nie widzi żadnego obrazu. Wywołanie idzie przez backend (`POST /v1/texts/recommendation`), który **sprawdza tekst** pod kątem zakazanych sformułowań (diagnozy, leki, obietnice, linki) i przy każdym problemie zwraca tekst z szablonu. Gdy wywołanie się nie powiedzie (błąd API, limit, brak sieci), ten sam wynik opisują **gotowe szablony tekstu** (na serwerze, a bez sieci na telefonie), więc rekomendacja dnia zawsze się wyświetla.
 
 ### 7.6 Plan treningowy i trener AI
 
@@ -372,9 +372,9 @@ Model (Claude Haiku 4.5) dostaje **gotową strukturę** z silnika reguł (decyzj
 
 **Generowanie planu.**
 1. Wejście: profil z onboardingu (cel, poziom, dni, czas sesji, sprzęt, „czego unikać”).
-2. Model (Claude Sonnet 5) zwraca plan jako **ustrukturyzowany JSON**: tydzień, sesje, ćwiczenia (tylko `id` z katalogu), serie, zakresy powtórzeń, przerwy.
-3. Nasz kod **waliduje** wynik: czy `id` istnieją, czy ćwiczenia pasują do sprzętu, czy liczba ćwiczeń i serii mieści się w limitach, czy uwzględniono „czego unikać”. Niepoprawny plan jest odrzucany.
-4. Gdy generowanie lub walidacja zawiedzie (błąd API, niepoprawny wynik): **plan z gotowego szablonu** dobranego do celu, poziomu i dni.
+2. Aplikacja wysyła profil (`POST /v1/plans/generate`; bez historii zdrowia, tylko pochodne `avoidTags` i `easyStart`). Backend zawęża katalog do ćwiczeń, które użytkownik może wykonać (sprzęt, poziom, unikane ruchy) i prosi model (Claude Sonnet 5.5) o **ustrukturyzowany JSON**: sesje w ustalonych dniach, ćwiczenia (tylko `id` z katalogu), serie, zakresy powtórzeń, przerwy.
+3. Backend **waliduje** wynik kodem: czy `id` istnieją, czy pasują do sprzętu i poziomu, czy nie zawierają unikanych ruchów, czy liczba sesji, ćwiczeń, serii i powtórzeń mieści się w limitach. Identyfikatory, daty, źródło i tempo ustawia serwer, nie model. Niepoprawny plan jest odrzucany.
+4. Gdy generowanie lub walidacja zawiedzie (błąd API, limit czasu, niepoprawny wynik): **plan z gotowego szablonu** (`content/plan_templates.json`) dobranego do celu, poziomu, dni i czasu. Odpowiedź niesie ostrzeżenie (`ai_unavailable`, `ai_invalid_plan`), a nie błąd. Bez sieci aplikacja buduje plan z własnej kopii szablonów.
 
 **Trener AI (czat).** Czat działa wewnątrz aplikacji i jest podłączony do **gotowego modelu językowego przez API** (domyślnie Claude, wybór modelu w sekcji 8). Nie trenujemy własnego modelu. Trener ma **dostęp do zawartości aplikacji i danych zdrowotnych użytkownika**, a odbywa się to na dwa sposoby:
 
@@ -383,18 +383,18 @@ Model (Claude Haiku 4.5) dostaje **gotową strukturę** z silnika reguł (decyzj
    - **dzisiejsza decyzja z silnika reguł** wraz z czynnikami (żeby trener nigdy jej nie ominął),
    - krótki **profil** (cel, poziom, sprzęt, „czego unikać”),
    - historia bieżącej rozmowy.
-2. **Narzędzia wywoływane przez model** (function calling). Gdy trener potrzebuje danych, prosi o nie, a aplikacja wykonuje zapytanie **lokalnie na telefonie** i zwraca wynik. Dzięki temu do modelu trafia tylko to, o co zapytał, a nie cała baza.
+2. **Narzędzia wywoływane przez model** (function calling). Definicje narzędzi trzyma backend, a **wykonuje je aplikacja**: gdy trener potrzebuje danych, backend przekazuje aplikacji wywołanie (`tool_use`), aplikacja wykonuje zapytanie **lokalnie na telefonie** i odsyła wynik w kolejnym żądaniu (`tool_result`). Dzięki temu do modelu trafia tylko to, o co zapytał, a dane zdrowotne nie leżą na serwerze. Backend jest bezstanowy: aplikacja wysyła całą rozmowę za każdym razem.
 
 | Narzędzie | Co zwraca |
 |---|---|
-| `get_training_plan` | plan tygodnia albo dzisiejsza sesja (ćwiczenia, serie, powtórzenia, status) |
-| `get_recovery_history` | sen, tętno spoczynkowe i HRV z ostatnich N dni jako **podsumowania** (średnie, odchylenie od punktu odniesienia), nie surowe próbki z Apple Health |
-| `get_checkins` | nastrój, stres, energia z ostatnich N dni |
-| `get_technique_results` | ostatnie analizy: wynik, uwagi, trend |
-| `get_exercise_info` | opis ćwiczenia, zamienniki, link do filmu wzorcowego z katalogu |
-| `propose_plan_change` (priorytet 5) | **propozycja** zmiany sesji (np. zamiennik). Zmiana wchodzi do planu dopiero po kliknięciu przez użytkownika „Zastosuj” |
+| `get_current_plan` | plan tygodnia: sesje, ćwiczenia, serie, powtórzenia, status |
+| `get_technique_history` | ostatnie analizy (opcjonalnie dla jednego ćwiczenia): wynik, uwagi, trend |
+| `get_today_recommendation` (zgoda) | dzisiejsza decyzja z silnika reguł i jej czynniki |
+| `get_recovery_summary` (zgoda) | sen, tętno spoczynkowe i HRV z ostatnich N dni jako **podsumowania** (średnie, odchylenie od punktu odniesienia), nie surowe próbki z Apple Health |
+| `get_checkins` (zgoda) | nastrój, stres, energia z ostatnich N dni |
+| `propose_plan_change` (priorytet 5, jeszcze niezaimplementowane) | **propozycja** zmiany sesji (np. zamiennik). Zmiana wchodzi do planu dopiero po kliknięciu przez użytkownika „Zastosuj” |
 
-Narzędzia tylko **czytają** dane. Model nie ma narzędzia, które samo zmieniłoby plan lub dane.
+Narzędzia tylko **czytają** dane. Model nie ma narzędzia, które samo zmieniłoby plan lub dane. Narzędzia oznaczone „(zgoda)” czytają dane zdrowotne: backend **nie oferuje ich modelowi bez zgody**, nie dołącza do instrukcji dzisiejszej rekomendacji i odrzuca rozmowę, która zawiera takie wyniki mimo braku zgody. Opisy ćwiczeń i zamienniki model bierze z katalogu wklejonego do instrukcji, nie z narzędzia. Dodatkowo backend wykrywa w wiadomości użytkownika objawy alarmowe (ból w klatce piersiowej, omdlenie, duszność) i **zawsze** zaczyna odpowiedź stałym komunikatem o przerwaniu treningu i numerze 112, niezależnie od modelu.
 
 Zasady odpowiedzi trenera:
 - Decyzję dnia podaje **silnik reguł**, a trener ją tylko wyjaśnia. Trener nie zmienia decyzji ani nie pomija sygnałów, które wykrył silnik.
@@ -410,9 +410,9 @@ Zasady odpowiedzi trenera:
 - przed wdrożeniem poza demo sprawdzamy warunki przetwarzania danych u dostawcy modelu oraz wymogi RODO dla danych o zdrowiu,
 - informujemy o tym w aplikacji i w prezentacji.
 
-Historię rozmowy trzymamy lokalnie na telefonie. W demo trener pracuje na danych przykładowych (oznaczonych jako symulowane), a na prawdziwych danych z Apple Health tylko po zgodzie właściciela telefonu.
+Backend nie zapisuje rozmów ani nie loguje ich treści (tylko identyfikator żądania, czas, status i liczbę tokenów). Historię rozmowy trzymamy lokalnie na telefonie. W demo trener pracuje na danych przykładowych (oznaczonych jako symulowane), a na prawdziwych danych z Apple Health tylko po zgodzie właściciela telefonu.
 
-**Połączenie z internetem.** Aplikacja jest zaprojektowana do pracy z internetem: plan, czat i teksty rekomendacji korzystają z modelu przez sieć. Gdy połączenie lub model zawiedzie, aplikacja mówi to wprost, pozwala ponowić i, tam gdzie to możliwe (plan, rekomendacja dnia), pokazuje wersję z szablonu. Analiza filmu działa na telefonie z wyboru (prywatność), ale to nie jest tryb offline jako cecha produktu.
+**Połączenie z internetem.** Aplikacja jest zaprojektowana do pracy z internetem: plan, czat i teksty rekomendacji korzystają z modelu przez sieć. Gdy połączenie, backend lub model zawiedzie, aplikacja mówi to wprost, pozwala ponowić i, tam gdzie to możliwe (plan, rekomendacja dnia), pokazuje wersję z szablonu. Analiza filmu działa na telefonie z wyboru (prywatność), ale to nie jest tryb offline jako cecha produktu.
 
 ## 8. Technologia i organizacja repozytorium
 
@@ -422,23 +422,25 @@ Historię rozmowy trzymamy lokalnie na telefonie. W demo trener pracuje na danyc
 | Punkty ciała | **Apple Vision**, `VNDetectHumanBodyPoseRequest` | Wbudowane w system, 19 punktów 2D, bez pięt i palców stóp, bez zależności zewnętrznych |
 | Wideo | AVFoundation (nagrywanie i `AVAssetReader`), `PhotosPicker` do wyboru filmu | Kamera działa tylko na prawdziwym telefonie |
 | Dane o zdrowiu | **HealthKit** (sen, tętno spoczynkowe, HRV) | Na symulatorze zwykle brak danych, stąd zestaw przykładowy |
-| Rekomendacje | Silnik reguł w Swifcie, tekst: Claude Haiku 4.5 lub szablony | Patrz sekcje 7.1–7.5 |
-| Plan i trener AI | Gotowy model przez API (Claude). Plan: Sonnet 5 (JSON z walidacją, szablon jako zapas). Czat: Haiku 4.5 (szybszy i tańszy) lub Sonnet 5 (lepszy przy użyciu narzędzi) **[do ustalenia po próbie]**, z narzędziami i streamingiem odpowiedzi | Patrz sekcja 7.6. Wywołania przez `URLSession` (HTTP), bo na liście SDK, które znamy, nie ma Swifta **[do sprawdzenia]**. Serwer pośredniczący opcjonalnie |
+| Rekomendacje | Silnik reguł w Swifcie (progi z `content/config/insights.json`), tekst: Claude Haiku 4.5 przez backend lub szablony | Patrz sekcje 7.1–7.5 |
+| Backend | **Python, FastAPI** (folder `backend/`), bezstanowy, bez bazy | Jeden wspólny szkielet, patrz 8.3. Kontrakt: `backend/openapi.json` |
+| Plan i trener AI | Gotowy model przez API (Claude), wołany **wyłącznie z backendu**. Plan: Sonnet 5.5 (JSON z walidacją, szablon jako zapas). Czat: Haiku 4.5 (szybszy i tańszy) lub Sonnet 5.5 (lepszy przy użyciu narzędzi) **[do ustalenia po próbie]**, z narzędziami i streamingiem (SSE) | Patrz sekcja 7.6. Modele są ustawieniami serwera (`FORMA_COACH_MODEL`, `FORMA_PLAN_MODEL`, `FORMA_TEXT_MODEL`) |
 | Opieka | MapKit (`MKLocalSearch`) | Wyszukiwanie fizjoterapeutów w pobliżu |
 | Wykresy | Swift Charts | |
-| Zapis lokalny | SwiftData lub prosty plik JSON | Profil, plan, historia sesji, wyniki, rozmowy z trenerem. Nigdy wideo |
+| Zapis lokalny | SwiftData lub prosty plik JSON | Profil, plan, historia sesji, wyniki, rozmowy z trenerem, historia zdrowia. Nigdy wideo |
+| Treść | Katalog `content/` (JSON) | Katalog ćwiczeń, szablony planów, progi. Backend serwuje, aplikacja ma wbudowaną kopię (`scripts/sync_content.py`) |
 
 ### 8.1 Klucz do modelu językowego
 
-**Decyzja: wersja hackathonowa bez własnego backendu.** Aplikacja woła API modelu bezpośrednio z telefonu, a dane (profil, plan, wyniki, rozmowy) trzymamy lokalnie.
+**Decyzja (zmieniona 2026-10-03): jeden wspólny backend.** Wcześniej planowaliśmy wersję bez własnego serwera (model wołany z telefonu). Zmieniamy to, bo klucz w aplikacji da się wyciągnąć z binarki, a serwer daje nam jedno miejsce na walidację planów, kontrolę bezpieczeństwa tekstów, limity i bramkę zgody na dane zdrowotne. Backend jest cienki i bezstanowy, więc koszt jest mały.
 
-- Klucza API nie wolno commitować ani wkompilować w kod w repo. Trzymamy go w pliku `Secrets.xcconfig` poza repozytorium (wpis w `.gitignore`).
-- Na kluczu ustawiamy **limit wydatków**, bo klucz w aplikacji da się wyciągnąć z binarki.
-- Aplikację instalujemy przez Xcode na naszych telefonach (bez TestFlight i bez płatnego konta Apple Developer).
-- Adres wywołań modelu jest **jednym ustawieniem w konfiguracji**, żeby później przełączyć go bez zmian w reszcie kodu.
-- W prezentacji mówimy uczciwie, że docelowo wywołania pójdą przez nasz serwer pośredniczący.
+- Klucz do modelu (`ANTHROPIC_API_KEY`) istnieje **tylko w środowisku serwera**. Nie ma go w repozytorium ani w aplikacji. Na kluczu ustawiamy **limit wydatków**.
+- Aplikacja zna tylko adres i token aplikacji backendu (`FORMA_API_URL`, `FORMA_API_TOKEN` w `Config/Secrets.xcconfig` poza repo). Token chroni budżet na model przed obcymi, nie jest logowaniem użytkownika. Limity zapytań działają per urządzenie (`X-Device-Id`).
+- Backend nie ma bazy i nie zapisuje ani nie loguje treści (żądań, rozmów, danych zdrowotnych).
+- Aplikację instalujemy przez Xcode na naszych telefonach (bez TestFlight i bez płatnego konta Apple Developer). W debugu telefon łączy się z backendem po HTTP w sieci lokalnej (wyjątek ATS `NSAllowsLocalNetworking`) albo po HTTPS z wdrożenia.
+- **Bez klucza wszystko działa:** serwer uruchomiony bez `ANTHROPIC_API_KEY` ma tryb atrapy (plany z szablonu, czat z gotowymi odpowiedziami), więc zespół rozwija aplikację i backend niezależnie od klucza.
 
-**Po hackathonie (szybkie rozszerzenie):** funkcja na Vercelu (TypeScript), która ukrywa klucz, ogranicza liczbę zapytań i nie loguje rozmów, oraz Supabase (logowanie, baza, synchronizacja), gdy będą potrzebne konta. Dla większej grupy testerów dojdzie TestFlight i płatne konto Apple Developer.
+**Po hackathonie:** konta, baza i synchronizacja (np. Supabase), współdzielone limity (Redis) przy wielu instancjach, TestFlight i płatne konto Apple Developer dla większej grupy testerów.
 
 ### 8.2 Organizacja repozytorium (ważne przy różnych wersjach Xcode)
 
@@ -448,6 +450,24 @@ Historię rozmowy trzymamy lokalnie na telefonie. W demo trener pracuje na danyc
 - Małe commity na `main` albo krótkie gałęzie funkcji, częste scalanie. Nie edytujemy równocześnie tych samych plików.
 - `README.md` dla jury (jak uruchomić, co robi, zrzuty ekranu) powstaje w trakcie pracy.
 - `.gitignore` ma `Secrets.xcconfig`, dane użytkownika i pliki wideo.
+
+### 8.3 Backend: co robi, a czego nie
+
+Szkielet (`backend/`, opis uruchomienia w [backend/README.md](backend/README.md)) obsługuje pięć rzeczy, a resztę zostawia telefonowi:
+
+| Endpoint | Zadanie | Gdy model zawiedzie |
+|---|---|---|
+| `GET /health` | żywotność, tryb AI, wersja treści | |
+| `GET /v1/catalog`, `GET /v1/config` | katalog ćwiczeń oraz progi (`scoring`, `insights`, `tempo`) z `content/`, z ETag (304) | aplikacja używa wbudowanej kopii |
+| `POST /v1/plans/generate` | plan dla profilu: model → walidacja → plan | plan z szablonu + ostrzeżenie |
+| `POST /v1/coach/chat` | czat trenera: strumień SSE, narzędzia wykonywane przez aplikację, bramka zgody | zdarzenie `error` / HTTP 503, aplikacja pozwala ponowić |
+| `POST /v1/texts/recommendation` | sformułowanie rekomendacji dnia, kontrola bezpieczeństwa | tekst z szablonu + ostrzeżenie |
+
+**Zostaje na telefonie:** analiza wideo i Vision, ocena jakości nagrania, scoring techniki, seria na żywo (tempo i głos), silnik reguł i decyzja dnia, HealthKit, check-in, plan i profil, historia zdrowia, historia rozmów, wykonanie narzędzi.
+
+**Konwencje API:** JSON w camelCase tak jak typy `Codable` w Swifcie (`Contracts` i `backend/app/schemas/domain.py` mają te same pola), daty w ISO 8601 UTC bez ułamków sekund (`.iso8601`), każdy błąd w jednym formacie `{"error":{"code","message","requestId"}}` (aplikacja przełącza się po `code`), nagłówki `Authorization: Bearer`, `X-Device-Id`, `X-Request-Id`. Schemat w `backend/openapi.json` jest generowany (`make openapi`) i commitowany razem ze zmianą.
+
+**Wdrożenie [do decyzji, sekcja 15]:** obraz Dockera (`backend/Dockerfile`) na hostingu, który obsługuje strumienie SSE (np. Fly.io, Render, Railway), jedna instancja (limity w pamięci). Na demo zapas: backend na laptopie w tej samej sieci co telefon albo przez tunel.
 
 ## 9. Architektura i kontrakty między modułami
 
@@ -466,10 +486,11 @@ CheckIn           (nastrój, stres)   ─↗         │               │
                                                  ├─ CarePathway (flaga „warto rozważyć konsultację”)
                                                  └─ CoachTextGenerator (Claude lub szablony)
 
-UserProfile ─→ PlanGenerator (Claude → JSON → walidacja, zapas: szablon) ─→ TrainingPlan
+UserProfile ─→ PlanGenerator ─→ BACKEND /v1/plans/generate (Claude → JSON → walidacja, zapas: szablon) ─→ TrainingPlan
 ExerciseCatalog ───────────────────────────────────────────────────────────↗   │
                                                                               ▼
-CoachContextBuilder (profil + plan + regeneracja + analiza + decyzja) ─→ CoachChat (Claude)
+CoachContextBuilder (profil + decyzja) ─→ CoachChat ─→ BACKEND /v1/coach/chat (Claude, SSE)
+                                              ↑ tool_use / tool_result: narzędzia wykonuje telefon na lokalnych danych
 ```
 
 ### 9.1 Kontrakty (pola do uzgodnienia na starcie)
@@ -493,7 +514,12 @@ CoachContextBuilder (profil + plan + regeneracja + analiza + decyzja) ─→ Coa
 | `TempoSpec` | czasy faz w sekundach: ekscentryczna, pauza na dole, koncentryczna, pauza na górze (opis „3-1-2-0”) |
 | `RepTempo` | zmierzony czas faz jednego powtórzenia, największa głębokość, czy pełny zakres |
 | `SetSummary` | podsumowanie serii: powtórzenia, wynik i uwagi tempa, wynik i uwagi techniki, ocena kadru |
-| `DataConsent` | zgoda na przekazanie danych zdrowotnych modelowi (tak/nie, data), możliwość wycofania |
+| `DataConsent` | zgoda na przekazanie danych zdrowotnych modelowi (tak/nie, data), możliwość wycofania; w żądaniu czatu pole `consent.health` |
+| `PlanGenerateResponse` | `plan` (`TrainingPlan`) i `warnings` (np. `ai_unavailable`, `ai_invalid_plan`, `ai_mock`, `avoid_text_not_applied`) |
+| `RecommendationTextResponse` | `headline`, `explanation`, `source` (`ai` lub `template`), `warnings` |
+| `CoachChatRequest` | `messages` (tekst, `tool_use`, `tool_result`), `context` (profil, dzisiejsza rekomendacja po zgodzie), `consent`, `stream` |
+| Zdarzenia SSE czatu | `delta`, `tool_use`, `done`, `error` (opis w `backend/README.md`) |
+| `ErrorEnvelope` | `error.code`, `error.message`, `error.requestId` |
 
 Reguła: moduł, który zmienia kontrakt, informuje zespół i aktualizuje ten opis.
 
@@ -504,7 +530,7 @@ Bez rozpisywania na godziny. Kolejność jest ważniejsza niż zegar: przechodzi
 ### Krok 0: Przygotowanie (przed startem, tylko środowisko)
 
 - Każdy ma działający Xcode, iPhone w trybie dewelopera i zaufany komputerowi.
-- Konta: Apple ID do podpisywania, dostęp do HackTribe i Discorda HackYeah, klucz do Claude API (jedna osoba).
+- Konta: Apple ID do podpisywania, dostęp do HackTribe i Discorda HackYeah, klucz do Claude API (jedna osoba; trafia do środowiska backendu).
 - Sprawdzenie na **pustej aplikacji testowej poza projektem**, że instalacja na iPhonie i uprawnienia HealthKit działają.
 - Potwierdzenie z organizatorami, że wcześniejsze planowanie jest w porządku.
 
@@ -583,7 +609,7 @@ Rola D jest najbardziej obciążona (plan i czat), więc przy mniejszym zespole 
 2. **Pracujemy od razu** (decyzja zespołu, patrz początek dokumentu). Każde zadanie na własnej gałęzi `feat/<imię>-<temat>`, małe PR-y do `main`.
 3. **Trzymaj się zakresu z sekcji 4.** Pomysły spoza zakresu zapisz w sekcji 14, nie implementuj.
 4. **Pracuj w swoim module.** Zmiana kontraktu (sekcja 9) lub cudzego modułu wymaga uzgodnienia z zespołem.
-5. **Nie commituj kluczy ani danych osobowych.** Klucz API tylko w `Secrets.xcconfig` poza repo.
+5. **Nie commituj kluczy ani danych osobowych.** Klucz do modelu tylko w środowisku serwera, w aplikacji wyłącznie adres i token backendu (`Secrets.xcconfig` poza repo).
 6. **Nie wysyłaj wideo ani obrazów poza telefon.** Do sieci wychodzą tylko liczby i podsumowania, dane profilu i tekst, który użytkownik sam wpisał w czacie. Dane zdrowotne trafiają do modelu wyłącznie po wyraźnej zgodzie użytkownika i tylko jako podsumowania.
    Plan i trener używają wyłącznie ćwiczeń z katalogu i zawsze przechodzą walidację.
 7. **Teksty zdrowotne zgodnie z sekcją 3.6:** sygnał, nie diagnoza. Każdy nowy tekst przechodzi tę kontrolę.
@@ -608,7 +634,7 @@ Rola D jest najbardziej obciążona (plan i czat), więc przy mniejszym zespole 
 | 5 | Łączymy sport, zdrowie fizyczne, dobrostan psychiczny i dostęp do opieki | Związek z kategorią |
 | 6 | Ekran: analiza i ocena jakości nagrania | Design, kompletność |
 | 7 | Ekrany: plan treningowy, rekomendacja dnia i trener AI | Praktyczne zastosowanie |
-| 8 | Prywatność i bezpieczeństwo (film na urządzeniu, co trafia do modelu, brak diagnoz, ścieżka do specjalisty, zastrzeżenie) | Wiarygodność |
+| 8 | Prywatność i bezpieczeństwo (film na urządzeniu, co trafia do modelu przez nasz serwer bez zapisu rozmów, zgoda na dane zdrowotne, brak diagnoz, ścieżka do specjalisty, zastrzeżenie) | Wiarygodność |
 | 9 | Stan prac i co dalej (kolejne ćwiczenia, plany, Android, Garmin, tryb trenera) | Kompletność |
 | 10 | Zespół oraz link do repo i demo | Zamknięcie |
 
@@ -628,7 +654,11 @@ Język slajdów i opisu: polski lub angielski **[do ustalenia]**.
 |---|---|
 | Wynik z Vision jest zaszumiony | Wygładzanie, filtrowanie klatek o niskiej pewności, jedno ćwiczenie i jedno ujęcie |
 | Brak danych w HealthKit na telefonie | Tryb z danymi przykładowymi, wyraźnie oznaczony jako symulowany |
-| Słabe łącze (np. na hali hackathonu), błąd lub limit modelu językowego | Szablony tekstu dla rekomendacji i plan z szablonu jako wersja zapasowa, komunikat z ponowieniem w czacie, hotspot z telefonu jako zapas łącza |
+| Słabe łącze (np. na hali hackathonu), błąd lub limit modelu językowego | Szablony tekstu dla rekomendacji i plan z szablonu jako wersja zapasowa (na serwerze i na telefonie), komunikat z ponowieniem w czacie, hotspot z telefonu jako zapas łącza |
+| Backend niedostępny podczas demo (hosting, restart, zły adres) | Aplikacja działa bez backendu na wbudowanej kopii treści, planie z szablonu i silniku reguł (czat pokazuje błąd z ponowieniem); zapasowy backend na laptopie w tej samej sieci; nagranie demo |
+| Wyciek tokenu aplikacji lub klucza do modelu | Klucz tylko w sekretach hostingu, limit wydatków na kluczu, token do wymiany bez nowej wersji aplikacji (lista tokenów w `FORMA_APP_TOKENS`), limity zapytań per urządzenie |
+| Szkielet backendu nie był uruchomiony z prawdziwym modelem ani wdrożony | Zadania `feat/maciek-backend-ai` i `feat/michal-backend-deploy` jako pierwsze, tryb atrapy do czasu klucza, szablony jako zapas wszędzie |
+| Zmiana API psuje klienta w Swifcie | `backend/openapi.json` jako kontrakt w repo, zmiana pól tylko addytywnie, `make check` w CI |
 | Projekt Xcode nie otwiera się u części zespołu | Projekt zakłada osoba z Xcode 26, pakiet Swift na większość kodu, sprawdzenie u wszystkich zaraz po założeniu |
 | Podpisywanie aplikacji (darmowe konto Apple ID) i uprawnienia HealthKit | Sprawdzić w kroku 0 na pustej aplikacji testowej poza projektem |
 | Awaria demo na żywo | Nagranie demo i zrzuty ekranu |
@@ -651,13 +681,12 @@ Język slajdów i opisu: polski lub angielski **[do ustalenia]**.
 - Więcej ćwiczeń (martwy ciąg rumuński, pompka, wykrok) i wymagane ujęcia (przód i bok), z biblioteką ok. 40 ćwiczeń, filmami wzorcowymi i grafem zamienników.
 - Plany wielotygodniowe z progresją, kalendarzem, powiadomieniami i adaptacją na podstawie historii treningów, regeneracji i techniki.
 - Trener AI zmieniający plan na życzenie użytkownika (z zatwierdzeniem), pamiętający cele i historię rozmów.
-- Serwer pośredniczący dla modelu językowego (funkcja na Vercelu: ukrycie klucza, limity, brak logowania treści rozmów).
-- Supabase: konta, synchronizacja planów i wyników, opcjonalnie zdalna konfiguracja progów i wag.
+- Backend: konta zamiast wspólnego tokenu aplikacji, baza (np. Supabase) i synchronizacja planów oraz wyników, współdzielone limity (Redis) i wiele instancji, wyszukiwarka fizjoterapeutów jako endpoint, zdalna konfiguracja progów i wag z panelem.
 - Dystrybucja do większej grupy testerów przez TestFlight (płatne konto Apple Developer, polityka prywatności).
 - Dokładniejsze punkty ciała (MediaPipe, 33 punkty z piętami i stopami) oraz progi ocen strojone z trenerem lub fizjoterapeutą na nagraniach testowych.
 - Dane z zegarków: Apple Health na start, później Garmin (bezpośrednie API Garmina jest od wiosny 2026 zamknięte dla nowych wniosków, więc dopiero po wznowieniu programu albo przez pośrednika).
 - Seria na żywo dla kolejnych ćwiczeń (własny sygnał ruchu), tryb trenera (podopieczny wysyła wyniki, nie filmy), Android.
-- Konta, subskrypcje i serwer pośredniczący dla modelu językowego.
+- Konta i subskrypcje.
 
 ## 15. Otwarte decyzje
 
@@ -671,9 +700,10 @@ Język slajdów i opisu: polski lub angielski **[do ustalenia]**.
 - [ ] Którą kamerą prowadzimy serię (domyślnie tylna) i czy dodajemy głos męski/żeński do wyboru.
 - [ ] Które ćwiczenia wchodzą do katalogu (ok. 12–15) i kto go przygotowuje.
 - [ ] Czy czat trenera ma tylko odpowiadać, czy też proponować zmiany w planie z przyciskiem „Zastosuj” (priorytet 5).
-- [x] Wywołania modelu idą bezpośrednio z aplikacji (klucz w `Secrets.xcconfig`, limit wydatków na kluczu). Serwer pośredniczący i Supabase dopiero po hackathonie (sekcja 8.1).
+- [x] Jeden wspólny backend (FastAPI) trzyma klucz do modelu i obsługuje plan, czat i teksty; telefon robi analizę, reguły i dane zdrowotne (sekcje 8.1, 8.3). Zastępuje wcześniejszą decyzję „bez backendu”. Baza i konta dopiero po hackathonie.
+- [ ] Hosting backendu na demo (Fly.io, Render lub Railway z Dockerem albo laptop i tunel) i kto go utrzymuje.
 - [ ] Który model w czacie (Haiku 4.5 czy Sonnet 5) po próbie szybkości i jakości.
 - [ ] Czy w demo trener pracuje na danych przykładowych, na prawdziwych danych z telefonu, czy na obu (przełącznik).
 - [ ] Źródło filmów wzorcowych i danych przykładowych (kto się nagrywa, za zgodą).
-- [ ] Klucz do Claude API: kto go zakłada i gdzie przechowujemy.
+- [ ] Klucz do Claude API: kto go zakłada (limit wydatków) i że trafia wyłącznie do sekretów hostingu backendu.
 - [ ] Język slajdów i opisu: polski czy angielski.

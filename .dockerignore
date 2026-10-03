@@ -1,0 +1,7 @@
+*
+!backend/pyproject.toml
+!backend/README.md
+!backend/constraints.txt
+!backend/app
+!content
+**/__pycache__

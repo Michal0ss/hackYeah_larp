@@ -20,3 +20,10 @@ xcuserdata/
 
 # macOS
 .DS_Store
+
+# Backend
+backend/.venv/
+backend/.env
+backend/*.egg-info/
+__pycache__/
+.ruff_cache/

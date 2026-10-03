@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "note": "Progi inżynierskie na demo (PROJECT.md 7.3), nie wartości kliniczne. Próg 'rest' do ponownej oceny (rozbieżność z prototypem). Właściciel: Wiktor.",
+  "signals": {
+    "sleepMinutesLow": 360,
+    "hrvBelowBaselineRatio": -0.15,
+    "restingHeartRateAboveBaseline": 5,
+    "stressHigh": 4,
+    "energyLow": 2,
+    "techniqueScoreLow": 60
+  },
+  "decision": {
+    "adaptFromSignals": 1,
+    "restFromSignals": 3
+  },
+  "care": {
+    "repeatedFindingCount": 3,
+    "windowDays": 14
+  }
+}

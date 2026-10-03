@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "weekdays": {
+    "2": [
+      1,
+      4
+    ],
+    "3": [
+      1,
+      3,
+      5
+    ],
+    "4": [
+      1,
+      2,
+      4,
+      5
+    ],
+    "5": [
+      1,
+      2,
+      3,
+      5,
+      6
+    ]
+  },
+  "sessionsByDays": {
+    "2": [
+      "full",
+      "full"
+    ],
+    "3": [
+      "lower",
+      "upper",
+      "full"
+    ],
+    "4": [
+      "lower",
+      "upper",
+      "lower",
+      "upper"
+    ],
+    "5": [
+      "lower",
+      "upper",
+      "full",
+      "lower",
+      "upper"
+    ]
+  },
+  "blueprints": {
+    "full": {
+      "title": "Całe ciało",
+      "slots": [
+        "squat",
+        "push",
+        "hinge",
+        "pull",
+        "core",
+        "cardio"
+      ]
+    },
+    "lower": {
+      "title": "Nogi",
+      "slots": [
+        "squat",
+        "hinge",
+        "lunge",
+        "core",
+        "cardio"
+      ]
+    },
+    "upper": {
+      "title": "Góra",
+      "slots": [
+        "push",
+        "pull",
+        "push",
+        "pull",
+        "core"
+      ]
+    }
+  },
+  "exercisesPerSession": {
+    "30": 3,
+    "45": 4,
+    "60": 5,
+    "75": 6
+  },
+  "goals": {
+    "strength": {
+      "sets": 4,
+      "repsMin": 5,
+      "repsMax": 6,
+      "restSeconds": 150,
+      "dropSlots": [
+        "cardio"
+      ],
+      "equipmentPreference": "highest"
+    },
+    "physique": {
+      "sets": 3,
+      "repsMin": 8,
+      "repsMax": 12,
+      "restSeconds": 90,
+      "dropSlots": [
+        "cardio"
+      ],
+      "equipmentPreference": "highest"
+    },
+    "fitness": {
+      "sets": 3,
+      "repsMin": 12,
+      "repsMax": 15,
+      "restSeconds": 45,
+      "dropSlots": [],
+      "equipmentPreference": "lowest"
+    },
+    "returnToMovement": {
+      "sets": 2,
+      "repsMin": 8,
+      "repsMax": 10,
+      "restSeconds": 60,
+      "dropSlots": [],
+      "equipmentPreference": "lowest",
+      "forceLevel": "beginner"
+    }
+  },
+  "timedScheme": {
+    "repsMin": 30,
+    "repsMax": 45,
+    "restSeconds": 45
+  }
+}

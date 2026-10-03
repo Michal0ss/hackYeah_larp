@@ -1,0 +1,622 @@
+{
+  "exercises": [
+    {
+      "id": "squat",
+      "name": "Przysiad",
+      "muscleGroup": "Nogi",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Podstawowy wzorzec ruchu dla nóg i pośladków, z masą ciała lub z obciążeniem.",
+      "videoURL": null,
+      "substituteIds": [
+        "goblet_squat",
+        "box_squat"
+      ],
+      "supportsAnalysis": true,
+      "defaultTempo": {
+        "eccentric": 3,
+        "bottomPause": 1,
+        "concentric": 2,
+        "topPause": 0
+      },
+      "pattern": "squat",
+      "movementTags": [
+        "deepSquats"
+      ],
+      "timed": false
+    },
+    {
+      "id": "goblet_squat",
+      "name": "Przysiad kielichowy",
+      "muscleGroup": "Nogi",
+      "equipment": "dumbbells",
+      "level": "beginner",
+      "summary": "Przysiad z hantlem lub kettlebellem przy klatce. Pomaga utrzymać wyprostowany tułów.",
+      "videoURL": null,
+      "substituteIds": [
+        "box_squat",
+        "squat"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 3,
+        "bottomPause": 1,
+        "concentric": 2,
+        "topPause": 0
+      },
+      "pattern": "squat",
+      "movementTags": [
+        "deepSquats"
+      ],
+      "timed": false
+    },
+    {
+      "id": "box_squat",
+      "name": "Przysiad do pudła",
+      "muscleGroup": "Nogi",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Przysiad z dotknięciem ławki. Pomaga kontrolować głębokość.",
+      "videoURL": null,
+      "substituteIds": [
+        "goblet_squat"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 3,
+        "bottomPause": 1,
+        "concentric": 2,
+        "topPause": 0
+      },
+      "pattern": "squat",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "back_squat",
+      "name": "Przysiad ze sztangą",
+      "muscleGroup": "Nogi",
+      "equipment": "gym",
+      "level": "intermediate",
+      "summary": "Przysiad ze sztangą na plecach.",
+      "videoURL": null,
+      "substituteIds": [
+        "goblet_squat",
+        "leg_press"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 3,
+        "bottomPause": 1,
+        "concentric": 2,
+        "topPause": 0
+      },
+      "pattern": "squat",
+      "movementTags": [
+        "deepSquats"
+      ],
+      "timed": false
+    },
+    {
+      "id": "leg_press",
+      "name": "Wypychanie nóg na suwnicy",
+      "muscleGroup": "Nogi",
+      "equipment": "gym",
+      "level": "beginner",
+      "summary": "Wypychanie platformy nogami w pozycji siedzącej, z ograniczonym zakresem ruchu.",
+      "videoURL": null,
+      "substituteIds": [
+        "box_squat"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 3,
+        "bottomPause": 1,
+        "concentric": 2,
+        "topPause": 0
+      },
+      "pattern": "squat",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "glute_bridge",
+      "name": "Mostek z leżenia",
+      "muscleGroup": "Pośladki",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Unoszenie bioder z leżenia na plecach, stopy na podłodze.",
+      "videoURL": null,
+      "substituteIds": [
+        "hip_thrust"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 1,
+        "concentric": 2,
+        "topPause": 0
+      },
+      "pattern": "hinge",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "hip_thrust",
+      "name": "Mostek biodrowy",
+      "muscleGroup": "Pośladki",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Unoszenie bioder z podparciem górnej części pleców.",
+      "videoURL": null,
+      "substituteIds": [
+        "glute_bridge"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 1,
+        "concentric": 2,
+        "topPause": 0
+      },
+      "pattern": "hinge",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "romanian_deadlift",
+      "name": "Martwy ciąg rumuński",
+      "muscleGroup": "Tył uda",
+      "equipment": "dumbbells",
+      "level": "intermediate",
+      "summary": "Zawias biodrowy z hantlami i lekko ugiętymi kolanami.",
+      "videoURL": null,
+      "substituteIds": [
+        "hip_thrust",
+        "glute_bridge"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 3,
+        "bottomPause": 1,
+        "concentric": 1,
+        "topPause": 0
+      },
+      "pattern": "hinge",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "barbell_deadlift",
+      "name": "Martwy ciąg ze sztangą",
+      "muscleGroup": "Tył uda, plecy",
+      "equipment": "gym",
+      "level": "intermediate",
+      "summary": "Podnoszenie sztangi z podłogi do wyprostu bioder.",
+      "videoURL": null,
+      "substituteIds": [
+        "romanian_deadlift",
+        "hip_thrust"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 0,
+        "concentric": 1,
+        "topPause": 0
+      },
+      "pattern": "hinge",
+      "movementTags": [
+        "barbellDeadlift"
+      ],
+      "timed": false
+    },
+    {
+      "id": "lunge",
+      "name": "Wykrok",
+      "muscleGroup": "Nogi",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Krok w przód z opuszczeniem biodra.",
+      "videoURL": null,
+      "substituteIds": [
+        "split_squat",
+        "step_up"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 1,
+        "concentric": 1,
+        "topPause": 0
+      },
+      "pattern": "lunge",
+      "movementTags": [
+        "deepLunges"
+      ],
+      "timed": false
+    },
+    {
+      "id": "split_squat",
+      "name": "Przysiad split",
+      "muscleGroup": "Nogi",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Wykrok statyczny: opuszczanie biodra w rozkroku, bez kroku.",
+      "videoURL": null,
+      "substituteIds": [
+        "step_up"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 3,
+        "bottomPause": 1,
+        "concentric": 1,
+        "topPause": 0
+      },
+      "pattern": "lunge",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "step_up",
+      "name": "Wejście na podwyższenie",
+      "muscleGroup": "Nogi",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Wchodzenie na stabilne podwyższenie jedną nogą.",
+      "videoURL": null,
+      "substituteIds": [
+        "split_squat"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 0,
+        "concentric": 1,
+        "topPause": 0
+      },
+      "pattern": "lunge",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "pushup",
+      "name": "Pompka",
+      "muscleGroup": "Klatka, barki",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Pompka z prostym ciałem.",
+      "videoURL": null,
+      "substituteIds": [
+        "incline_pushup"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 1,
+        "concentric": 1,
+        "topPause": 0
+      },
+      "pattern": "push",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "incline_pushup",
+      "name": "Pompka z rękami na podwyższeniu",
+      "muscleGroup": "Klatka, barki",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Lżejsza wersja pompki: ręce na ławce lub stole.",
+      "videoURL": null,
+      "substituteIds": [
+        "pushup"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 1,
+        "concentric": 1,
+        "topPause": 0
+      },
+      "pattern": "push",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "dumbbell_bench_press",
+      "name": "Wyciskanie hantli leżąc",
+      "muscleGroup": "Klatka",
+      "equipment": "dumbbells",
+      "level": "beginner",
+      "summary": "Wyciskanie hantli z leżenia na ławce lub podłodze.",
+      "videoURL": null,
+      "substituteIds": [
+        "pushup"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 1,
+        "concentric": 1,
+        "topPause": 0
+      },
+      "pattern": "push",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "overhead_press",
+      "name": "Wyciskanie nad głowę",
+      "muscleGroup": "Barki",
+      "equipment": "dumbbells",
+      "level": "intermediate",
+      "summary": "Wyciskanie hantli nad głowę w staniu.",
+      "videoURL": null,
+      "substituteIds": [
+        "lateral_raise",
+        "pushup"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 0,
+        "concentric": 1,
+        "topPause": 0
+      },
+      "pattern": "push",
+      "movementTags": [
+        "overheadPress"
+      ],
+      "timed": false
+    },
+    {
+      "id": "lateral_raise",
+      "name": "Unoszenie hantli bokiem",
+      "muscleGroup": "Barki",
+      "equipment": "dumbbells",
+      "level": "beginner",
+      "summary": "Unoszenie hantli bokiem do wysokości barków.",
+      "videoURL": null,
+      "substituteIds": [
+        "pushup"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 1,
+        "concentric": 2,
+        "topPause": 0
+      },
+      "pattern": "push",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "bench_press",
+      "name": "Wyciskanie sztangi leżąc",
+      "muscleGroup": "Klatka",
+      "equipment": "gym",
+      "level": "intermediate",
+      "summary": "Wyciskanie sztangi z leżenia na ławce.",
+      "videoURL": null,
+      "substituteIds": [
+        "dumbbell_bench_press",
+        "pushup"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 1,
+        "concentric": 1,
+        "topPause": 0
+      },
+      "pattern": "push",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "weighted_pushup",
+      "name": "Pompka z obciążeniem",
+      "muscleGroup": "Klatka, barki",
+      "equipment": "dumbbells",
+      "level": "intermediate",
+      "summary": "Pompka z dodatkowym ciężarem na plecach.",
+      "videoURL": null,
+      "substituteIds": [
+        "pushup"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 1,
+        "concentric": 1,
+        "topPause": 0
+      },
+      "pattern": "push",
+      "movementTags": [
+        "loadedPushups"
+      ],
+      "timed": false
+    },
+    {
+      "id": "dumbbell_row",
+      "name": "Wiosłowanie z hantlem",
+      "muscleGroup": "Plecy",
+      "equipment": "dumbbells",
+      "level": "beginner",
+      "summary": "Przyciąganie hantla do biodra w podporze.",
+      "videoURL": null,
+      "substituteIds": [
+        "superman"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 1,
+        "concentric": 2,
+        "topPause": 0
+      },
+      "pattern": "pull",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "lat_pulldown",
+      "name": "Ściąganie drążka wyciągu",
+      "muscleGroup": "Plecy",
+      "equipment": "gym",
+      "level": "beginner",
+      "summary": "Ściąganie drążka do klatki piersiowej w pozycji siedzącej.",
+      "videoURL": null,
+      "substituteIds": [
+        "dumbbell_row"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 1,
+        "concentric": 2,
+        "topPause": 0
+      },
+      "pattern": "pull",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "superman",
+      "name": "Superman",
+      "muscleGroup": "Plecy",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Unoszenie ramion i nóg z leżenia na brzuchu.",
+      "videoURL": null,
+      "substituteIds": [
+        "dumbbell_row"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 1,
+        "concentric": 2,
+        "topPause": 0
+      },
+      "pattern": "pull",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "plank",
+      "name": "Plank",
+      "muscleGroup": "Brzuch",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Podpór na przedramionach z prostym ciałem.",
+      "videoURL": null,
+      "substituteIds": [
+        "dead_bug"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": null,
+      "pattern": "core",
+      "movementTags": [],
+      "timed": true
+    },
+    {
+      "id": "dead_bug",
+      "name": "Dead bug",
+      "muscleGroup": "Brzuch",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Naprzemienne opuszczanie ręki i nogi z leżenia na plecach.",
+      "videoURL": null,
+      "substituteIds": [
+        "plank"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": {
+        "eccentric": 2,
+        "bottomPause": 0,
+        "concentric": 2,
+        "topPause": 0
+      },
+      "pattern": "core",
+      "movementTags": [],
+      "timed": false
+    },
+    {
+      "id": "side_plank",
+      "name": "Plank boczny",
+      "muscleGroup": "Brzuch, boki",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Podpór bokiem na przedramieniu.",
+      "videoURL": null,
+      "substituteIds": [
+        "plank"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": null,
+      "pattern": "core",
+      "movementTags": [],
+      "timed": true
+    },
+    {
+      "id": "marching",
+      "name": "Marsz w miejscu",
+      "muscleGroup": "Całe ciało",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Energiczny marsz w miejscu z unoszeniem kolan.",
+      "videoURL": null,
+      "substituteIds": [
+        "jumping_jacks"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": null,
+      "pattern": "cardio",
+      "movementTags": [],
+      "timed": true
+    },
+    {
+      "id": "jumping_jacks",
+      "name": "Pajacyki",
+      "muscleGroup": "Całe ciało",
+      "equipment": "none",
+      "level": "beginner",
+      "summary": "Skoki z rozkrokiem i unoszeniem rąk.",
+      "videoURL": null,
+      "substituteIds": [
+        "marching"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": null,
+      "pattern": "cardio",
+      "movementTags": [
+        "jumps"
+      ],
+      "timed": true
+    },
+    {
+      "id": "jump_squat",
+      "name": "Przysiad z wyskokiem",
+      "muscleGroup": "Nogi",
+      "equipment": "none",
+      "level": "intermediate",
+      "summary": "Przysiad zakończony wyskokiem.",
+      "videoURL": null,
+      "substituteIds": [
+        "marching"
+      ],
+      "supportsAnalysis": false,
+      "defaultTempo": null,
+      "pattern": "cardio",
+      "movementTags": [
+        "jumps",
+        "deepSquats"
+      ],
+      "timed": false
+    }
+  ]
+}
