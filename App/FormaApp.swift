@@ -17,7 +17,10 @@ struct FormaApp: App {
                 .preferredColorScheme(.dark)
                 .tint(FormaColor.voltText)
                 // Newer catalog and thresholds from the backend; offline we keep the bundled or cached copy.
-                .task { await ContentRepository.shared.refresh(using: store.services.api) }
+                .task {
+                    await store.refreshRecommendation()
+                    if await ContentRepository.shared.refresh(using: store.services.api) { await store.contentDidUpdate() }
+                }
         }
     }
 }

@@ -13,7 +13,9 @@ final class AppStore {
 
     var profile: UserProfile = SampleData.profile
     var plan: TrainingPlan = SampleData.plan
-    var catalog: [ExerciseItem] = SampleData.catalog
+    /// Bumped when newer content arrives from the backend, so screens that read `catalog` refresh.
+    private(set) var contentRevision = 0
+    var catalog: [ExerciseItem] { _ = contentRevision; return services.catalog.exercises }
     var recovery: [RecoverySnapshot] = SampleData.recovery
     var checkIn: CheckIn? = SampleData.checkIn
     var lastTechnique: TechniqueResult? = SampleData.technique
@@ -65,6 +67,34 @@ final class AppStore {
     }
 
     var today: RecoverySnapshot? { recovery.first }
+
+    // MARK: Recommendation and results
+
+    /// Recomputes today's recommendation with the rule engine from the current inputs.
+    @MainActor
+    func refreshRecommendation() async {
+        recommendation = await services.recommendation.todayRecommendation()
+    }
+
+    @MainActor
+    func contentDidUpdate() async {
+        contentRevision += 1
+        await refreshRecommendation()
+    }
+
+    @MainActor
+    func saveCheckIn(_ new: CheckIn) {
+        checkIn = new
+        services.localCheckIns.add(new)
+        Task { await refreshRecommendation() }
+    }
+
+    /// A finished live set: stored on the phone, feeds the rule engine.
+    @MainActor
+    func recordSet(_ summary: SetSummary) {
+        if let result = services.localHistory.record(summary) { lastTechnique = result }
+        Task { await refreshRecommendation() }
+    }
 
     func exercise(id: String) -> ExerciseItem? {
         catalog.first { $0.id == id }
