@@ -52,7 +52,7 @@ struct CoachView: View {
             Spacer()
             Menu {
                 if model.consent.granted {
-                    Button("Wycofaj zgodę na dane zdrowotne", systemImage: "hand.raised") { model.setConsent(false) }
+                    Button("Wycofaj zgodę i wyczyść rozmowę", systemImage: "hand.raised") { model.setConsent(false) }
                 } else {
                     Button("Zezwól na dane zdrowotne", systemImage: "heart.text.square") { model.setConsent(true) }
                 }
