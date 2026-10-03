@@ -49,6 +49,7 @@ struct CoachView: View {
     private func content(_ model: CoachViewModel) -> some View {
         VStack(spacing: 0) {
             header(model)
+            if let workout { contextCard(workout) }
             conversation(model)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -106,6 +107,25 @@ struct CoachView: View {
         .padding(.horizontal, FormaSpacing.screen)
         .padding(.top, FormaSpacing.l)
         .padding(.bottom, FormaSpacing.s)
+    }
+
+    /// Where the coach was opened from, and what it was told about that moment.
+    private func contextCard(_ workout: WorkoutContext) -> some View {
+        let summary = WorkoutContextSummary.make(
+            for: workout,
+            sessionTitle: workout.sessionId.flatMap { id in store.plan.sessions.first { $0.id == id }?.title },
+            exerciseName: workout.exerciseId.flatMap { store.exercise(id: $0)?.name })
+        return InfoBanner(systemImage: "scope") {
+            VStack(alignment: .leading, spacing: FormaSpacing.xs) {
+                Text(summary.title).formaStyle(.subheadline).foregroundStyle(FormaColor.ink)
+                ForEach(summary.lines, id: \.self) { line in
+                    Text(line).formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
+                }
+            }
+        }
+        .padding(.horizontal, FormaSpacing.screen)
+        .padding(.bottom, FormaSpacing.s)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: conversation
