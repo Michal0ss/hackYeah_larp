@@ -100,6 +100,12 @@ final class CarePathwayTests: XCTestCase {
         }
     }
 
+    func testShortSummaries() throws {
+        let repeated = try XCTUnwrap(assess(results: (0..<3).map { result(ago: $0, findings: [finding()]) }))
+        XCTAssertEqual(repeated.shortSummary(), "Ten sam sygnał w 3 analizach z 14 dni")
+        XCTAssertEqual(try XCTUnwrap(assess(checkIns: [checkIn(note: "boli")])).shortSummary(), "W notatce pojawił się ból lub dyskomfort")
+    }
+
     func testDisclaimerMentionsDoctorAndNotMedicalAdvice() {
         XCTAssertTrue(CarePathway.disclaimer.contains("lekarzem"))
         XCTAssertTrue(CarePathway.disclaimer.contains("To nie jest porada medyczna"))

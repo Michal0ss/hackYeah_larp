@@ -41,6 +41,15 @@ public struct CareAssessment: Equatable, Sendable {
         self.evidence = evidence
         self.steps = steps
     }
+
+    /// One line for the teaser card, e.g. "Ten sam sygnał w 3 analizach z 14 dni".
+    public func shortSummary(windowDays: Int = InsightThresholds.default.care.windowDays) -> String {
+        switch kind {
+        case .repeatedFinding: return "Ten sam sygnał w \(evidence.count) analizach z \(windowDays) dni"
+        case .painNote: return "W notatce pojawił się ból lub dyskomfort"
+        case .persistentRecovery: return "Kilka dni słabszej regeneracji i niższego samopoczucia"
+        }
+    }
 }
 
 /// Decides when to suggest talking to a specialist. Always a signal, never a diagnosis, never a cause.

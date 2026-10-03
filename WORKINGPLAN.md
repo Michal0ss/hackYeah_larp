@@ -199,12 +199,12 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie.
 | Jakość nagrania | Bartek | `feat/bartek-quality-gate` | do zrobienia | |
 | Powtórzenia i scoring | Bartek | `feat/bartek-rep-scoring` | do zrobienia | |
 | Ekrany Analiza i Wynik | Bartek | `feat/bartek-analysis-screens` | do zrobienia | |
-| HealthKit | Wiktor | `feat/wiktor-healthkit` | w przeglądzie (PR) | agregacja przetestowana na tablicach próbek; odczyt z prawdziwego Apple Health do sprawdzenia na iPhonie |
+| HealthKit | Wiktor | `feat/wiktor-healthkit` | scalone (#8) | agregacja przetestowana na tablicach próbek, dialog uprawnień sprawdzony na symulatorze; odczyt prawdziwych danych z Apple Health i zegarka do sprawdzenia na iPhonie |
 | Zapis check-inu | Wiktor | `feat/wiktor-checkin-store` | scalone (#6) | `CheckInStore` gotowy; podpięcie ekranu Check-in robi Michał (`AppStore.saveCheckIn` → `CheckInStore.standard`) |
 | Silnik reguł | Wiktor | `feat/wiktor-insight-engine` | scalone (#4, poprawki w #10) | `restFromSignals` = 4, do „Odpuść” liczą się tylko sygnały regeneracji, technika najwyżej „Zmodyfikuj”; liczą się analizy z ostatnich 14 dni |
 | Teksty rekomendacji (klient + backend) | Wiktor | `feat/wiktor-recommendation-text` | do zrobienia | |
-| Korekta sesji i opieka | Wiktor | `feat/wiktor-plan-adjuster-care` | w przeglądzie (PR) | `PlanAdjuster` i `CarePathway` gotowe i przetestowane, jeszcze nie wołane z aplikacji: `Today`/`Plan` (Michał) mają użyć `PlanAdjuster`, ekran Opieka dostanie `CarePathway.assess` |
-| Ekrany Postępy i Opieka | Wiktor | `feat/wiktor-progress-care-screens` | do zrobienia | |
+| Korekta sesji i opieka | Wiktor | `feat/wiktor-plan-adjuster-care` | scalone (#14, podpięte w #17) | `PlanAdjuster` zmienia sesję w Dziś i Plan, `CarePathway` zasila ekran Opieka |
+| Ekrany Postępy i Opieka | Wiktor | `feat/wiktor-progress-care-screens` | w przeglądzie (PR) | sprawdzone na symulatorze (wykresy, karta opieki, wyszukiwanie w Mapach z lokalizacją Warszawa, brak zgody); wyszukiwanie na prawdziwym iPhonie i wejścia do Opieki z Dziś i Wyniku (Michał, Bartek) do zrobienia. Historia sesji z prototypu zastąpiona historią serii z trenerem (aplikacja nie zapisuje decyzji dnia), Sylwetka poza zakresem |
 | Katalog i szablony | Maciek | `feat/maciek-catalog-templates` | do zrobienia | |
 | Magazyn planu | Maciek | `feat/maciek-plan-store` | do zrobienia | |
 | Backend z prawdziwym modelem (prompty, narzędzia, jakość planu) | Maciek | `feat/maciek-backend-ai` | do zrobienia | |
