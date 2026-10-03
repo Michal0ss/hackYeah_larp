@@ -364,7 +364,7 @@ Aplikacja nie mówi, co jest przyczyną, tylko że **warto porozmawiać ze specj
 
 ### 7.5 Rola modelu językowego w rekomendacji dnia
 
-Model (Claude Haiku 4.5) dostaje **gotową strukturę** z silnika reguł (decyzja, czynniki, uwagi) i tylko **formułuje tekst** po polsku w naszym tonie (sekcja 3.6). Nie wybiera decyzji, nie dodaje nowych zaleceń ani nie widzi żadnego obrazu. Wywołanie idzie przez backend (`POST /v1/texts/recommendation`), który **sprawdza tekst** pod kątem zakazanych sformułowań (diagnozy, leki, obietnice, linki) i przy każdym problemie zwraca tekst z szablonu. Gdy wywołanie się nie powiedzie (błąd API, limit, brak sieci), ten sam wynik opisują **gotowe szablony tekstu** (na serwerze, a bez sieci na telefonie), więc rekomendacja dnia zawsze się wyświetla.
+Model (Gemini, szybki model „flash”) dostaje **gotową strukturę** z silnika reguł (decyzja, czynniki, uwagi) i tylko **formułuje tekst** po polsku w naszym tonie (sekcja 3.6). Nie wybiera decyzji, nie dodaje nowych zaleceń ani nie widzi żadnego obrazu. Wywołanie idzie przez backend (`POST /v1/texts/recommendation`), który **sprawdza tekst** pod kątem zakazanych sformułowań (diagnozy, leki, obietnice, linki) i przy każdym problemie zwraca tekst z szablonu. Gdy wywołanie się nie powiedzie (błąd API, limit, brak sieci), ten sam wynik opisują **gotowe szablony tekstu** (na serwerze, a bez sieci na telefonie), więc rekomendacja dnia zawsze się wyświetla.
 
 ### 7.6 Plan treningowy i trener AI
 
@@ -372,11 +372,11 @@ Model (Claude Haiku 4.5) dostaje **gotową strukturę** z silnika reguł (decyzj
 
 **Generowanie planu.**
 1. Wejście: profil z onboardingu (cel, poziom, dni, czas sesji, sprzęt, „czego unikać”).
-2. Aplikacja wysyła profil (`POST /v1/plans/generate`; bez historii zdrowia, tylko pochodne `avoidTags` i `easyStart`). Backend zawęża katalog do ćwiczeń, które użytkownik może wykonać (sprzęt, poziom, unikane ruchy) i prosi model (Claude Sonnet 5.5) o **ustrukturyzowany JSON**: sesje w ustalonych dniach, ćwiczenia (tylko `id` z katalogu), serie, zakresy powtórzeń, przerwy.
+2. Aplikacja wysyła profil (`POST /v1/plans/generate`; bez historii zdrowia, tylko pochodne `avoidTags` i `easyStart`). Backend zawęża katalog do ćwiczeń, które użytkownik może wykonać (sprzęt, poziom, unikane ruchy) i prosi model (Gemini) o **ustrukturyzowany JSON**: sesje w ustalonych dniach, ćwiczenia (tylko `id` z katalogu), serie, zakresy powtórzeń, przerwy.
 3. Backend **waliduje** wynik kodem: czy `id` istnieją, czy pasują do sprzętu i poziomu, czy nie zawierają unikanych ruchów, czy liczba sesji, ćwiczeń, serii i powtórzeń mieści się w limitach. Identyfikatory, daty, źródło i tempo ustawia serwer, nie model. Niepoprawny plan jest odrzucany.
 4. Gdy generowanie lub walidacja zawiedzie (błąd API, limit czasu, niepoprawny wynik): **plan z gotowego szablonu** (`content/plan_templates.json`) dobranego do celu, poziomu, dni i czasu. Odpowiedź niesie ostrzeżenie (`ai_unavailable`, `ai_invalid_plan`), a nie błąd. Bez sieci aplikacja buduje plan z własnej kopii szablonów.
 
-**Trener AI (czat).** Czat działa wewnątrz aplikacji i jest podłączony do **gotowego modelu językowego przez API** (domyślnie Claude, wybór modelu w sekcji 8). Nie trenujemy własnego modelu. Trener ma **dostęp do zawartości aplikacji i danych zdrowotnych użytkownika**, a odbywa się to na dwa sposoby:
+**Trener AI (czat).** Czat działa wewnątrz aplikacji i jest podłączony do **gotowego modelu językowego przez API** (Gemini, wybór modelu w sekcji 8). Nie trenujemy własnego modelu. Trener ma **dostęp do zawartości aplikacji i danych zdrowotnych użytkownika**, a odbywa się to na dwa sposoby:
 
 1. **Stały kontekst w każdej rozmowie** (mały, budowany przez aplikację):
    - **instrukcja systemowa** z naszymi zasadami tonu i bezpieczeństwa (sekcja 3.6) i informacją, że trener nie jest lekarzem,
@@ -422,9 +422,9 @@ Backend nie zapisuje rozmów ani nie loguje ich treści (tylko identyfikator ż�
 | Punkty ciała | **Apple Vision**, `VNDetectHumanBodyPoseRequest` | Wbudowane w system, 19 punktów 2D, bez pięt i palców stóp, bez zależności zewnętrznych |
 | Wideo | AVFoundation (nagrywanie i `AVAssetReader`), `PhotosPicker` do wyboru filmu | Kamera działa tylko na prawdziwym telefonie |
 | Dane o zdrowiu | **HealthKit** (sen, tętno spoczynkowe, HRV) | Na symulatorze zwykle brak danych, stąd zestaw przykładowy |
-| Rekomendacje | Silnik reguł w Swifcie (progi z `content/config/insights.json`), tekst: Claude Haiku 4.5 przez backend lub szablony | Patrz sekcje 7.1–7.5 |
+| Rekomendacje | Silnik reguł w Swifcie (progi z `content/config/insights.json`), tekst: Gemini przez backend lub szablony | Patrz sekcje 7.1–7.5 |
 | Backend | **Python, FastAPI** (folder `backend/`), bezstanowy, bez bazy | Jeden wspólny szkielet, patrz 8.3. Kontrakt: `backend/openapi.json` |
-| Plan i trener AI | Gotowy model przez API (Claude), wołany **wyłącznie z backendu**. Plan: Sonnet 5.5 (JSON z walidacją, szablon jako zapas). Czat: Haiku 4.5 (szybszy i tańszy) lub Sonnet 5.5 (lepszy przy użyciu narzędzi) **[do ustalenia po próbie]**, z narzędziami i streamingiem (SSE) | Patrz sekcja 7.6. Modele są ustawieniami serwera (`FORMA_COACH_MODEL`, `FORMA_PLAN_MODEL`, `FORMA_TEXT_MODEL`) |
+| Plan i trener AI | Gotowy model przez API (**Google Gemini**, od 2026-10-03; wcześniej planowaliśmy Claude), wołany **wyłącznie z backendu**. Plan: JSON ze schematu z walidacją (szablon jako zapas). Czat: strumień SSE z narzędziami wykonywanymi na telefonie. Model główny i modele zapasowe (kaskada przy limicie, wycofaniu modelu lub błędzie) są ustawieniami serwera | Patrz sekcja 7.6. `FORMA_COACH_MODEL`, `FORMA_PLAN_MODEL`, `FORMA_TEXT_MODEL`, `FORMA_FALLBACK_MODELS`; klucz `GEMINI_API_KEY` musi być z **płatnego projektu** z limitem budżetu (darmowy poziom: 20 zapytań na dobę na model, a Google może wtedy używać treści zapytań) |
 | Opieka | MapKit (`MKLocalSearch`) | Wyszukiwanie fizjoterapeutów w pobliżu |
 | Wykresy | Swift Charts | |
 | Zapis lokalny | SwiftData lub prosty plik JSON | Profil, plan, historia sesji, wyniki, rozmowy z trenerem, historia zdrowia. Nigdy wideo |
@@ -486,12 +486,12 @@ HealthKitService  (sen, HRV, tętno)  ─→  InsightEngine ─→ DailyRecommen
 CheckIn           (nastrój, stres)   ─↗         │               │
                                                  │               └─ PlanAdjuster (zmiana dzisiejszej sesji)
                                                  ├─ CarePathway (flaga „warto rozważyć konsultację”)
-                                                 └─ CoachTextGenerator (Claude lub szablony)
+                                                 └─ CoachTextGenerator (Gemini lub szablony)
 
-UserProfile ─→ PlanGenerator ─→ BACKEND /v1/plans/generate (Claude → JSON → walidacja, zapas: szablon) ─→ TrainingPlan
+UserProfile ─→ PlanGenerator ─→ BACKEND /v1/plans/generate (Gemini → JSON → walidacja, zapas: szablon) ─→ TrainingPlan
 ExerciseCatalog ───────────────────────────────────────────────────────────↗   │
                                                                               ▼
-CoachContextBuilder (profil + decyzja) ─→ CoachChat ─→ BACKEND /v1/coach/chat (Claude, SSE)
+CoachContextBuilder (profil + decyzja) ─→ CoachChat ─→ BACKEND /v1/coach/chat (Gemini, SSE)
                                               ↑ tool_use / tool_result: narzędzia wykonuje telefon na lokalnych danych
 ```
 
@@ -532,7 +532,7 @@ Bez rozpisywania na godziny. Kolejność jest ważniejsza niż zegar: przechodzi
 ### Krok 0: Przygotowanie (przed startem, tylko środowisko)
 
 - Każdy ma działający Xcode, iPhone w trybie dewelopera i zaufany komputerowi.
-- Konta: Apple ID do podpisywania, dostęp do HackTribe i Discorda HackYeah, klucz do Claude API (jedna osoba; trafia do środowiska backendu).
+- Konta: Apple ID do podpisywania, dostęp do HackTribe i Discorda HackYeah, klucz do Gemini API z płatnego projektu (jedna osoba; trafia do środowiska backendu).
 - Sprawdzenie na **pustej aplikacji testowej poza projektem**, że instalacja na iPhonie i uprawnienia HealthKit działają.
 - Potwierdzenie z organizatorami, że wcześniejsze planowanie jest w porządku.
 
@@ -674,7 +674,7 @@ Język slajdów i opisu: polski lub angielski **[do ustalenia]**.
 | Zakres jest duży jak na jeden dzień (plan, czat, analiza, dane) | Priorytety z sekcji 4.2, plan z szablonu jako zapas, czat jako element, który można ograniczyć |
 | Model wygeneruje niepoprawny plan albo wymyśli ćwiczenie | Katalog jako jedyne źródło `id`, walidacja kodem, plan z szablonu przy błędzie |
 | Trener AI da radę medyczną, zmyśli dane albo zbagatelizuje ból | Instrukcja systemowa, kontekst z silnika reguł, odsyłanie do specjalisty przy bólu i urazie, kontrola odpowiedzi na kilku testowych pytaniach przed demo |
-| Opóźnienie lub błąd API podczas demo | Krótkie odpowiedzi (Haiku), komunikat o błędzie z ponowieniem, nagranie demo jako zapas |
+| Opóźnienie lub błąd API podczas demo | Krótkie odpowiedzi, kaskada modeli zapasowych, komunikat o błędzie z ponowieniem, nagranie demo jako zapas |
 | Czat wysyła dane użytkownika, w tym zdrowotne, do zewnętrznego modelu | Wyraźna zgoda przed pierwszą rozmową z możliwością wycofania, minimum danych (podsumowania, narzędzia zamiast całej bazy), brak wideo i obrazów, jasna informacja w aplikacji i na slajdzie. Przed wdrożeniem poza demo: warunki dostawcy i RODO |
 | Trener błędnie użyje narzędzi lub pominie dane | Krótki zestaw narzędzi z jasnymi opisami, narzędzia tylko do odczytu, testy na kilku typowych pytaniach przed demo |
 
@@ -704,8 +704,8 @@ Język slajdów i opisu: polski lub angielski **[do ustalenia]**.
 - [ ] Czy czat trenera ma tylko odpowiadać, czy też proponować zmiany w planie z przyciskiem „Zastosuj” (priorytet 5).
 - [x] Jeden wspólny backend (FastAPI) trzyma klucz do modelu i obsługuje plan, czat i teksty; telefon robi analizę, reguły i dane zdrowotne (sekcje 8.1, 8.3). Zastępuje wcześniejszą decyzję „bez backendu”. Baza i konta dopiero po hackathonie.
 - [x] Teraz backend lokalnie na laptopie; docelowo Vercel + Supabase (sekcja 8.1), bez terminu. Do ustalenia przy przejściu: kto zakłada projekty, schemat bazy (limity i liczniki) i czy SSE przechodzi przez Vercela w limicie czasu.
-- [ ] Który model w czacie (Haiku 4.5 czy Sonnet 5) po próbie szybkości i jakości.
+- [x] Dostawca modelu: Gemini (kaskada modeli), sprawdzone na prawdziwym kluczu: plany 6/6 poprawnych (ok. 3 s, 0,002 USD), czat 9/9 scenariuszy. Do ustalenia: płatny klucz i limit budżetu.
 - [ ] Czy w demo trener pracuje na danych przykładowych, na prawdziwych danych z telefonu, czy na obu (przełącznik).
 - [ ] Źródło filmów wzorcowych i danych przykładowych (kto się nagrywa, za zgodą).
-- [ ] Klucz do Claude API: kto go zakłada (limit wydatków) i że trafia wyłącznie do sekretów hostingu backendu.
+- [ ] Klucz do Gemini API: kto go zakłada (płatny projekt, limit wydatków) i że trafia wyłącznie do sekretów hostingu backendu.
 - [ ] Język slajdów i opisu: polski czy angielski.
