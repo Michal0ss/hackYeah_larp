@@ -22,7 +22,7 @@ struct TodayView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: FormaSpacing.l) {
                     header
-                    RecommendationCard(recommendation: store.recommendation)
+                    RecommendationCard(recommendation: store.recommendation, text: store.recommendationText)
                     if let care = careModel.care {
                         CareTeaserCard(assessment: care, simulated: careModel.careSimulated) { showCare = true }
                     }
@@ -113,6 +113,7 @@ struct TodayView: View {
 
 private struct RecommendationCard: View {
     let recommendation: DailyRecommendation
+    let text: RecommendationText
     @State private var expanded = false
 
     var body: some View {
@@ -122,14 +123,19 @@ private struct RecommendationCard: View {
                 Spacer()
                 DecisionChip(recommendation.decision)
             }
-            Text(recommendation.headline)
+            Text(text.headline)
                 .formaStyle(.title)
                 .foregroundStyle(FormaColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(recommendation.suggestedAction)
+            Text(text.explanation)
                 .formaStyle(.body)
                 .foregroundStyle(FormaColor.ink2)
                 .fixedSize(horizontal: false, vertical: true)
+            if text.source == .ai {
+                Label("Sformułowane przez trenera AI. Decyzję liczą reguły w aplikacji.", systemImage: "sparkles")
+                    .formaStyle(.footnote)
+                    .foregroundStyle(FormaColor.ink3)
+            }
 
             Button {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { expanded.toggle() }

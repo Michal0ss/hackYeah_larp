@@ -20,7 +20,13 @@ final class AppStore {
     var recovery: [RecoverySnapshot] = SampleData.recovery
     var checkIn: CheckIn? = SampleData.checkIn
     var lastTechnique: TechniqueResult? = SampleData.technique
-    var recommendation: DailyRecommendation = SampleData.recommendation
+    var recommendation: DailyRecommendation = SampleData.recommendation {
+        didSet { recommendationText = EngineText.make(for: recommendation) }
+    }
+    /// Wording of today's recommendation: the phone's own text first, the model's text when it arrives and passes
+    /// the checks. The decision itself always comes from `recommendation`.
+    private(set) var recommendationText = EngineText.make(for: SampleData.recommendation)
+    @ObservationIgnored private var textTask: Task<Void, Never>?
 
     // MARK: Onboarding
 
@@ -100,6 +106,7 @@ final class AppStore {
         try? onboardingStorage.clear()
         _ = try? await services.checkInStore.removeAll()
         services.localHistory.removeAll()
+        await (services.recommendationText as? RecommendationTexter)?.clearCache()
         profile = SampleData.profile
         plan = SampleData.plan
         healthHistory = HealthHistory()
@@ -150,7 +157,16 @@ final class AppStore {
     /// Recomputes today's recommendation with the rule engine from the current inputs.
     @MainActor
     func refreshRecommendation() async {
-        recommendation = await services.recommendation.todayRecommendation()
+        let new = await services.recommendation.todayRecommendation()
+        if new != recommendation { recommendation = new }  // sets the local text immediately
+        // The model's wording comes later and must never block the card (nor outlive a newer recommendation).
+        textTask?.cancel()
+        let texter = services.recommendationText
+        textTask = Task { @MainActor [weak self] in
+            let text = await texter.text(for: new)
+            guard !Task.isCancelled, let self, self.recommendation == new else { return }
+            self.recommendationText = text
+        }
     }
 
     @MainActor
