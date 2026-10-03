@@ -38,6 +38,14 @@ def template_text(rec: DailyRecommendation, *warnings: str) -> RecommendationTex
     )
 
 
+def _source_text(rec: DailyRecommendation) -> str:
+    """Everything the model was given. The text may not add numbers that are not in here."""
+    parts = [rec.headline, rec.suggested_action, *(factor.text for factor in rec.factors)]
+    if rec.care_flag:
+        parts.append(rec.care_flag.reason)
+    return " ".join(parts)
+
+
 async def recommendation_text(
     rec: DailyRecommendation, gateway: AIGateway, settings: Settings
 ) -> RecommendationTextResponse:
@@ -66,7 +74,7 @@ async def recommendation_text(
 
     headline = sanitize_free_text(generated.headline, 120)
     explanation = sanitize_free_text(generated.explanation, 600)
-    problems = check_generated_text(headline, explanation)
+    problems = check_generated_text(headline, explanation, source=_source_text(rec), decision=rec.decision)
     if rec.care_flag and not any(word in explanation.lower() for word in ("fizjoterap", "lekarz")):
         problems.append("missing_care_hint")
     if problems:

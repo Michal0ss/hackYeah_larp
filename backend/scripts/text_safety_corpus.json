@@ -1,0 +1,189 @@
+{
+  "note": "Shared by backend/scripts/check_texts.py and Swift InsightsTests (TextGuard). Every phrase that slipped through once goes in 'bad' with the category that must catch it; wordings we want to keep go in 'good'.",
+  "bad": [
+    {
+      "text": "Masz zapalenie ścięgna, odpocznij.",
+      "category": "diagnosis"
+    },
+    {
+      "text": "Masz kontuzję kolana.",
+      "category": "diagnosis"
+    },
+    {
+      "text": "To przeciążenie, czyli uraz mięśnia.",
+      "category": "diagnosis"
+    },
+    {
+      "text": "To pewnie przetrenowanie.",
+      "category": "diagnosis"
+    },
+    {
+      "text": "Niskie HRV może oznaczać problemy z sercem.",
+      "category": "diagnosis"
+    },
+    {
+      "text": "Twoje kolano jest uszkodzone.",
+      "category": "diagnosis"
+    },
+    {
+      "text": "To typowa diagnoza przy takim bólu.",
+      "category": "diagnosis"
+    },
+    {
+      "text": "Weź ibuprofen przed treningiem.",
+      "category": "medication"
+    },
+    {
+      "text": "Przyjmij lek przeciwbólowy.",
+      "category": "medication"
+    },
+    {
+      "text": "Pomogą suplementy i witaminy.",
+      "category": "medication"
+    },
+    {
+      "text": "Zażyj 400 mg i odpocznij.",
+      "category": "medication"
+    },
+    {
+      "text": "Potrzebujesz leczenia.",
+      "category": "medication"
+    },
+    {
+      "text": "Na pewno poczujesz się lepiej.",
+      "category": "promise"
+    },
+    {
+      "text": "Gwarantuję, że wrócisz do formy.",
+      "category": "promise"
+    },
+    {
+      "text": "To zapobiegnie kontuzji.",
+      "category": "promise"
+    },
+    {
+      "text": "Dzięki temu pozbędziesz się bólu.",
+      "category": "promise"
+    },
+    {
+      "text": "To bez ryzyka.",
+      "category": "promise"
+    },
+    {
+      "text": "To niebezpieczne, przerwij natychmiast.",
+      "category": "scare"
+    },
+    {
+      "text": "Grozi ci poważny problem.",
+      "category": "scare"
+    },
+    {
+      "text": "Nie wolno ci dziś ćwiczyć.",
+      "category": "prohibition"
+    },
+    {
+      "text": "Musisz odpocząć.",
+      "category": "prohibition"
+    },
+    {
+      "text": "Koniecznie idź do lekarza.",
+      "category": "prohibition"
+    },
+    {
+      "text": "Więcej na https://example.com/porady",
+      "category": "link"
+    },
+    {
+      "text": "Zobacz www.zdrowie.pl",
+      "category": "link"
+    },
+    {
+      "text": "Napisz na trener@forma.app",
+      "category": "link"
+    },
+    {
+      "text": "**Dziś** lżejszy trening",
+      "category": "markup"
+    },
+    {
+      "text": "## Plan na dziś",
+      "category": "markup"
+    },
+    {
+      "text": "- pierwszy punkt\n- drugi punkt",
+      "category": "markup"
+    },
+    {
+      "text": "[kliknij](http://x)",
+      "category": "markup"
+    },
+    {
+      "text": "Dziś lżejszy trening 💪",
+      "category": "emoji"
+    },
+    {
+      "text": "Jako model językowy nie mogę ocenić.",
+      "category": "meta"
+    }
+  ],
+  "good": [
+    "Dziś lżejszy trening nóg",
+    "Krótki sen i niższe HRV to sygnał, że warto dziś zwolnić.",
+    "To nie jest diagnoza, tylko sygnał. Warto rozważyć konsultację z fizjoterapeutą.",
+    "Sygnał, nie diagnoza: pochylenie tułowia wraca w kolejnych analizach.",
+    "Zrób o jedną serię mniej i skup się na technice.",
+    "Dziś wybierz spacer albo kilka minut mobilności.",
+    "Jeśli to się powtarza, warto porozmawiać z lekarzem lub fizjoterapeutą.",
+    "Lekki trening zamiast pełnego, jeśli czujesz zmęczenie.",
+    "Lekarz lub fizjoterapeuta może ocenić ruch na żywo."
+  ],
+  "contradictions": [
+    {
+      "decision": "rest",
+      "text": "Dziś trenuj według planu."
+    },
+    {
+      "decision": "rest",
+      "text": "Zrób pełny trening, poradzisz sobie."
+    },
+    {
+      "decision": "train",
+      "text": "Dziś lepiej odpuść."
+    },
+    {
+      "decision": "train",
+      "text": "Zrób lżejszy trening."
+    },
+    {
+      "decision": "adapt",
+      "text": "Trenuj według planu bez zmian."
+    }
+  ],
+  "numbers": [
+    {
+      "source": "Sen 5 h 40 min",
+      "text": "Spałeś 5 h 40 min.",
+      "invented": false
+    },
+    {
+      "source": "Sen 5 h 40 min",
+      "text": "Spałeś tylko 5,5 godziny.",
+      "invented": true
+    },
+    {
+      "source": "HRV 38 ms, 17% poniżej średniej",
+      "text": "HRV jest o 25% niżej.",
+      "invented": true
+    },
+    {
+      "source": "RPE 6–7",
+      "text": "Intensywność RPE 6–7.",
+      "invented": false
+    },
+    {
+      "source": "Sen 5,5 godziny",
+      "text": "Sen 5.5 godziny.",
+      "invented": false
+    }
+  ]
+}

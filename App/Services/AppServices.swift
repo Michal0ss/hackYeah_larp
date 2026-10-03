@@ -27,6 +27,9 @@ struct AppServices {
     var technique: TechniqueHistoryProviding
     // Rule engine (Wiktor) over recovery (Apple Health or sample), the check-ins and the recorded results.
     var recommendation: RecommendationProviding
+    /// Wording of the daily recommendation: the model via the backend when allowed, the phone's own text otherwise.
+    /// `consent` is false until Maciek's `DataConsent` store exists, so only simulated data goes to the model for now.
+    var recommendationText: RecommendationTexting
     var healthAuthorization: HealthAuthorizing
     /// Backend first, local fallback until Maciek's PlanGenerator replaces it.
     var planGenerator: PlanGenerating
@@ -38,6 +41,7 @@ struct AppServices {
         technique = localHistory
         recommendation = InsightRecommendationService(recovery: healthKit, checkIns: checkInStore,
                                                       technique: localHistory, catalog: ContentRepository.shared)
+        recommendationText = RecommendationTexter(fetcher: BackendRecommendationFetcher(api: api), hasConsent: { false })
         planGenerator = BackendPlanGenerator(api: api, fallback: SampleServices())
     }
 }
