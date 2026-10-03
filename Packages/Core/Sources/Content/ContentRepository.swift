@@ -28,6 +28,8 @@ public final class ContentRepository: ExerciseCatalogProviding, @unchecked Senda
     private var catalogETag: String?
     private var configETag: String?
     private let cacheDirectory: URL?
+    /// Bump when the Codable types of the cached content change: older caches are then ignored and refetched.
+    private static let cacheFormat = "2"
 
     /// `cacheDirectory` nil = no disk cache (handy for previews).
     public init(cacheDirectory: URL? = ContentRepository.defaultCacheDirectory()) {
@@ -117,7 +119,7 @@ public final class ContentRepository: ExerciseCatalogProviding, @unchecked Senda
     private func setETag(_ etag: String?, catalog: Bool) {
         lock.lock()
         if catalog { catalogETag = etag } else { configETag = etag }
-        let values = ["catalog": catalogETag, "config": configETag].compactMapValues { $0 }
+        let values = ["catalog": catalogETag, "config": configETag, "format": Self.cacheFormat].compactMapValues { $0 }
         lock.unlock()
         if let data = try? JSONEncoder().encode(values) { write(data, "etags.json") }
     }
@@ -138,17 +140,17 @@ public final class ContentRepository: ExerciseCatalogProviding, @unchecked Senda
 
     private func loadCache() {
         let decoder = JSONDecoder()
+        guard let data = read("etags.json"), let tags = try? decoder.decode([String: String].self, from: data),
+              tags["format"] == Self.cacheFormat else { return }  // no cache, or written by an older app version
+        catalogETag = tags["catalog"]; configETag = tags["config"]
         if let data = read("catalog.json"), let catalog = try? decoder.decode(CatalogResponse.self, from: data),
            Self.isUsable(catalog.exercises) {
             current.source = .cached; current.catalogVersion = catalog.version; current.exercises = catalog.exercises
-        }
+        } else { catalogETag = nil }
         if let data = read("config.json"), let config = try? decoder.decode(ConfigResponse.self, from: data) {
             current.source = .cached; current.configVersion = config.version
             current.scoring = config.scoring; current.insights = config.insights; current.tempo = config.tempo
-        }
-        if let data = read("etags.json"), let tags = try? decoder.decode([String: String].self, from: data) {
-            catalogETag = tags["catalog"]; configETag = tags["config"]
-        }
+        } else { configETag = nil }
     }
 
     public static func defaultCacheDirectory() -> URL? {
