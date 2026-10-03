@@ -199,7 +199,7 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie.
 | Jakość nagrania | Bartek | `feat/bartek-quality-gate` | do zrobienia | |
 | Powtórzenia i scoring | Bartek | `feat/bartek-rep-scoring` | do zrobienia | |
 | Ekrany Analiza i Wynik | Bartek | `feat/bartek-analysis-screens` | do zrobienia | |
-| HealthKit | Wiktor | `feat/wiktor-healthkit` | do zrobienia | |
+| HealthKit | Wiktor | `feat/wiktor-healthkit` | w przeglądzie (PR) | agregacja przetestowana na tablicach próbek; odczyt z prawdziwego Apple Health do sprawdzenia na iPhonie |
 | Zapis check-inu | Wiktor | `feat/wiktor-checkin-store` | w przeglądzie (PR) | `CheckInStore` gotowy, ekran Check-in (Michał) musi wołać `save` |
 | Silnik reguł | Wiktor | `feat/wiktor-insight-engine` | w przeglądzie (PR) | `restFromSignals` = 4, do „Odpuść” liczą się tylko sygnały regeneracji. `AppStore` (Michał) musi wołać `services.recommendation` |
 | Teksty rekomendacji (klient + backend) | Wiktor | `feat/wiktor-recommendation-text` | do zrobienia | |
