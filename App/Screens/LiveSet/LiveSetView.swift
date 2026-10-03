@@ -276,11 +276,33 @@ struct LiveSetView: View {
                 Spacer()
                 phaseTimer
             }
+            angleRow
             if let cue = engine.lastCue {
                 Label(cue, systemImage: "speaker.wave.2.fill")
                     .formaStyle(.headline)
                     .foregroundStyle(FormaColor.voltText)
                     .lineLimit(1)
+            }
+        }
+    }
+
+    /// The joint angle now, the band expected at the working end, and the verdict on the last repetition.
+    private var angleRow: some View {
+        let band = engine.targetBand
+        return VStack(alignment: .leading, spacing: FormaSpacing.xs) {
+            HStack(alignment: .firstTextBaseline, spacing: FormaSpacing.s) {
+                Text(session.kind.primaryAngleTitle).formaStyle(.caption).foregroundStyle(FormaColor.ink3)
+                Text(engine.liveAngle.map { "\(Int($0.rounded()))°" } ?? "–")
+                    .font(.formaNumber(22)).monospacedDigit().foregroundStyle(FormaColor.ink)
+                Spacer()
+                Text("cel \(session.kind == .pullup ? "na górze" : "na dole"): \(Int(band.lowerBound))–\(Int(band.upperBound))°")
+                    .formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
+            }
+            if let verdict = engine.lastVerdict {
+                Label("Powt. \(verdict.index): " + (verdict.angle.map { "\(Int($0.rounded()))° · " } ?? "") + verdict.text,
+                      systemImage: verdict.isGood ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                    .formaStyle(.subheadline)
+                    .foregroundStyle(verdict.isGood ? FormaColor.goText : FormaColor.moderateText)
             }
         }
     }

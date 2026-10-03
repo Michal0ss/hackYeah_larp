@@ -26,6 +26,23 @@ public final class LiveSetEngine {
     public private(set) var latestFrame: PoseFrame?
     public private(set) var summary: SetSummary?
 
+    /// The main joint angle of the exercise (knee of a squat, elbow of a push-up and a pull-up) in the latest frame,
+    /// aspect corrected. Nil while the joints are not visible.
+    public private(set) var liveAngle: Double?
+    /// The band of that angle expected at the working end of the movement (from `AngleReference`).
+    public let targetBand: ClosedRange<Double>
+
+    /// The verdict on the repetition that has just ended, against the same ranges the summary uses.
+    public struct RepVerdict: Equatable, Sendable {
+        public var index: Int
+        /// The angle at the working end of that repetition.
+        public var angle: Double?
+        public var isGood: Bool
+        /// "Technika w normie" or the title of the first thing that is off ("Za płytko").
+        public var text: String
+    }
+    public private(set) var lastVerdict: RepVerdict?
+
     // Diagnostics for testing on a real phone (see PoseDiagnostics and the diagnostics panel in the app).
     /// Frames per second the pose stream is delivering (smoothed).
     public private(set) var framesPerSecond = 0.0
@@ -56,18 +73,24 @@ public final class LiveSetEngine {
     private var lastHint: String?
     private var lastHintSpokenAt: Date?
     private var bottomFrames: [PoseFrame] = []
+    private var startFrames: [PoseFrame] = []
+    /// The frames since the last repetition ended (the start position of the next one is in there), capped.
+    private var recentFrames: [PoseFrame] = []
+    private static let maxRecentFrames = 450
     private var repBest: (depth: Double, frame: PoseFrame)?
 
     public init(exerciseId: String, spec: TempoSpec, setIndex: Int = 1, voice: CoachVoice,
                 kind: MovementKind = .squat, assessor: TechniqueAssessing? = nil, isSimulated: Bool = false,
-                trackerConfig: PhaseTrackerConfig = PhaseTrackerConfig(), cooldownReps: Int? = nil) {
+                trackerConfig: PhaseTrackerConfig = PhaseTrackerConfig(), cooldownReps: Int? = nil,
+                reference: AngleReference = AngleReference()) {
+        self.targetBand = kind.targetBand(reference)
         self.exerciseId = exerciseId
         self.kind = kind
         self.signal = SquatSignal(kind: kind)
         self.spec = spec
         self.setIndex = setIndex
         self.voice = voice
-        self.assessor = assessor ?? kind.defaultAssessor
+        self.assessor = assessor ?? kind.assessor(reference: reference)
         self.isSimulated = isSimulated
         self.tracker = PhaseTracker(config: trackerConfig)
         if let cooldownReps { self.policy.cooldownReps = cooldownReps }
@@ -112,6 +135,10 @@ public final class LiveSetEngine {
         unreadySince = nil
         repBest = nil
         bottomFrames = []
+        startFrames = []
+        recentFrames = []
+        lastVerdict = nil
+        liveAngle = nil
         goodFrames = 0
         totalFrames = 0
         signal.reset()
@@ -148,7 +175,7 @@ public final class LiveSetEngine {
         currentPhase = nil
 
         let tempo = TempoScoring.evaluate(reps: reps, spec: spec)
-        let technique = assessor.assess(bottomFrames: bottomFrames)
+        let technique = assessor.assess(bottomFrames: bottomFrames, startFrames: startFrames)
         let framingSummary = FramingAssessor.summarize(goodFrames: goodFrames, totalFrames: totalFrames, lastHint: lastHint)
         summary = SetSummary(exerciseId: exerciseId, setIndex: setIndex, targetTempo: spec, reps: reps,
                              tempoScore: tempo.score, tempoFindings: tempo.findings,
@@ -204,6 +231,10 @@ public final class LiveSetEngine {
         if report.ready { goodFrames += 1 } else { lastHint = report.hint }
         framing = report
 
+        liveAngle = kind.primaryAngle(in: frame, minConfidence: 0.2)
+        recentFrames.append(frame)
+        if recentFrames.count > Self.maxRecentFrames { recentFrames.removeFirst(recentFrames.count - Self.maxRecentFrames) }
+
         guard let depth = signal.depth(for: frame) else { return }
         latestDepth = depth
         if tracker.phase != nil, depth > (repBest?.depth ?? -1) { repBest = (depth, frame) }
@@ -219,8 +250,20 @@ public final class LiveSetEngine {
                 rep = kind.exerciseRep(rep)
                 rep.startedAt -= setStart
                 reps.append(rep)
-                if let best = repBest { bottomFrames.append(best.frame) }
+                if let best = repBest {
+                    // The frames the technique is judged on: the working end and the start position of this repetition,
+                    // each a robust pick near the moment (not one glitchy frame), the way a recorded clip does it.
+                    bottomFrames.append(kind.representativeFrame(in: recentFrames, around: best.frame.time, radius: 0.2, wantMin: true)
+                                        ?? best.frame)
+                    // The tracker notices the movement a few tenths after it began, so the start position is looked for
+                    // from before that moment.
+                    let start = rep.startedAt + setStart - 0.4
+                    let top = kind.representativeFrame(in: recentFrames, around: start, radius: 0.55, wantMin: false)
+                    if let top { startFrames.append(top) }
+                    if let bottom = bottomFrames.last { lastVerdict = verdict(index: reps.count, bottom: bottom, start: top) }
+                }
                 repBest = nil
+                recentFrames.removeAll(keepingCapacity: true)
                 currentPhase = nil
                 // Shown on screen (LiveSetView) but not spoken: the only things said live are the
                 // phase cues below, so corrections don't talk over the next "w dół"/"w górę".
@@ -231,6 +274,14 @@ public final class LiveSetEngine {
                 if !reps.isEmpty { finish() }
             }
         }
+    }
+
+    /// The repetition judged on its own, with the same assessor and ranges as the summary at the end of the set.
+    private func verdict(index: Int, bottom: PoseFrame, start: PoseFrame?) -> RepVerdict {
+        let assessment = assessor.assess(bottomFrames: [bottom], startFrames: start.map { [$0] } ?? [])
+        let issue = assessment.findings.first { $0.severity != .good }
+        return RepVerdict(index: index, angle: kind.primaryAngle(in: bottom, minConfidence: 0.15),
+                          isGood: issue == nil, text: issue?.title ?? "Technika w normie")
     }
 
     // MARK: - Voice
