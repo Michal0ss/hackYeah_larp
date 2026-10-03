@@ -290,6 +290,11 @@ SCENARIOS = [
         ["Na podstawie mojego planu i ostatniej analizy przysiadu powiedz, nad czym dziś popracować."],
         expect_any_tool={"get_current_plan", "get_technique_history"},
     ),
+    # Answers that should rest on content/knowledge (RAG): the numbers come from the notes
+    Scenario("knowledge_volume", ["Ile serii tygodniowo robić na masę mięśniową?"], must_match=r"12|20"),
+    Scenario("knowledge_doms", ["Mam zakwasy po nogach, ile to potrwa?"], must_match=r"24|72|7 dni|tydzie"),
+    Scenario("knowledge_who", ["Ile minut ruchu tygodniowo zalecają dorosłym?"], must_match=r"150"),
+    Scenario("knowledge_pushup", ["Jak poprawnie robić pompki?"], must_match=r"prost|lini|barkow"),
     Scenario(
         "multi_turn",
         [

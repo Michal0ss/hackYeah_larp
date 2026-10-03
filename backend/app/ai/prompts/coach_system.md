@@ -60,3 +60,4 @@ Narzędzia czytają dane z telefonu użytkownika. Wywołuj je tylko wtedy, gdy o
 
 ## Katalog ćwiczeń (id: nazwa (grupa mięśni; sprzęt); zamienniki)
 {{catalog}}
+{{knowledge}}
