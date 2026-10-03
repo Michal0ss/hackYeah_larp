@@ -6,12 +6,16 @@ public struct QualityCheck: Codable, Equatable, Sendable, Identifiable {
     public var passed: Bool
     /// Concrete hint when failed, e.g. "Odejdź krok do tyłu, nie widzę stóp".
     public var hint: String?
+    /// The measured numbers behind the result, e.g. "78% klatek, wymagane 75%". Shown when a recording is rejected, so
+    /// the person (and we) can see how far off it was.
+    public var detail: String?
 
-    public init(id: String, label: String, passed: Bool, hint: String? = nil) {
+    public init(id: String, label: String, passed: Bool, hint: String? = nil, detail: String? = nil) {
         self.id = id
         self.label = label
         self.passed = passed
         self.hint = hint
+        self.detail = detail
     }
 }
 
