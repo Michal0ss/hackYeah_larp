@@ -16,6 +16,7 @@ final class LiveSetSession {
 
     let engine: LiveSetEngine
     let exercise: ExerciseItem
+    let kind: MovementKind
     let spec: TempoSpec
     let setIndex: Int
     private(set) var source: Source
@@ -28,6 +29,8 @@ final class LiveSetSession {
 
     init(exercise: ExerciseItem, spec: TempoSpec, setIndex: Int) {
         self.exercise = exercise
+        let kind = MovementKind.kind(for: exercise) ?? .squat
+        self.kind = kind
         self.spec = spec
         self.setIndex = setIndex
         #if targetEnvironment(simulator)
@@ -37,7 +40,7 @@ final class LiveSetSession {
         #endif
         self.source = source
         self.engine = LiveSetEngine(exerciseId: exercise.id, spec: spec, setIndex: setIndex,
-                                    voice: SpeechCoachVoice(), isSimulated: source == .simulation,
+                                    voice: SpeechCoachVoice(), kind: kind, isSimulated: source == .simulation,
                                     trackerConfig: PhaseTrackerConfig(values: ContentRepository.shared.numbers("tempo", "phaseTracker")),
                                     cooldownReps: ContentRepository.shared.numbers("tempo", "policy")["cooldownReps"].map(Int.init))
     }
@@ -49,7 +52,7 @@ final class LiveSetSession {
         switch source {
         case .simulation:
             task = Task { [engine] in
-                for await frame in SimulatedSquat().stream() {
+                for await frame in SimulatedSquat(kind: kind).stream() {
                     engine.ingest(frame)
                 }
                 if engine.stage != .summary { engine.finish() }

@@ -21,6 +21,13 @@ public struct PoseDiagnostics: Equatable, Sendable {
     public var torsoLean: Double?
     /// Same test as `BasicSquatAssessor`: hip at or below knee height.
     public var hipBelowKnee: Bool?
+    /// Shoulder - elbow - wrist angle of the clearest arm (180 = straight arm, below about 100 = bent for a push-up
+    /// or the top of a pull-up).
+    public var elbowAngle: Double?
+    /// Shoulder - hip - ankle angle (180 = straight body line; push-up checks).
+    public var bodyLineAngle: Double?
+    /// Nose above the hands (pull-up: head over the bar).
+    public var noseAboveWrists: Bool?
     /// Nose to lowest ankle, as a fraction of the frame height (framing checks want 0.45 ... 0.95).
     public var bodyHeight: Double?
     /// Shoulder separation / torso length; small = side view, above 0.5 = facing the camera.
@@ -52,8 +59,25 @@ public struct PoseDiagnostics: Equatable, Sendable {
             result.hipBelowKnee = best.h.y >= best.k.y - BasicSquatAssessor().depthTolerance
         }
 
+        func arm(_ s: JointName, _ e: JointName, _ w: JointName) -> (Double, Double)? {
+            guard let sh = frame.joint(s, minConfidence: minConfidence), let el = frame.joint(e, minConfidence: minConfidence),
+                  let wr = frame.joint(w, minConfidence: minConfidence) else { return nil }
+            return (Geometry.angle(sh, el, wr), min(sh.confidence, el.confidence, wr.confidence))
+        }
+        let arms = [arm(.leftShoulder, .leftElbow, .leftWrist), arm(.rightShoulder, .rightElbow, .rightWrist)].compactMap { $0 }
+        result.elbowAngle = arms.max(by: { $0.1 < $1.1 })?.0
+        if let nose = frame.joint(.nose, minConfidence: minConfidence),
+           let wristY = [frame.joint(.leftWrist, minConfidence: minConfidence), frame.joint(.rightWrist, minConfidence: minConfidence)]
+            .compactMap({ $0?.y }).min() {
+            result.noseAboveWrists = nose.y < wristY - 0.02
+        }
+
         let hip = frame.joint(.root, minConfidence: minConfidence) ?? frame.joint(.leftHip, minConfidence: minConfidence)
             ?? frame.joint(.rightHip, minConfidence: minConfidence)
+        if let hip, let shoulder = frame.joint(.neck, minConfidence: minConfidence),
+           let ankle = frame.joint(.leftAnkle, minConfidence: minConfidence) ?? frame.joint(.rightAnkle, minConfidence: minConfidence) {
+            result.bodyLineAngle = Geometry.angle(shoulder, hip, ankle)
+        }
         if let neck = frame.joint(.neck, minConfidence: minConfidence), let hip {
             result.torsoLean = Geometry.angleFromVertical(from: hip, to: neck)
             if let l = frame.joint(.leftShoulder, minConfidence: minConfidence),

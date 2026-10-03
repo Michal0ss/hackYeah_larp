@@ -7,6 +7,7 @@ import LiveSet
 /// and a way to export the recorded poses (joint numbers only, never video) as test fixtures for Bartek.
 struct DiagnosticsHUD: View {
     let engine: LiveSetEngine
+    var kind: MovementKind = .squat
     @State private var exportItem: ExportFile?
 
     private var d: PoseDiagnostics { PoseDiagnostics.measure(engine.latestFrame) }
@@ -16,11 +17,20 @@ struct DiagnosticsHUD: View {
             line([("fps", String(format: "%.0f", engine.framesPerSecond), engine.framesPerSecond >= 15),
                   ("stawy", "\(d.jointCount)/15", d.jointCount >= 11),
                   ("pewność", Self.f(d.meanConfidence, 2), d.meanConfidence >= 0.5)])
-            line([("kolano", d.kneeAngle.map { Self.f($0, 0) + "°" } ?? "—", d.kneeAngle != nil),
-                  ("tułów", d.torsoLean.map { Self.f($0, 0) + "°" } ?? "—", (d.torsoLean ?? 99) <= 45),
-                  ("bio<kol", d.hipBelowKnee.map { $0 ? "tak" : "nie" } ?? "—", d.hipBelowKnee != nil)])
+            switch kind {
+            case .squat:
+                line([("kolano", d.kneeAngle.map { Self.f($0, 0) + "°" } ?? "—", d.kneeAngle != nil),
+                      ("tułów", d.torsoLean.map { Self.f($0, 0) + "°" } ?? "—", (d.torsoLean ?? 99) <= 45),
+                      ("bio<kol", d.hipBelowKnee.map { $0 ? "tak" : "nie" } ?? "—", d.hipBelowKnee != nil)])
+            case .pushup:
+                line([("łokieć", d.elbowAngle.map { Self.f($0, 0) + "°" } ?? "—", d.elbowAngle != nil),
+                      ("linia ciała", d.bodyLineAngle.map { Self.f($0, 0) + "°" } ?? "—", (d.bodyLineAngle ?? 0) >= 160)])
+            case .pullup:
+                line([("łokieć", d.elbowAngle.map { Self.f($0, 0) + "°" } ?? "—", d.elbowAngle != nil),
+                      ("nos nad rękami", d.noseAboveWrists.map { $0 ? "tak" : "nie" } ?? "—", d.noseAboveWrists != nil)])
+            }
             line([("sylwetka", d.bodyHeight.map { Self.f($0, 2) } ?? "—", (0.45...0.95).contains(d.bodyHeight ?? 0)),
-                  ("barki", d.shoulderRatio.map { Self.f($0, 2) } ?? "—", (d.shoulderRatio ?? 0) <= 0.5),
+                  ("barki", d.shoulderRatio.map { Self.f($0, 2) } ?? "—", kind == .pullup || (d.shoulderRatio ?? 0) <= 0.5),
                   ("noga", d.side ?? "—", d.side != nil)])
             line([("głęb.", engine.latestDepth.map { Self.f($0, 2) } ?? "—", engine.latestDepth != nil),
                   ("v", Self.f(engine.trackerVelocity, 2), true),

@@ -1,7 +1,7 @@
 import Foundation
 import Contracts
 
-/// A synthetic side-view squat, so the whole live-set flow runs on the simulator and in tests
+/// A synthetic side-view squat (or push-up, or pull-up: set `kind`), so the whole live-set flow runs on the simulator and in tests
 /// without a camera. Joint coordinates follow the same convention as Vision output.
 public struct SimulatedSquat: Sendable {
     /// Seconds per phase of the simulated person (deliberately a bit off the target tempo).
@@ -18,8 +18,11 @@ public struct SimulatedSquat: Sendable {
     public var leadIn = 2.5
     public var leadOut = 3.0
     public var fps = 30.0
+    public var kind: MovementKind = .squat
 
-    public init() {}
+    public init(kind: MovementKind = .squat) {
+        self.kind = kind
+    }
 
     private func eccentricDuration(_ rep: Int) -> Double {
         eccentric * (rep < eccentricFactors.count ? eccentricFactors[rep] : 1)
@@ -59,6 +62,59 @@ public struct SimulatedSquat: Sendable {
 
     public func frame(at t: Double) -> PoseFrame {
         let p = progress(at: t)
+        switch kind {
+        case .squat: return squatFrame(at: t, progress: p)
+        case .pushup: return pushupFrame(at: t, progress: p)
+        case .pullup: return pullupFrame(at: t, progress: p)
+        }
+    }
+
+    private func make(_ t: Double, _ points: [(JointName, Double, Double)]) -> PoseFrame {
+        func jitter(_ k: Double) -> Double { 0.0015 * sin(t * 37 + k * 5.3) }
+        return PoseFrame(time: t, joints: points.enumerated().map { i, point in
+            Joint(name: point.0, x: point.1 + jitter(Double(i)), y: point.2 + jitter(Double(i) + 1), confidence: 0.9)
+        })
+    }
+
+    /// Side view, facing right, hands on the floor. p = 0 arms straight, p = 1 chest near the floor.
+    private func pushupFrame(at t: Double, progress p: Double) -> PoseFrame {
+        let ankle = (x: 0.14, y: 0.69)
+        let wrist = (x: 0.69, y: 0.69)
+        let neck = (x: 0.66, y: 0.50 + 0.14 * p)
+        let hip = (x: ankle.x + 0.42 * (neck.x - ankle.x), y: ankle.y + 0.42 * (neck.y - ankle.y))
+        let knee = (x: ankle.x + 0.22 * (neck.x - ankle.x), y: ankle.y + 0.22 * (neck.y - ankle.y))
+        let mid = (x: (neck.x + wrist.x) / 2, y: (neck.y + wrist.y) / 2)
+        let elbow = (x: mid.x - 0.09 * p, y: mid.y)
+        return make(t, [
+            (.nose, neck.x + 0.05, neck.y + 0.01), (.neck, neck.x, neck.y),
+            (.leftShoulder, neck.x + 0.006, neck.y + 0.01), (.rightShoulder, neck.x - 0.006, neck.y + 0.01),
+            (.leftElbow, elbow.x, elbow.y), (.rightElbow, elbow.x - 0.004, elbow.y),
+            (.leftWrist, wrist.x, wrist.y), (.rightWrist, wrist.x - 0.004, wrist.y),
+            (.root, hip.x, hip.y), (.leftHip, hip.x + 0.006, hip.y), (.rightHip, hip.x - 0.006, hip.y),
+            (.leftKnee, knee.x + 0.004, knee.y), (.rightKnee, knee.x - 0.004, knee.y),
+            (.leftAnkle, ankle.x + 0.006, ankle.y), (.rightAnkle, ankle.x - 0.006, ankle.y),
+        ])
+    }
+
+    /// Front view, hanging from a bar. p = 0 dead hang, p = 1 chin over the bar. The body rises with p.
+    private func pullupFrame(at t: Double, progress p: Double) -> PoseFrame {
+        let rise = 0.16 * p
+        let barY = 0.13
+        let neck = (x: 0.50, y: 0.30 - rise)
+        let hipY = 0.56 - rise
+        let elbowOut = 0.09 * p
+        return make(t, [
+            (.nose, 0.50, neck.y - 0.06), (.neck, neck.x, neck.y),
+            (.leftShoulder, 0.43, neck.y + 0.01), (.rightShoulder, 0.57, neck.y + 0.01),
+            (.leftElbow, 0.40 - elbowOut, neck.y + 0.07 + (1 - p) * 0.02), (.rightElbow, 0.60 + elbowOut, neck.y + 0.07 + (1 - p) * 0.02),
+            (.leftWrist, 0.38, barY), (.rightWrist, 0.62, barY),
+            (.root, 0.50, hipY), (.leftHip, 0.46, hipY), (.rightHip, 0.54, hipY),
+            (.leftKnee, 0.47, hipY + 0.16), (.rightKnee, 0.53, hipY + 0.16),
+            (.leftAnkle, 0.47, hipY + 0.32), (.rightAnkle, 0.53, hipY + 0.32),
+        ])
+    }
+
+    private func squatFrame(at t: Double, progress p: Double) -> PoseFrame {
         func jitter(_ k: Double) -> Double { 0.0015 * sin(t * 37 + k * 5.3) }
 
         let hip = (x: 0.50 - 0.10 * p, y: 0.52 + 0.18 * p)
