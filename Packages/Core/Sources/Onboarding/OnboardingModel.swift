@@ -208,6 +208,9 @@ public final class OnboardingModel {
             return "Dobieram ćwiczenia z katalogu do celu, poziomu i sprzętu."
         }
         var text = "Tydzień z \(plan.sessions.count) sesjami po \(draft.sessionMinutes) min, dopasowany do celu i sprzętu."
+        if let weeks = plan.weeks {
+            text = "Plan na \(weeks) tyg.: \(plan.sessionsPerWeek) razy w tygodniu po \(draft.sessionMinutes) min, dopasowany do celu i sprzętu."
+        }
         let omit = draft.health.omitTags
         if !omit.isEmpty { text += " Bez: " + omit.map(\.displayName).joined(separator: ", ") + "." }
         return text

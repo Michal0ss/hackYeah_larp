@@ -1,9 +1,8 @@
 import Contracts
 import Foundation
 
-/// A session the user finished on a given day. Kept apart from the plan: the plan is a pattern of one week
-/// (weekday 1...7, no dates) that repeats, so "done" has to be tied to a date, or Monday's session would still
-/// count as done the next Monday.
+/// A session the user finished. Kept apart from the plan so that the finished sessions survive when the plan is
+/// replaced (a rebuilt plan has new sessions, the history of what was done stays).
 public struct SessionCompletion: Codable, Equatable, Sendable, Identifiable {
     public var id: UUID
     /// `PlannedSession.id` that was finished.
@@ -21,11 +20,12 @@ public struct SessionCompletion: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
-/// The user's weekly plan on the phone: the plan itself, and which sessions were finished in which week.
+/// The user's plan on the phone: the dated plan itself (every session has its day), and which sessions were finished.
 ///
-/// - The saved plan never carries `done`: a status of one week must not leak into the next. `resolved...` returns
-///   the plan with `done` set for the sessions finished in the week of the given day.
-/// - First launch after the update: the plan is taken from the onboarding file (`bootstrap`) and written here.
+/// - The saved plan never carries `done`: finishing a session is a record in the log, and `resolved` returns the plan
+///   with `done` set from it. Sessions are per date, so a finished session stays finished.
+/// - First launch after the update: the plan is taken from the onboarding file (`bootstrap`) and written here. A plan
+///   without dates (saved by an older version) is laid out on the calendar from today.
 /// - A missing or unreadable file never crashes: it falls back to the bootstrap plan, and a broken file is kept
 ///   aside as `*.corrupt.json`.
 ///
@@ -56,10 +56,16 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
         if let loaded = Self.read(fileURL) {
             stored = loaded
         }
+        var changed = false
         if stored.plan == nil, let first = bootstrap() {
             stored.plan = Self.normalized(first)
-            persist()
+            changed = true
         }
+        if let plan = stored.plan, !plan.isDated {
+            stored.plan = PlanScheduler.schedule(plan, startingOn: now(), calendar: calendar)
+            changed = true
+        }
+        if changed { persist() }
     }
 
     /// `Application Support/Forma/plan.json`.
@@ -71,7 +77,7 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
 
     // MARK: the plan
 
-    /// The plan as saved: the weekly pattern, no `done`.
+    /// The plan as saved: dated sessions, no `done`.
     public var templatePlan: TrainingPlan? {
         lock.lock(); defer { lock.unlock() }
         return stored.plan
@@ -81,7 +87,7 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
     @discardableResult
     public func save(_ plan: TrainingPlan) -> Bool {
         lock.lock(); defer { lock.unlock() }
-        stored.plan = Self.normalized(plan)
+        stored.plan = Self.normalized(plan.isDated ? plan : PlanScheduler.schedule(plan, startingOn: now(), calendar: calendar))
         return persist()
     }
 
@@ -95,15 +101,14 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
 
     // MARK: completions
 
-    /// Marks a session finished on `date`. Marking the same session again in the same week replaces the earlier
+    /// Marks a session finished on `date` (default: now). Marking the same session again replaces the earlier
     /// entry. Returns whether it reached the disk.
     @discardableResult
     public func recordCompletion(sessionId: UUID, date: Date? = nil, completedSets: Int? = nil,
                                  plannedSets: Int? = nil) -> Bool {
         lock.lock(); defer { lock.unlock() }
-        let day = date ?? now()
-        stored.completions.removeAll { $0.sessionId == sessionId && sameWeek($0.date, day) }
-        stored.completions.insert(SessionCompletion(sessionId: sessionId, date: day, completedSets: completedSets,
+        stored.completions.removeAll { $0.sessionId == sessionId }
+        stored.completions.insert(SessionCompletion(sessionId: sessionId, date: date ?? now(), completedSets: completedSets,
                                                     plannedSets: plannedSets), at: 0)
         if stored.completions.count > Self.maxCompletions {
             stored.completions.removeLast(stored.completions.count - Self.maxCompletions)
@@ -111,12 +116,11 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
         return persist()
     }
 
-    /// Takes back "done" for a session in the week of `date` (the user marked it by mistake).
+    /// Takes back "done" for a session (the user marked it by mistake).
     @discardableResult
-    public func removeCompletion(sessionId: UUID, weekOf date: Date? = nil) -> Bool {
+    public func removeCompletion(sessionId: UUID) -> Bool {
         lock.lock(); defer { lock.unlock() }
-        let day = date ?? now()
-        stored.completions.removeAll { $0.sessionId == sessionId && sameWeek($0.date, day) }
+        stored.completions.removeAll { $0.sessionId == sessionId }
         return persist()
     }
 
@@ -126,23 +130,21 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
         return stored.completions
     }
 
-    /// Sessions finished in the week of `date` (default: this week).
-    public func completedSessionIds(weekOf date: Date? = nil) -> Set<UUID> {
+    public func completedSessionIds() -> Set<UUID> {
         lock.lock(); defer { lock.unlock() }
-        let day = date ?? now()
-        return Set(stored.completions.filter { sameWeek($0.date, day) }.map(\.sessionId))
+        return Set(stored.completions.map(\.sessionId))
     }
 
     // MARK: reading
 
-    /// The saved plan with `done` on the sessions finished in the week of `date`.
-    public func resolvedPlan(on date: Date? = nil) -> TrainingPlan? {
-        templatePlan.map { resolved($0, on: date) }
+    /// The saved plan with `done` on the finished sessions.
+    public func resolvedPlan() -> TrainingPlan? {
+        templatePlan.map(resolved)
     }
 
-    /// Any plan (for example the one the screens hold) with `done` for the sessions finished that week.
-    public func resolved(_ plan: TrainingPlan, on date: Date? = nil) -> TrainingPlan {
-        let finished = completedSessionIds(weekOf: date)
+    /// Any plan (for example the one the screens hold) with `done` on the finished sessions.
+    public func resolved(_ plan: TrainingPlan) -> TrainingPlan {
+        let finished = completedSessionIds()
         var result = plan
         for index in result.sessions.indices where finished.contains(result.sessions[index].id) {
             result.sessions[index].status = .done
@@ -155,22 +157,14 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
     public func currentPlan() async -> TrainingPlan? { resolvedPlan() }
 
     /// Today's session, or the next planned one (a finished session of today is still returned, with `done`).
+    /// Nil when there is none left: the plan has run out.
     public func todaySession() async -> PlannedSession? {
-        guard let plan = resolvedPlan() else { return nil }
-        let weekday = calendar.component(.weekday, from: now())
-        let today = weekday == 1 ? 7 : weekday - 1  // Calendar: 1 = Sunday. Plan: 1 = Monday.
-        let sessions = plan.sessions.sorted { $0.weekday < $1.weekday }
-        return sessions.first { $0.weekday == today } ?? sessions.first { $0.weekday > today } ?? sessions.first
+        resolvedPlan()?.sessionOnOrAfter(now(), calendar: calendar)
     }
 
     // MARK: helpers
 
-    private func sameWeek(_ a: Date, _ b: Date) -> Bool {
-        guard let week = calendar.dateInterval(of: .weekOfYear, for: b) else { return false }
-        return week.contains(a)
-    }
-
-    /// The pattern never stores a finished session: that lives in the completions.
+    /// The plan never stores a finished session: that lives in the completions.
     private static func normalized(_ plan: TrainingPlan) -> TrainingPlan {
         var result = plan
         for index in result.sessions.indices where result.sessions[index].status == .done {

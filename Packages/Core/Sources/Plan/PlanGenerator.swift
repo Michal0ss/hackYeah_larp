@@ -9,7 +9,8 @@ public protocol PlanBackend: Sendable {
 
 extension FormaAPI: PlanBackend {}
 
-/// Builds the user's weekly plan: the model through the backend when it can, the bundled template when it cannot.
+/// Builds the user's plan: a week from the model or the template, laid out on the calendar for several weeks.
+/// The week: the model through the backend when it can, the bundled template when it cannot.
 ///
 ///     profile ──► backend (model proposes, server validates, server template as its own fallback)
 ///                    │ plan                                   │ no answer in time, no connection, server error
@@ -39,7 +40,15 @@ public struct PlanGenerator: PlanGenerating {
         self.now = now
     }
 
+    /// The plan with dates: the weekly pattern (from the model or the template) laid out from today for
+    /// `PlanScheduler.defaultWeeks` weeks.
     public func generatePlan(for profile: UserProfile) async throws -> TrainingPlan {
+        let pattern = try await generatePattern(for: profile)
+        return PlanScheduler.schedule(pattern, startingOn: now())
+    }
+
+    /// The weekly pattern, checked, before it is laid out on the calendar.
+    func generatePattern(for profile: UserProfile) async throws -> TrainingPlan {
         do {
             let response = try await fetch(profile)
             let issues = PlanValidator.validate(response.plan, profile: profile, catalog: catalog.exercises, templates: templates)

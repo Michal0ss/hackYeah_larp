@@ -13,8 +13,8 @@ final class PlanStoreTests: XCTestCase {
         calendar.date(from: DateComponents(year: 2026, month: month, day: dayOfMonth, hour: hour))!
     }
 
-    // 2026-10-05 is a Monday, 2026-10-11 the Sunday of that week, 2026-10-12 the next Monday.
-    private let monday = (10, 5), sunday = (10, 11), nextMonday = (10, 12)
+    // 2026-10-05 is a Monday.
+    private let monday = (10, 5)
 
     private func file(_ name: String = "plan.json") -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("forma-plan-\(UUID().uuidString)").appendingPathComponent(name)
@@ -25,13 +25,16 @@ final class PlanStoreTests: XCTestCase {
         return PlanStore(fileURL: url, calendar: calendar, now: { moment }, bootstrap: { bootstrap })
     }
 
-    private var plan: TrainingPlan { SampleData.plan }  // sessions on Monday, Wednesday and Friday
+    /// Four weeks from Monday 5.10, sessions on Monday, Wednesday and Friday (12 sessions, each with its own date).
+    private lazy var plan: TrainingPlan =
+        PlanScheduler.schedule(SampleData.plan, startingOn: day(10, 5, hour: 0), weeks: 4, calendar: calendar)
 
     // MARK: saving
 
     func testThePlanSurvivesARestart() throws {
         let url = file()
-        let original = TrainingPlan(createdAt: day(10, 1), source: .template, sessions: plan.sessions, notices: [.offline])
+        var original = plan
+        original.notices = [.offline]
         store(url).save(original)
         let again = store(url)
         XCTAssertEqual(again.templatePlan, original)
@@ -52,7 +55,7 @@ final class PlanStoreTests: XCTestCase {
         var other = plan
         other.sessions.removeLast()
         s.save(other)
-        XCTAssertEqual(s.templatePlan?.sessions.count, 2)
+        XCTAssertEqual(s.templatePlan?.sessions.count, plan.sessions.count - 1)
     }
 
     func testClearRemovesEverythingIncludingTheFile() {
@@ -67,7 +70,7 @@ final class PlanStoreTests: XCTestCase {
         XCTAssertNil(store(url).templatePlan)
     }
 
-    // MARK: first launch and broken files
+    // MARK: first launch, older plans and broken files
 
     func testTheFirstLaunchTakesThePlanFromOnboardingAndSavesIt() {
         let url = file()
@@ -76,12 +79,29 @@ final class PlanStoreTests: XCTestCase {
         XCTAssertEqual(store(url).templatePlan, plan, "the next launch needs no bootstrap")
     }
 
+    func testAPlanWithoutDatesIsLaidOnTheCalendarFromToday() throws {
+        // What an older version saved: one weekly pattern (Monday, Wednesday, Friday).
+        let url = file()
+        let laid = try XCTUnwrap(store(url, now: day(10, 7), bootstrap: SampleData.plan).templatePlan)
+        XCTAssertTrue(laid.isDated)
+        XCTAssertEqual(laid.weeks, PlanScheduler.defaultWeeks)
+        XCTAssertEqual(laid.startDate, calendar.startOfDay(for: day(10, 7)))
+        XCTAssertEqual(laid.chronological.first?.weekday, 3, "starts on Wednesday 7.10, today")
+        XCTAssertEqual(store(url).templatePlan, laid, "and is saved that way")
+    }
+
+    func testSavingAPlanWithoutDatesLaysItOnTheCalendarToo() {
+        let s = store(nil, now: day(10, 5))
+        s.save(SampleData.plan)
+        XCTAssertEqual(s.templatePlan?.isDated, true)
+    }
+
     func testASavedPlanWinsOverTheBootstrap() {
         let url = file()
         var mine = plan
         mine.sessions.removeLast()
         store(url).save(mine)
-        XCTAssertEqual(store(url, bootstrap: plan).templatePlan?.sessions.count, 2)
+        XCTAssertEqual(store(url, bootstrap: plan).templatePlan?.sessions.count, plan.sessions.count - 1)
     }
 
     func testNothingSavedAndNoBootstrapMeansNoPlan() async {
@@ -105,46 +125,36 @@ final class PlanStoreTests: XCTestCase {
     func testPlansSavedWithoutNoticesStillLoad() throws {
         // The file written by a version from before `notices` existed.
         let url = file()
-        let legacy = TrainingPlan(createdAt: day(10, 1), source: .ai, sessions: plan.sessions)
-        store(url).save(legacy)
+        store(url).save(plan)
         let data = try String(contentsOf: url, encoding: .utf8).replacingOccurrences(of: ",\"notices\":[]", with: "")
         try data.write(to: url, atomically: true, encoding: .utf8)
         XCTAssertEqual(store(url).templatePlan?.sessions, plan.sessions)
     }
 
-    // MARK: finished sessions are tied to a week
+    // MARK: finished sessions
 
-    func testAFinishedSessionIsDoneThisWeek() {
+    func testAFinishedSessionIsDone() {
         let s = store(nil, now: day(monday.0, monday.1))
         s.save(plan)
-        let monday = plan.sessions[0]
-        s.recordCompletion(sessionId: monday.id, date: day(self.monday.0, self.monday.1, hour: 18))
+        s.recordCompletion(sessionId: plan.sessions[0].id, date: day(monday.0, monday.1, hour: 18))
         let resolved = s.resolvedPlan()
         XCTAssertEqual(resolved?.sessions[0].status, .done)
         XCTAssertEqual(resolved?.sessions[1].status, .planned)
-        XCTAssertEqual(s.templatePlan?.sessions[0].status, .planned, "the saved pattern stays clean")
+        XCTAssertEqual(s.templatePlan?.sessions[0].status, .planned, "the saved plan stays clean")
     }
 
-    func testTheSameSessionIsNotDoneInTheNextWeek() {
-        let finishedMonday = plan.sessions[0]
-        let s = store(nil, now: day(nextMonday.0, nextMonday.1))
+    func testTheSameWeekdayNextWeekIsAnotherSession() {
+        // Monday 5.10 is done; Monday 12.10 is a different session and is still to do.
+        let s = store(nil, now: day(10, 12))
         s.save(plan)
-        s.recordCompletion(sessionId: finishedMonday.id, date: day(monday.0, monday.1))
-        XCTAssertEqual(s.resolvedPlan()?.sessions[0].status, .planned)
-        XCTAssertEqual(s.resolvedPlan(on: day(monday.0, monday.1))?.sessions[0].status, .done, "still done in its own week")
+        let mondays = plan.chronological.filter { $0.weekday == 1 }
+        s.recordCompletion(sessionId: mondays[0].id, date: day(10, 5))
+        let resolved = s.resolvedPlan()?.chronological.filter { $0.weekday == 1 }
+        XCTAssertEqual(resolved?[0].status, .done)
+        XCTAssertEqual(resolved?[1].status, .planned)
     }
 
-    func testTheWeekRunsFromMondayToSunday() {
-        let session = plan.sessions[0]
-        let s = store(nil)
-        s.save(plan)
-        s.recordCompletion(sessionId: session.id, date: day(monday.0, monday.1))
-        XCTAssertTrue(s.completedSessionIds(weekOf: day(sunday.0, sunday.1, hour: 23)).contains(session.id))
-        XCTAssertFalse(s.completedSessionIds(weekOf: day(nextMonday.0, nextMonday.1, hour: 0)).contains(session.id))
-        XCTAssertFalse(s.completedSessionIds(weekOf: day(10, 4, hour: 23)).contains(session.id), "the Sunday before is another week")
-    }
-
-    func testMarkingTwiceInOneWeekKeepsOneEntry() {
+    func testMarkingTwiceKeepsOneEntry() {
         let session = plan.sessions[0]
         let s = store(nil)
         s.save(plan)
@@ -154,13 +164,12 @@ final class PlanStoreTests: XCTestCase {
         XCTAssertEqual(s.completions.first?.completedSets, 4)
     }
 
-    func testTheSameSessionOnTwoWeeksKeepsBoth() {
-        let session = plan.sessions[0]
+    func testTwoSessionsKeepTwoEntriesNewestFirst() {
         let s = store(nil)
-        s.recordCompletion(sessionId: session.id, date: day(monday.0, monday.1))
-        s.recordCompletion(sessionId: session.id, date: day(nextMonday.0, nextMonday.1))
+        s.recordCompletion(sessionId: plan.sessions[0].id, date: day(10, 5))
+        s.recordCompletion(sessionId: plan.sessions[1].id, date: day(10, 7))
         XCTAssertEqual(s.completions.count, 2)
-        XCTAssertEqual(s.completions.first?.date, day(nextMonday.0, nextMonday.1), "newest first")
+        XCTAssertEqual(s.completions.first?.date, day(10, 7))
     }
 
     func testTakingBackDone() {
@@ -168,8 +177,16 @@ final class PlanStoreTests: XCTestCase {
         let s = store(nil)
         s.save(plan)
         s.recordCompletion(sessionId: session.id, date: day(monday.0, monday.1))
-        s.removeCompletion(sessionId: session.id, weekOf: day(monday.0, monday.1))
+        s.removeCompletion(sessionId: session.id)
         XCTAssertEqual(s.resolvedPlan()?.sessions[0].status, .planned)
+    }
+
+    func testFinishedSessionsOutliveAReplacedPlan() {
+        let s = store(nil)
+        s.save(plan)
+        s.recordCompletion(sessionId: plan.sessions[0].id, date: day(monday.0, monday.1))
+        s.save(plan)  // same sessions again (for example after a change of the plan)
+        XCTAssertEqual(s.resolvedPlan()?.sessions[0].status, .done)
     }
 
     func testCompletionsSurviveARestartAndAreCapped() {
@@ -201,20 +218,23 @@ final class PlanStoreTests: XCTestCase {
         XCTAssertEqual(current?.sessions[2].status, .done)
     }
 
-    func testTodaySessionIsTodaysThenTheNextThenTheFirst() async {
-        func today(_ date: (Int, Int)) async -> Int? {
-            let s = store(nil, now: day(date.0, date.1))
-            s.save(plan)  // Monday (1), Wednesday (3), Friday (5)
-            return await s.todaySession()?.weekday
+    func testTodaySessionIsTodaysThenTheNextThenNothingWhenThePlanRanOut() async {
+        func today(_ month: Int, _ dayOfMonth: Int) async -> PlannedSession? {
+            let s = store(nil, now: day(month, dayOfMonth))
+            s.save(plan)  // Monday, Wednesday, Friday for four weeks: 5.10 to 1.11
+            return await s.todaySession()
         }
-        let todayIsMonday = await today(monday)
-        let tuesday = await today((10, 6))
-        let saturday = await today((10, 10))
-        let sundayNight = await today(sunday)
-        XCTAssertEqual(todayIsMonday, 1)
-        XCTAssertEqual(tuesday, 3, "no session on Tuesday: the next one is Wednesday")
-        XCTAssertEqual(saturday, 1, "after Friday the week starts again")
-        XCTAssertEqual(sundayNight, 1)
+        let onMonday = await today(10, 5)
+        let tuesday = await today(10, 6)
+        let saturday = await today(10, 10)
+        let lastDay = await today(11, 2)
+        let afterTheEnd = await today(11, 3)
+        XCTAssertEqual(onMonday?.weekday, 1)
+        XCTAssertEqual(tuesday?.weekday, 3, "no session on Tuesday: the next one is Wednesday")
+        XCTAssertEqual(saturday?.weekday, 1, "after Friday comes Monday 12.10, not the first Monday of the plan")
+        XCTAssertEqual(saturday.flatMap { $0.date }, calendar.startOfDay(for: day(10, 12)))
+        XCTAssertNil(lastDay, "the last session was on Friday 30.10")
+        XCTAssertNil(afterTheEnd)
     }
 
     func testAFinishedSessionOfTodayIsStillTodaysSession() async {
@@ -233,6 +253,6 @@ final class PlanStoreTests: XCTestCase {
             if index % 2 == 0 { s.recordCompletion(sessionId: UUID(), date: day(10, 5)) } else { _ = s.resolvedPlan() }
         }
         XCTAssertEqual(s.completions.count, 25)
-        XCTAssertEqual(s.templatePlan?.sessions.count, 3)
+        XCTAssertEqual(s.templatePlan?.sessions.count, plan.sessions.count)
     }
 }

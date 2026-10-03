@@ -14,7 +14,7 @@ final class AppStore {
     var services = AppServices()
 
     var profile: UserProfile = SampleData.profile
-    var plan: TrainingPlan = SampleData.plan
+    var plan: TrainingPlan = PlanScheduler.schedule(SampleData.plan, startingOn: Date())
     /// Bumped when newer content arrives from the backend, so screens that read `catalog` refresh.
     private(set) var contentRevision = 0
     var catalog: [ExerciseItem] { _ = contentRevision; return services.catalog.exercises }
@@ -112,7 +112,7 @@ final class AppStore {
     /// since the proposal was made. Today and Plan update on their own, they read `plan`.
     @MainActor
     func applyPlanChange(_ proposal: PlanChangeProposal) -> Result<PlanChangeProposal, PlanChangeError> {
-        // The plan holds the weekly pattern; a session finished this week is final.
+        // A finished session is final.
         guard !services.planStore.completedSessionIds().contains(proposal.sessionId) else { return .failure(.sessionDone) }
         let changer = PlanChanger(catalog: catalog, profile: profile)
         do {
@@ -177,11 +177,6 @@ final class AppStore {
 
     /// Sessions for which the user chose the original plan over today's lighter version.
     private(set) var restoredSessionIds: Set<UUID> = []
-
-    var todayPlanWeekday: Int {
-        let weekday = Calendar(identifier: .iso8601).component(.weekday, from: Date())
-        return weekday == 1 ? 7 : weekday - 1
-    }
 
     /// The session the rule engine's decision applies to: today's, or the next one when today is free (the one the
     /// Today screen shows). Other sessions stay as planned.
@@ -251,23 +246,17 @@ final class AppStore {
         catalog.first { $0.id == id }
     }
 
-    /// The plan with `done` on the sessions finished this week (the saved plan itself never carries it).
+    /// The plan with `done` on the finished sessions (the saved plan itself never carries it).
     var resolvedPlan: TrainingPlan { services.planStore.resolved(plan) }
 
-    /// Today's session, or the next planned one.
+    /// Today's session, or the next planned one. Nil when the plan has run out.
     var todaySession: (session: PlannedSession, isToday: Bool)? {
-        let weekday = Calendar(identifier: .iso8601).component(.weekday, from: Date())
-        // Calendar weekday: 1 = Sunday. Plan weekday: 1 = Monday.
-        let planWeekday = weekday == 1 ? 7 : weekday - 1
-        if let match = plan.sessions.first(where: { $0.weekday == planWeekday }) {
-            return (match, true)
-        }
-        let upcoming = plan.sessions.sorted { $0.weekday < $1.weekday }
-        if let next = upcoming.first(where: { $0.weekday > planWeekday }) ?? upcoming.first {
-            return (next, false)
-        }
-        return nil
+        guard let match = plan.sessionOnOrAfter(Date()) else { return nil }
+        return (match, plan.session(on: Date())?.id == match.id)
     }
+
+    /// True when every session of the plan is in the past: time to build the next one.
+    var planHasEnded: Bool { plan.hasEnded(on: Date()) }
 }
 
 enum AppTab: Hashable {

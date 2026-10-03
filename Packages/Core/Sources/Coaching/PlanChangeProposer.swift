@@ -51,12 +51,12 @@ public struct PlanChangeProposer: Sendable {
     private func hint(for error: PlanChangeError, in plan: TrainingPlan) -> [String: JSONValue] {
         switch error {
         case .noSuchSession, .dayTaken, .sameDay:
-            let sessions = plan.sessions.sorted { $0.weekday < $1.weekday }.map {
+            let sessions = plan.window(from: Date()).map {
                 JSONValue.object(["weekday": .number(Double($0.weekday)), "title": .string($0.title)])
             }
             return ["sessionsInPlan": .array(sessions)]
         case .noSuchExercise:
-            return ["exercisesInPlan": .array(plan.sessions.sorted { $0.weekday < $1.weekday }.map { session in
+            return ["exercisesInPlan": .array(plan.window(from: Date()).map { session in
                 .object(["weekday": .number(Double(session.weekday)),
                          "exerciseIds": .array(session.exercises.map { .string($0.exerciseId) })])
             })]

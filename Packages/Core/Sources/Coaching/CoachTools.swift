@@ -102,6 +102,14 @@ public struct CoachTools: CoachToolRunning {
 
     private static let weekdayNames = ["poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela"]
 
+    /// `2026-10-08`, in the user's calendar.
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
+
     private func name(of exerciseId: String) -> String {
         catalog.exercise(id: exerciseId)?.name ?? exerciseId
     }
@@ -115,15 +123,17 @@ public struct CoachTools: CoachToolRunning {
         }
         let isoWeekday = calendar.component(.weekday, from: now())
         let today = isoWeekday == 1 ? 7 : isoWeekday - 1
-        let sessions: [JSONValue] = plan.sessions.sorted { $0.weekday < $1.weekday }.map { session in
+        // The seven days from today: each weekday once, whatever the length of the plan.
+        let sessions: [JSONValue] = plan.window(from: now(), calendar: calendar).map { session in
             var fields: [String: JSONValue] = [
                 "weekday": .number(Double(session.weekday)),
                 "dayName": .string(Self.weekdayNames[(session.weekday - 1) % 7]),
                 "title": .string(session.title),
                 "status": .string((healthConsent || session.status != .adapted ? session.status : .planned).rawValue),
-                "today": .bool(session.weekday == today),
+                "today": .bool(session.date.map { calendar.isDate($0, inSameDayAs: now()) } ?? (session.weekday == today)),
                 "exercises": .array(session.exercises.map(exercise)),
             ]
+            if let date = session.date { fields["date"] = .string(Self.dayFormatter.string(from: date)) }
             if healthConsent, let note = session.adaptationNote { fields["adaptationNote"] = .string(note) }
             return .object(fields)
         }
