@@ -210,7 +210,7 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie.
 | Backend z prawdziwym modelem (prompty, narzędzia, jakość planu) | Maciek | `feat/maciek-backend-ai` | do zrobienia | |
 | Generator planu (Swift, wywołuje backend) | Maciek | `feat/maciek-plan-generator` | do zrobienia | |
 | Czat trenera (Swift: SSE, narzędzia, zgoda) | Maciek | `feat/maciek-coach-chat` | do zrobienia | |
-| Ekrany Plan i Trener | Maciek | `feat/maciek-plan-coach-screens` | do zrobienia | |
+| Ekrany Plan i Trener | Maciek | `feat/maciek-plan-coach-screens` | Plan: gotowy (Michał, `feat/michal-plan-screen`: tydzień, szczegóły sesji, start serii); Trener: do zrobienia | |
 
 ## 10. Co oddajemy (HackTribe)
 
