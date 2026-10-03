@@ -1,12 +1,12 @@
 # Plan pracy zespołu: HackYeah, kategoria „Sport & Healthcare”
 
-> Wersja robocza, 2026-10-03. Ten plik mówi, **kto co robi, na jakiej gałęzi i w jakiej kolejności**. Opis produktu i zasady są w [PROJECT.md](PROJECT.md) (numery sekcji w nawiasach), reguły pracy w repo w [CLAUDE.md](CLAUDE.md). Prototyp wyglądu: [Forma — prototyp iOS](https://claude.ai/artifact/STg7G33PFgjptESaMzF8Jk).
+> Stan na 2026-10-03, wieczór. Ten plik mówi, **kto co robi, na jakiej gałęzi i w jakiej kolejności**. Opis produktu i zasady są w [PROJECT.md](PROJECT.md) (numery sekcji w nawiasach), reguły pracy w repo w [CLAUDE.md](CLAUDE.md). Prototyp wyglądu: [Forma — prototyp iOS](https://claude.ai/artifact/STg7G33PFgjptESaMzF8Jk).
 >
 > Termin oddania: **4 października, 23:00**. Zmiany po terminie są nielegalne.
 
 ## 1. Cel i zakres w trzech zdaniach
 
-Budujemy aplikację na iPhone'a (SwiftUI): trener, plan treningowy i doradca w jednym. Ocenia technikę przysiadu (z filmu i na żywo z trenerem tempa w słuchawkach), łączy ją z regeneracją z Apple Health i samopoczuciem w rekomendację dnia, ma plan od AI i czat z trenerem AI. **Jeden wspólny backend** (FastAPI, folder `backend/`) trzyma klucz do modelu i robi całą pracę z modelem (plan, czat, teksty), a telefon robi resztę: analizę wideo, tempo na żywo, reguły, dane zdrowotne (PROJECT.md, 8.1 i 8.3). Szkielet backendu jest w `main` i działa od razu bez klucza (tryb offline z atrapą modelu).
+Budujemy aplikację na iPhone'a (SwiftUI): trener, plan treningowy i doradca w jednym. Ocenia technikę przysiadu, pompki i podciągania (z filmu i na żywo z trenerem tempa w słuchawkach), łączy ją z regeneracją z Apple Health i samopoczuciem w rekomendację dnia, ma plan od AI i czat z trenerem AI. **Jeden wspólny backend** (FastAPI, folder `backend/`) trzyma klucz do modelu (**Gemini**) i robi całą pracę z modelem (plan, czat, teksty), a telefon robi resztę: analizę wideo, tempo na żywo, reguły, dane zdrowotne (PROJECT.md, 8.1 i 8.3). Szkielet backendu jest w `main` i działa od razu bez klucza (tryb offline z atrapą modelu).
 
 ## 2. Zespół
 
@@ -67,6 +67,14 @@ Każda osoba ma własną sesję Claude'a w tym repo (Claude czyta [CLAUDE.md](CL
 
 **Kontrakt API** to `backend/openapi.json` (generowany, w repo). Zmieniasz endpoint albo schemat: `make openapi` w `backend/` i commit obu zmian. Klient w Swifcie powstaje przeciw temu plikowi.
 
+### Jak uruchomić i zbudować na telefonie
+
+1. Raz: `brew install xcodegen`, `cp Config/Local.xcconfig.example Config/Local.xcconfig` (swój Team ID i unikalny bundle id), `cp Config/Secrets.xcconfig.example Config/Secrets.xcconfig`.
+2. Backend (opcjonalny, działa bez klucza w trybie atrapy): `cd backend && make install && make dev`. Z prawdziwym modelem: `export GEMINI_API_KEY=...` (klucz z **płatnego** projektu Google z limitem budżetu).
+3. `git checkout main && git pull`, potem `xcodegen generate && open Forma.xcodeproj`. Wybierz symulator albo swojego iPhone'a i Cmd+R. iPhone: tryb dewelopera włączony, sparowany z Xcode, a w `Config/Secrets.xcconfig` `FORMA_API_URL` ustawiony na adres komputera w sieci (np. `http:/$()/192.168.1.20:8000`).
+4. **Test analizy na żywo na telefonie:** Dziś → ikona profilu → „Test analizy na żywo” (przysiad, pompka, podciąganie) → ikona biedronki pokazuje liczby, a „Wyślij pozy (JSON)” eksportuje nagrane pozy (do fixtures Bartka).
+5. Po zmianie `content/` uruchom `python scripts/sync_content.py`; przed PR dotykającym `backend/` lub `content/`: `make check` w `backend/`; przed każdym PR: `swift test` w `Packages/Core` i build aplikacji.
+
 ## 4. Zasady wspólne
 
 1. Przeczytaj PROJECT.md w całości, zwłaszcza sekcje 3.6 (ton tekstów zdrowotnych) i 11.2.
@@ -83,77 +91,77 @@ Każda osoba ma własną sesję Claude'a w tym repo (Claude czyta [CLAUDE.md](CL
 
 ## 5. Zadania na osoby (gałęzie, własne foldery, kryteria ukończenia)
 
-Przy każdym zadaniu: **gałąź**, co powstaje, **gotowe, gdy** (kryterium ukończenia). Wszystko można testować na `SampleServices` i danych przykładowych.
+Przy każdym zadaniu: **gałąź**, co powstaje, **gotowe, gdy**. „Zrobione” to rzeczy już w `main` (szczegóły i uwagi w sekcji 9). Tematy poniżej są **aktualne na 3.10 wieczór** i uporządkowane od najważniejszego. Zakres jest zamrożony: nowe pomysły idą do PROJECT.md, sekcja 14.
 
 ### Michał: Lead, UI, integracja, seria na żywo
 
-**Własne ścieżki:** `DesignSystem`, `LiveSet`, `API`, `App/` (poza `Screens/Analysis|Plan|Coach|Progress|Care`), `Screens/Today|CheckIn|Onboarding|LiveSet`, `Config/`, `project.yml`, dokumenty, rdzeń backendu (tabela wyżej).
+**Własne ścieżki:** `DesignSystem`, `LiveSet`, `API`, `App/` (poza `Screens/Analysis|Plan|Coach|Progress|Care`), `Screens/Today|CheckIn|Onboarding|LiveSet|Profile`, `Config/`, `project.yml`, dokumenty, rdzeń backendu (tabela wyżej).
 
-| Gałąź | Zadanie | Gotowe, gdy |
+**Zrobione:** szkielet, kontrakty, DesignSystem, Dziś, Check-in, onboarding, Profil, klient API, `ContentRepository`, integracja usług (silnik reguł, korekta sesji, teksty rekomendacji, zapis wyników), ekran Plan, wejście do Opieki z Dziś, szkielet backendu, szkielet Vercela, analiza na żywo dla przysiadu, pompki i podciągania z diagnostyką.
+
+| Gałąź | Temat | Gotowe, gdy |
 |---|---|---|
-| `feat/michal-onboarding` | Onboarding w 6 krokach + układanie planu (cel, o tobie, sprzęt, historia medyczna, przeciwwskazania, Apple Health) zapisujący `UserProfile` i plan; dane zdrowotne zostają na telefonie | gotowe w PR (profil i plan w `AppStore` i na dysku, kroki zgodne z prototypem, testy logiki). Do zrobienia osobno: ekran profilu |
-| `feat/michal-live-set-device` | Test i strojenie serii na żywo na prawdziwym iPhonie: kamera, progi `PhaseTrackerConfig`, głos w słuchawkach, kadr | pełna seria na telefonie z poprawnie liczonymi fazami, lista zmian progów w PR |
-| `feat/michal-api-client` | Moduł Swift `API` (wspólny, mały): klient HTTP backendu (adres i token z `Info.plist`, `X-Device-Id`, nagłówek `Authorization`), dekodowanie błędów `{"error":{"code",...}}`, parser SSE (`delta`, `tool_use`, `done`, `error`), cache ETag dla `/v1/catalog` i `/v1/config`, wstrzykiwany transport. Daty `.iso8601`. Dopisanie modułu w `Package.swift` i `project.yml` | Maciek i Wiktor wołają backend jedną linią, testy na fałszywym transporcie, `GET /health` z telefonu działa |
-| `feat/michal-backend-deploy` | **Później, nie teraz** (na razie backend lokalnie: `make dev` na laptopie, telefon w tej samej sieci). Wdrożenie backendu na **Vercelu** (punkt wejścia ASGI, `vercel.json`, dołączenie `content/`, zmienne środowiskowe: `GEMINI_API_KEY`, `FORMA_APP_TOKENS`, limit wydatków na kluczu) i **Supabase** (projekt, tabela limitów zapytań i liczników zużycia bez treści, wymiana `RateLimiter` w `app/security.py` na wersję opartą o Supabase; klucz `service_role` tylko w Vercelu), CI (`make check`), adres w konfiguracji aplikacji, sprawdzenie strumieniowania SSE i limitu czasu funkcji na Vercelu | (po przejściu na hosting) adres z Vercela działa z telefonu, limity zapytań działają między instancjami, `/health` pokazuje `aiMode: gemini`, klucz tylko w sekretach hostingu |
-| `feat/michal-content-sync` | Wczytanie `content/` w aplikacji: wbudowana kopia (`scripts/sync_content.py`, zastępuje `Content/Resources/catalog.json`), zdalne odświeżanie przez `/v1/config` i `/v1/catalog` z ETag, `RemoteConfig` dla progów (scoring, insights, tempo) z zapasem w kopii | aplikacja startuje offline na kopii, po sieci bierze nowszą wersję; progi z `tempo.json` zasilają `PhaseTrackerConfig` |
-| `feat/michal-integration` | Podłączanie usług (`AppServices`), zapis wyników serii i analiz (`TechniqueHistoryProviding`), spięcie ekranów i nawigacji, przejścia Dziś → Plan → seria | cały przepływ klikalny na jednym urządzeniu na danych przykładowych, a potem na prawdziwych usługach |
-| `feat/michal-submission` | README dla jury, slajdy (12.1), nagranie demo, zrzuty ekranu, zgłoszenie na HackTribe | komplet materiałów i kompletne zgłoszenie z zapasem przed terminem |
+| `feat/michal-live-set-device` | **Test analizy na żywo na iPhonie** (przysiad, pompka, podciąganie): szkielet pokrywa się z ciałem, 15/15 stawów, FPS ≥ 15, kąty i liczba powtórzeń zgodne z rzeczywistością, głos nadąża. Strojenie progów w `content/config/tempo.json` i ocen w `UpperBodyAssessors`/`BasicSquatAssessor`. Nagranie 2–3 serii dobrych i złych na każde ćwiczenie i wysłanie JSON-ów do Bartka | pełna seria każdego z trzech ćwiczeń na telefonie z poprawnie liczonymi fazami, lista zmian progów w PR, pliki z pozami u Bartka |
+| `feat/michal-submission` | README dla jury, 10 slajdów (PROJECT.md 12.1), nagranie demo z prawdziwego iPhone'a (zapasowe na pitch), zrzuty ekranu, zgłoszenie na HackTribe | komplet materiałów i wysłane zgłoszenie z zapasem przed terminem |
+| `feat/michal-backend-deploy` | **Decyzja do jutra rano:** wdrożenie na Vercelu (szkielet gotowy, opis w `backend/README.md`) z płatnym kluczem Gemini, żeby wszyscy testowali bez laptopa Michała, albo zostajemy przy laptopie + hotspot na demo. Jeśli wdrażamy: sekrety w Vercelu, test strumienia SSE i limitu 60 s, limity zapytań (pamięć nie działa między instancjami) | `/health` z telefonu na adresie z Vercela pokazuje `aiMode: gemini`, czat działa przez strumień, klucz tylko w sekretach hostingu |
+| `feat/michal-demo-polish` | Scenariusz demo: dane startowe (check-in, plan), tryb demo bez przypadkowych błędów, puste stany, jasny motyw i Dynamic Type na Dziś/Plan/Profil, edycja pól profilu, wejście do Opieki z wyniku analizy (po #22), zapis wyników analiz Bartka do Dziś/Postępów, usunięcie tymczasowego `BackendPlanGenerator`, gdy Maciek odda swój | całe demo da się przejść od czystej instalacji bez ręcznych obejść |
 
 **Prompt startowy dla jego sesji Claude'a:**
 ```text
-Jesteś Michałem (Lead) w projekcie Forma. Przeczytaj CLAUDE.md, PROJECT.md i WORKINGPLAN.md (sekcja „Michał”). Pracujesz na gałęziach feat/michal-*, każde zadanie z tabeli jako osobny mały PR do main. Zacznij od feat/michal-onboarding, potem feat/michal-api-client i feat/michal-backend-deploy (backend: backend/README.md). Nie edytuj modułów Bartka, Wiktora i Maćka; potrzeby zgłaszaj w opisie PR. Przed PR: swift test w Packages/Core i build aplikacji.
+Jesteś Michałem (Lead) w projekcie Forma. Przeczytaj CLAUDE.md, PROJECT.md i WORKINGPLAN.md (sekcja „Michał” i „Jak uruchomić i zbudować na telefonie”). Pracujesz na gałęziach feat/michal-*, każde zadanie jako osobny mały PR do main. Zacznij od feat/michal-live-set-device (test na iPhonie), potem feat/michal-submission. Nie edytuj modułów Bartka, Wiktora i Maćka; potrzeby zgłaszaj w opisie PR. Przed PR: swift test w Packages/Core i build aplikacji.
 ```
 
 ### Bartek: Analiza ruchu
 
-**Własne ścieżki:** `Packages/Core/Sources/Analysis`, `content/config/scoring.json`, `Tests/AnalysisTests`, `App/Screens/Analysis`. Może używać `LiveSet` (`PhaseTracker`, `SquatSignal`, `FramingAssessor`, `BasicSquatAssessor`) zamiast pisać od zera.
+**Własne ścieżki:** `Packages/Core/Sources/Analysis`, `content/config/scoring.json`, `Tests/AnalysisTests`, `App/Screens/Analysis`. Może używać `LiveSet` (`MovementKind`, `PhaseTracker`, `SquatSignal`, `FramingAssessor`, `BasicSquatAssessor`, `BasicPushupAssessor`, `BasicPullupAssessor`).
 
-| Gałąź | Zadanie | Gotowe, gdy |
+**Zrobione (w `main`):** `VisionPoseExtractor` z obsługą obrotu filmu (#13), `QualityGate` (#28). **Drafty:** `RepAnalyzer` + `TechniqueScorer` (#18) i ekrany analizy (#22).
+
+| Gałąź | Temat | Gotowe, gdy |
 |---|---|---|
-| `feat/bartek-pose-extractor` | `VisionPoseExtractor`: film z pliku (`AVAssetReader`) → `[PoseFrame]`. Nagraj 5–8 przysiadów z boku (w tym błędne) i zapisz wyniki jako **JSON-y do testów** | z filmu wychodzą `PoseFrame` z poprawnymi współrzędnymi (origin lewy górny róg), fixtures w `Tests/AnalysisTests/Fixtures` |
-| `feat/bartek-quality-gate` | `QualityGate` dla nagranego filmu (PROJECT.md 6.2): widoczność, wielkość, liczba osób, powtórzenia, klatki na sekundę → `QualityReport` z konkretną wskazówką | testy na fixtures: dobry film przechodzi, złe dostają właściwą podpowiedź |
-| `feat/bartek-rep-scoring` | `RepAnalyzer` (powtórzenia i kąty) + `TechniqueScorer` (6.4) → `TechniqueResult`. Progi i wagi w **`content/config/scoring.json`** (jedno źródło; aplikacja czyta wbudowaną kopię, a nowsze dostaje z `/v1/config`; zestaw startowy już jest w pliku) | wynik 0–100, uwagi i zamiennik z fixtures, testy jednostkowe |
-| `feat/bartek-analysis-screens` | Ekrany Analiza: wybór ćwiczenia, ustawienie telefonu, nagrywanie lub galeria, jakość, przetwarzanie, wynik (6 plansz z prototypu) | przepływ działa na filmie z galerii na symulatorze i na nagraniu na telefonie |
+| `feat/bartek-rep-scoring` | **Doprowadź #18 do `main`:** rebase, scoring dla **trzech ćwiczeń** (przysiad: kąt kolana i głębokość; pompka: kąt łokcia i linia ciała; podciąganie: głowa nad rękami i kąt łokcia), spójny z ocenami na żywo z `LiveSet` (nie dwa różne wyniki). `QualityGate` dostaje parametr `kind` (dziś sprawdza kadr tylko jak dla przysiadu) | wynik 0–100, uwagi i zamiennik dla każdego z trzech ćwiczeń, testy |
+| `feat/bartek-analysis-screens` | **Doprowadź #22 do `main`:** rebase na `main` (są konflikty po squashu #13), kasowanie wideo po analizie i anulowaniu (nie przechowujemy filmów), kopiowanie pliku z galerii zamiast `Data`, usunięcie sztucznego czekania, ekstrakcja poza wątkiem interfejsu, wejście do Opieki z wyniku (`CareView`) | przepływ działa na filmie z galerii i na nagraniu na telefonie, plik wideo znika po analizie |
+| `feat/bartek-fixtures` | **Prawdziwe dane:** pliki póz z testu na żywo (JSON od Michała) i własne nagrania przez `VisionPoseExtractor`, po 5–8 na ćwiczenie (dobre i złe: płytko, pochylony, opadające biodra, niepełne podciągnięcie), testy na fixtures, strojenie `content/config/scoring.json` | `swift test` na fixtures przechodzi, progi dostrojone, opis w PR które nagrania i co zmieniono |
 
 **Prompt startowy:**
 ```text
-Jesteś Bartkiem (Analiza ruchu) w projekcie Forma. Przeczytaj CLAUDE.md, PROJECT.md (sekcja 6) i WORKINGPLAN.md (sekcja „Bartek”). Pracujesz na gałęziach feat/bartek-*, każde zadanie jako osobny mały PR do main. Zacznij od feat/bartek-pose-extractor. Edytuj tylko Packages/Core/Sources/Analysis, Tests/AnalysisTests i App/Screens/Analysis. Możesz używać modułu LiveSet. Zwracaj wynik jako TechniqueResult z Contracts. Przed PR: swift test i build aplikacji.
+Jesteś Bartkiem (Analiza ruchu) w projekcie Forma. Przeczytaj CLAUDE.md, PROJECT.md (sekcja 6) i WORKINGPLAN.md (sekcja „Bartek”). Pracujesz na gałęziach feat/bartek-*, każde zadanie jako osobny mały PR do main. Zacznij od feat/bartek-rep-scoring (PR #18) i feat/bartek-analysis-screens (PR #22): rebase na main i poprawki z komentarzy w PR. Edytuj tylko Packages/Core/Sources/Analysis, content/config/scoring.json, Tests/AnalysisTests i App/Screens/Analysis. Możesz używać modułu LiveSet. Zwracaj wynik jako TechniqueResult z Contracts. Przed PR: swift test i build aplikacji.
 ```
 
 ### Wiktor: Dane i reguły
 
 **Własne ścieżki:** `Packages/Core/Sources/Health`, `Insights`, `Tests/HealthTests`, `Tests/InsightsTests`, `App/Screens/Progress`, `App/Screens/Care`, część backendu: `services/text_service.py`, `services/safety.py`, `ai/prompts/text_system.md`, `routers/texts.py`, `content/config/insights.json`.
 
-| Gałąź | Zadanie | Gotowe, gdy |
+**Zrobione (w `main`):** HealthKit, `CheckInStore`, silnik reguł z poprawkami, `PlanAdjuster` i `CarePathway`, teksty rekomendacji (serwer i telefon), ekrany Postępy i Opieka.
+
+| Gałąź | Temat | Gotowe, gdy |
 |---|---|---|
-| `feat/wiktor-healthkit` | `HealthKitService` jako `RecoveryProviding` **i `HealthAuthorizing`** (prośba o uprawnienia wołana z onboardingu): sen, tętno spoczynkowe, HRV jako **podsumowania** i punkt odniesienia, fallback na `SampleData` z oznaczeniem symulacji | logika agregacji przetestowana na tablicach próbek, na iPhonie widać prawdziwe dane (jeśli są) |
-| `feat/wiktor-checkin-store` | Zapis i odczyt `CheckIn` jako `CheckInProviding` (plik JSON lokalnie) | zapis z ekranu check-inu wraca z `checkIns(days:)`, testy |
-| `feat/wiktor-insight-engine` | `InsightEngine` → `DailyRecommendation` (7.2–7.4). Progi z **`content/config/insights.json`** (wbudowana kopia i `/v1/config`). **Napraw próg „Odpuść”**: dziś 3 sygnały dają „Odpuść”, a przykład w prototypie to „Zmodyfikuj”. Zmień `restFromSignals` w pliku i opisz w PR | testy reguł dla scenariuszy (dobry dzień, 1–2 sygnały, wiele sygnałów, flaga opieki), implementacja `RecommendationProviding` |
-| `feat/wiktor-recommendation-text` | Teksty rekomendacji: po stronie telefonu klient `POST /v1/texts/recommendation` (po `feat/michal-api-client`) z zapasem na własne teksty z silnika, po stronie serwera strojenie `text_system.md` i wzorców w `safety.py` (diagnozy, leki, obietnice, linki), test z prawdziwym kluczem na kilku scenariuszach | rekomendacja dnia zawsze się wyświetla (bez sieci: tekst z silnika), tekst z modelu nie zmienia decyzji ani nie diagnozuje, wzorce złapały przykłady złych tekstów |
-| `feat/wiktor-plan-adjuster-care` | `PlanAdjuster` (zmiana dzisiejszej sesji według decyzji) i `CarePathway` (flaga „warto rozważyć konsultację”, 7.4) | testy: „Zmodyfikuj” skraca serie i podmienia ćwiczenie z katalogu, „Odpuść” zamienia sesję na odpoczynek |
-| `feat/wiktor-progress-care-screens` | Ekrany Postępy (Swift Charts) i Opieka (MapKit, fizjoterapeuci w pobliżu) | ekrany na danych przykładowych, wyszukiwanie w Mapach działa |
+| `feat/wiktor-device-checks` | **Sprawdzenie na iPhonie:** prawdziwe dane z Apple Health (sen, tętno spoczynkowe, HRV; brak dzisiejszego snapshotu rano, dzień z brakującym HRV), wyszukiwanie fizjoterapeutów z prawdziwą lokalizacją, wykresy w jasnym motywie, Dynamic Type i VoiceOver. Poprawki w PR | lista sprawdzonych rzeczy w PR, błędy poprawione |
+| `feat/wiktor-text-live` | **Teksty z prawdziwym modelem:** `cd backend && GEMINI_API_KEY=... .venv/bin/python scripts/check_texts.py --live`, dostrojenie `text_system.md` i filtrów (odrzuca „nie diagnozuję”, więc sprawdź fałszywe alarmy). Uzupełnij `detect_red_flags` w `safety.py` o „boli mnie w klatce”, „brakuje mi tchu”, „kłuje w klatce” | co najmniej 10 odpowiedzi modelu przeszło przez filtry bez fałszywych odrzuceń, nowe wzorce złapały przykłady objawów |
+| `feat/wiktor-copy-audit` | **Audyt tekstów zdrowotnych w całej aplikacji** (PROJECT.md 3.6): ekrany, prompty trenera i planu, Opieka, Profil, czat, teksty reguł. Szukaj diagnoz, obietnic, rozkazów, ostrzeżeń bez „sygnał / warto rozważyć konsultację”. Lista zmian w PR | żaden tekst w aplikacji nie diagnozuje, każdy ma odesłanie do specjalisty tam, gdzie trzeba |
+| `feat/wiktor-progress-history` | (priorytet 5, tylko jeśli starczy czasu) zapis decyzji dnia i historia sesji w Postępach, karta „Dzień odpoczynku” na Dziś | decyzje dnia widać na osi czasu w Postępach |
 
 **Prompt startowy:**
 ```text
-Jesteś Wiktorem (Dane i reguły) w projekcie Forma. Przeczytaj CLAUDE.md, PROJECT.md (sekcje 7 i 3.6) i WORKINGPLAN.md (sekcja „Wiktor”). Pracujesz na gałęziach feat/wiktor-*, każde zadanie jako osobny mały PR do main. Zacznij od feat/wiktor-healthkit albo feat/wiktor-insight-engine (są niezależne). Edytuj tylko Packages/Core/Sources/Health i Insights, ich testy oraz App/Screens/Progress i Care. Implementuj protokoły RecoveryProviding, CheckInProviding, RecommendationProviding z Contracts/Services.swift i podepnij je w swojej linii App/Services/AppServices.swift dopiero, gdy działają. Teksty zdrowotne: sygnał, nie diagnoza. Przed PR: swift test i build aplikacji.
+Jesteś Wiktorem (Dane i reguły) w projekcie Forma. Przeczytaj CLAUDE.md, PROJECT.md (sekcje 7 i 3.6) i WORKINGPLAN.md (sekcja „Wiktor”). Pracujesz na gałęziach feat/wiktor-*, każde zadanie jako osobny mały PR do main. Zacznij od feat/wiktor-device-checks albo feat/wiktor-text-live (są niezależne). Edytuj tylko Packages/Core/Sources/Health i Insights, ich testy, App/Screens/Progress i Care oraz swoje pliki backendu i content/config/insights.json. Teksty zdrowotne: sygnał, nie diagnoza. Przed PR: swift test i build aplikacji, a przy zmianach backendu make check w backend/.
 ```
 
 ### Maciek: Plan i trener AI
 
 **Własne ścieżki:** `Packages/Core/Sources/Plan`, `Coaching`, `Content`, ich testy, `App/Screens/Plan`, `App/Screens/Coach`, część backendu: `backend/app/ai/` (poza `text_system.md`), `services/{plan_builder,plan_validator,plan_service,coach_service}.py`, `routers/{plans,coach,catalog}.py`, `content/catalog.json`, `content/plan_templates.json`.
 
-| Gałąź | Zadanie | Gotowe, gdy |
+**Zrobione (w `main`):** backend AI na Gemini z kaskadą modeli i testami (#11), czat trenera ze zgodą, narzędziami i historią (#30), ekran Trener. Ekran Plan zrobił Michał, tymczasowy `BackendPlanGenerator` też.
+
+| Gałąź | Temat | Gotowe, gdy |
 |---|---|---|
-| `feat/maciek-catalog-templates` | **Treść w `content/`** (jedno źródło prawdy): `catalog.json` (jest 28 ćwiczeń na start: popraw opisy, dodaj filmy wzorcowe `videoURL`, **dodaj ćwiczenia ciągnięcia bez sprzętu**, np. wiosłowanie z ręcznikiem, bo dziś jest tylko `superman`, oraz znacznik ćwiczenia złożonego, żeby cel „siła” nie brał izolacji) i `plan_templates.json`. Swift: `ExerciseCatalogProviding` czyta wbudowaną kopię (`scripts/sync_content.py`, razem z `feat/michal-content-sync`) | `make check` w `backend/` przechodzi (spójność katalogu i szablonów), katalog w aplikacji ładuje się z kopii, każdy zamiennik istnieje |
-| `feat/maciek-plan-store` | `PlanProviding`: aktualny plan i dzisiejsza sesja, zapis lokalny JSON, plan z szablonu dla profilu (offline, na `SamplePlanBuilder` albo na kopii `plan_templates.json`) | `currentPlan()` i `todaySession()` działają, testy |
-| `feat/maciek-backend-ai` | **Backend z prawdziwym modelem**: uruchom `make dev` z kluczem, sprawdź `POST /v1/plans/generate` i `POST /v1/coach/chat` na kilku profilach i rozmowach, dostrój `ai/prompts/{plan,coach}_system.md`, opisy narzędzi w `ai/tools.py`, modele w `config.py`, jakość planu z szablonu (`plan_builder.py`). Nic z tego nie było jeszcze uruchomione na prawdziwym modelu | plany od modelu przechodzą walidator na kilku profilach (w logach brak `plan_rejected`), czat woła narzędzia i odmawia diagnoz, krótki opis w PR: modele, koszt jednej rozmowy |
-| `feat/maciek-plan-generator` | Swift `PlanGenerator` jako `PlanGenerating`: wywołuje `POST /v1/plans/generate` przez moduł `API` (profil bez historii zdrowia), mapuje odpowiedź na `TrainingPlan`, przy braku sieci lub błędzie plan lokalny z szablonu; pokazuje ostrzeżenia (`ai_unavailable` itd.) | test na fałszywym transporcie: odpowiedź AI, odpowiedź z szablonu z ostrzeżeniem, błąd sieci → plan lokalny |
-| `feat/maciek-coach-chat` | Swift `CoachChat`: `POST /v1/coach/chat` ze strumieniem SSE, **pętla narzędzi na telefonie** (`get_current_plan`, `get_technique_history`, `get_today_recommendation`, `get_recovery_summary`, `get_checkins`: wykonywane na protokołach usług, wynik jako podsumowanie JSON), `DataConsent` → pole `consent.health`, kontekst (`profile`, `todayRecommendation` tylko po zgodzie), historia lokalnie, obsługa błędów (`error`, 503, 429) | testy na fałszywym transporcie SSE: tekst, wywołanie narzędzia i druga tura, brak narzędzi zdrowotnych bez zgody, błąd w trakcie strumienia |
-| `feat/maciek-plan-coach-screens` | Ekrany Plan (tydzień, szczegóły sesji, tempo) i Trener (czat, zgoda, pusta rozmowa, błąd, trener pisze). Plan może przejąć Michał | ekrany na danych przykładowych i na atrapie backendu, potem na prawdziwym modelu |
+| `feat/maciek-plan-generator` | **Swift `PlanGenerator`** jako `PlanGenerating` (zastępuje tymczasowy `BackendPlanGenerator` w `AppServices.swift`): `POST /v1/plans/generate` przez moduł `API`, ostrzeżenia (`ai_unavailable`, `ai_invalid_plan`...) widoczne w UI, plan offline z kopii `plan_templates.json` | test na fałszywym transporcie: plan AI, plan z szablonu z ostrzeżeniem, błąd sieci → plan lokalny; onboarding działa bez backendu |
+| `feat/maciek-plan-store` | **Magazyn planu:** `PlanProviding` z zapisem lokalnym, **oznaczanie sesji jako wykonanej** (`PlannedSession.status`) i jego trwałość, plan i status wracają po restarcie | `currentPlan()` i `todaySession()` działają na zapisanym planie, status sesji przeżywa restart |
+| `feat/maciek-catalog-templates` | **Treść:** ćwiczenia ciągnięcia bez sprzętu (dziś tylko `superman`), `videoURL`, znacznik ćwiczenia złożonego (cel „siła” nie bierze izolacji), sprawdzenie planów z `pullup` i `pushup` (które mają analizę na żywo), spójność tempa. `make check` pilnuje spójności | katalog ma sensowny wybór bez sprzętu i na siłownię, plany od modelu i z szablonu przechodzą walidator |
+| `feat/maciek-coach-polish` | **Czat na telefonie i z płatnym kluczem:** test na iPhonie, koszt rozmowy, test widoku (wycofanie zgody czyści rozmowę), „Zastosuj w planie” (`propose_plan_change`, priorytet 5, tylko jeśli starczy czasu), karta konsultacji po wzmiance o bólu | czat działa na telefonie na prawdziwym modelu, opis w PR: modele, koszt, ograniczenia |
 
 **Prompt startowy:**
 ```text
-Jesteś Maćkiem (Plan i trener AI) w projekcie Forma. Przeczytaj CLAUDE.md, PROJECT.md (sekcje 7.5, 7.6, 8) i WORKINGPLAN.md (sekcja „Maciek”). Pracujesz na gałęziach feat/maciek-*, każde zadanie jako osobny mały PR do main. Zacznij od feat/maciek-catalog-templates albo feat/maciek-backend-ai (są niezależne; backend: backend/README.md, działa bez klucza w trybie atrapy). Edytuj tylko Packages/Core/Sources/Plan, Coaching, Content, ich testy, App/Screens/Plan i Coach oraz swoje pliki backendu i content/ (tabela „Co gdzie żyje” w WORKINGPLAN.md). Implementuj ExerciseCatalogProviding i PlanProviding z Contracts/Services.swift i podepnij je w swoich liniach App/Services/AppServices.swift dopiero, gdy działają. Narzędzia czatu pisz przeciw protokołom usług i testuj na SampleServices. Model wołasz wyłącznie przez backend (moduł API), klucza do modelu nie ma w aplikacji. Przed PR: swift test i build aplikacji, a przy zmianach backendu make check w backend/.
+Jesteś Maćkiem (Plan i trener AI) w projekcie Forma. Przeczytaj CLAUDE.md, PROJECT.md (sekcje 7.5, 7.6, 8) i WORKINGPLAN.md (sekcja „Maciek”). Pracujesz na gałęziach feat/maciek-*, każde zadanie jako osobny mały PR do main. Zacznij od feat/maciek-plan-generator, potem feat/maciek-plan-store (backend: backend/README.md). Edytuj tylko Packages/Core/Sources/Plan, Coaching, Content, ich testy, App/Screens/Plan i Coach oraz swoje pliki backendu i content/ (tabela „Co gdzie żyje” w WORKINGPLAN.md). Model wołasz wyłącznie przez backend (moduł API), klucza do modelu nie ma w aplikacji. Przed PR: swift test i build aplikacji, a przy zmianach backendu make check w backend/.
 ```
 
 ## 6. Zależności (kto na kogo czeka)
@@ -167,8 +175,8 @@ Jesteś Maćkiem (Plan i trener AI) w projekcie Forma. Przeczytaj CLAUDE.md, PRO
 | 0. Przed startem | każdy zbuduje aplikację na swój telefon i symulator |
 | 1. Start | szkielet aplikacji, kontrakty, usługi i **szkielet backendu** są w `main`, zespół ma swoje gałęzie |
 | 2. Moduły równolegle | każdy moduł działa na danych przykładowych i ma testy logiki |
-| 3. Integracja | backend wdrożony i dostępny z telefonu, jeden pełny przepływ działa na telefonie: onboarding → plan → seria na żywo → analiza → rekomendacja → trener |
-| 4. Dopracowanie i zgłoszenie | funkcje zamrożone, zgłoszenie kompletne i wysłane z zapasem przed terminem |
+| 3. Integracja (**jesteśmy tutaj**) | jeden pełny przepływ działa na telefonie: onboarding → plan → seria na żywo → analiza → rekomendacja → trener; backend lokalnie albo na Vercelu |
+| 4. Dopracowanie i zgłoszenie | **zamrożenie funkcji 4.10 rano** (propozycja, do potwierdzenia przez zespół), ostatnie PR-y tylko poprawki, zgłoszenie kompletne i wysłane **najpóźniej 4.10 wieczorem z zapasem co najmniej 3 godzin** przed terminem 23:00 |
 
 ## 8. Priorytety, gdy zabraknie czasu
 
@@ -181,36 +189,23 @@ Wyższy zawsze przed niższym (PROJECT.md, 4.2):
 
 ## 9. Status
 
-Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie.
+Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie. Stan: 3.10 wieczór. „Nie sprawdzone” znaczy, że nikt nie uruchomił tego na prawdziwym urządzeniu lub modelu.
 
-| Zadanie | Kto | Gałąź | Status | Uwagi |
-|---|---|---|---|---|
-| Szkielet, kontrakty, DesignSystem, Dziś, Check-in | Michał | `main` | gotowe (dane przykładowe) | |
-| Szkielet backendu (FastAPI: config, token, limity, bramka AI z atrapą, `/v1/{catalog,config,plans/generate,coach/chat,texts/recommendation}`, `content/`) | Michał | `main` | gotowe | działa w trybie atrapy (bez klucza); **nie uruchomiony z prawdziwym modelem** (brak klucza), obraz Dockera i CI niesprawdzone; bez testów automatycznych (decyzja: szkielet bez testów) |
-| Klient API w Swifcie (`API`) | Michał | `feat/michal-api-client` | w PR | moduł `API`, `AppServices.api`; sprawdzony jednorazowo na działającym backendzie (zdrowie, katalog z 304, konfiguracja, plan, tekst, czat ze strumieniem i narzędziem, błąd), bez testów automatycznych; nie sprawdzony z prawdziwym modelem i na telefonie |
-| Wdrożenie i CI backendu | Michał | `feat/michal-backend-deploy` | szkielet gotowy (`api/index.py`, `vercel.json`, `requirements.txt`, kroki w backend/README.md), niewdrożony | brakuje: konto Vercel, zmienne środowiskowe, test SSE na Vercelu, limity w Supabase, CI | na razie lokalnie; Vercel + Supabase później, niesprawdzone |
-| Treść w aplikacji (kopia i odświeżanie) | Michał | `feat/michal-content-sync` | w PR | `ContentRepository` (moduł Content): kopia w aplikacji, cache na dysku, odświeżanie z ETag przy starcie; katalog w `AppServices.catalog`; progi serii z `tempo.json` w `LiveSetEngine`. Sprawdzone na symulatorze (200, potem 304). **Po zmianie `content/` uruchom `python scripts/sync_content.py`** (`make check` pilnuje). Progi `insights` i `scoring` są dostępne przez `ContentRepository.shared.configData(...)`, ale Wiktor i Bartek jeszcze ich stamtąd nie czytają |
-| Seria na żywo (tempo, głos, podsumowanie) | Michał | `main` | pierwsza wersja | silnik ma testy, kamera niesprawdzona na iPhonie |
-| Onboarding | Michał | `feat/michal-onboarding` | w PR | zależy od PR kontraktowego `contracts/onboarding-profile`; ekran Profil (podgląd, usuwanie historii zdrowia i wszystkich danych, ponowne układanie planu) w `feat/michal-profile-screen`; edycji pól profilu jeszcze nie ma |
-| Seria na żywo na telefonie | Michał | `feat/michal-live-set-device` | analiza na żywo dla przysiadu, pompki i podciągania (`MovementKind`, `feat/michal-live-exercises`), wejście „Test analizy na żywo” w Profilu; narzędzia gotowe (`feat/michal-live-diagnostics`): panel diagnostyczny (ikona biedronki), kolorowanie stawów wg pewności, eksport póz do JSON; **test na iPhonie jeszcze nie wykonany** | po teście: lista zmian progów w tempo.json i fixtures dla Bartka |
-| Integracja usług i przepływu | Michał | `feat/michal-integration` | w PR (część 1) | silnik reguł Wiktora zasila ekran Dziś (po starcie i po check-inie), katalog z `ContentRepository`, plan z onboardingu z backendu z lokalnym zapasem, wyniki serii zapisywane lokalnie (`LocalTechniqueHistory`) i liczone przez silnik. Check-in zapisuje się na telefonie przez `CheckInStore` (Wiktor) i wraca po restarcie. Zostaje: wyniki analiz Bartka, nawigacja Dziś → Plan → seria, ekran profilu |
-| Materiały i zgłoszenie | Michał | `feat/michal-submission` | do zrobienia | |
-| Wydobycie punktów z filmu | Bartek | `feat/bartek-pose-extractor` | do zrobienia | |
-| Jakość nagrania | Bartek | `feat/bartek-quality-gate` | do zrobienia | |
-| Powtórzenia i scoring | Bartek | `feat/bartek-rep-scoring` | do zrobienia | |
-| Ekrany Analiza i Wynik | Bartek | `feat/bartek-analysis-screens` | do zrobienia | |
-| HealthKit | Wiktor | `feat/wiktor-healthkit` | scalone (#8) | agregacja przetestowana na tablicach próbek, dialog uprawnień sprawdzony na symulatorze; odczyt prawdziwych danych z Apple Health i zegarka do sprawdzenia na iPhonie |
-| Zapis check-inu | Wiktor | `feat/wiktor-checkin-store` | scalone (#6) | `CheckInStore` gotowy; podpięcie ekranu Check-in robi Michał (`AppStore.saveCheckIn` → `CheckInStore.standard`) |
-| Silnik reguł | Wiktor | `feat/wiktor-insight-engine` | scalone (#4, poprawki w #10) | `restFromSignals` = 4, do „Odpuść” liczą się tylko sygnały regeneracji, technika najwyżej „Zmodyfikuj”; liczą się analizy z ostatnich 14 dni |
-| Teksty rekomendacji (klient + backend) | Wiktor | `feat/wiktor-recommendation-text` | scalone (#23, na ekranie Dziś w #24) | filtry i prompt na serwerze oraz `RecommendationTexter` na telefonie (zgoda, cache, tekst z silnika jako zapas), przetestowane offline; **nie sprawdzone z prawdziwym modelem** (`cd backend && GEMINI_API_KEY=... .venv/bin/python scripts/check_texts.py --live`). Zgoda (`DataConsent`, Maciek) jest wyłączona, więc do modelu idą na razie tylko dane przykładowe |
-| Korekta sesji i opieka | Wiktor | `feat/wiktor-plan-adjuster-care` | scalone (#14, podpięte w #17) | `PlanAdjuster` zmienia sesję w Dziś i Plan, `CarePathway` zasila ekran Opieka |
-| Ekrany Postępy i Opieka | Wiktor | `feat/wiktor-progress-care-screens` | scalone (#19) | sprawdzone na symulatorze (wykresy, karta opieki, wyszukiwanie w Mapach z lokalizacją Warszawa, brak zgody); wyszukiwanie na prawdziwym iPhonie i wejścia do Opieki z Dziś i Wyniku (Michał, Bartek) do zrobienia. Historia sesji z prototypu zastąpiona historią serii z trenerem (aplikacja nie zapisuje decyzji dnia), Sylwetka poza zakresem |
-| Katalog i szablony | Maciek | `feat/maciek-catalog-templates` | do zrobienia | |
-| Magazyn planu | Maciek | `feat/maciek-plan-store` | do zrobienia | |
-| Backend z prawdziwym modelem (prompty, narzędzia, jakość planu) | Maciek | `feat/maciek-backend-ai` | gotowe (PR #11) | tylko Gemini, kaskada modeli zapasowych, testy jednostkowe (`make test`); na żywo: plany 6/6, czat 9/9, plan ok. 3 s i 0,002 USD; wymaga klucza z płatnego projektu (darmowy: 20 zapytań na dobę na model) |
-| Generator planu (Swift, wywołuje backend) | Maciek | `feat/maciek-plan-generator` | do zrobienia | |
-| Czat trenera (Swift: SSE, narzędzia, zgoda) | Maciek | `feat/maciek-coach-chat` | gotowe (PR) | `ConsentStore`, historia rozmowy lokalnie, 5 narzędzi na protokołach usług, pętla `CoachChat`, 44 testy; sprawdzone w symulatorze na prawdziwym backendzie (zgoda, narzędzie, odpowiedź, błąd i ponowienie); niesprawdzone na telefonie |
-| Ekrany Plan i Trener | Maciek | `feat/maciek-plan-coach-screens` | Plan: gotowy (Michał, `feat/michal-plan-screen`); Trener: gotowy (w PR czatu: zgoda, pusta rozmowa, trener pisze, błąd z ponowieniem, menu) | |
+| Obszar | Kto | Status | Uwagi |
+|---|---|---|---|
+| Szkielet, kontrakty, DesignSystem, Dziś, Check-in, onboarding, Profil | Michał | w `main` | Profil: podgląd, usuwanie historii zdrowia i wszystkich danych, ponowne układanie planu; edycji pól jeszcze nie ma |
+| Klient API (`API`), `ContentRepository` (kopia treści, cache, ETag) | Michał | w `main` | po zmianie `content/` uruchom `python scripts/sync_content.py`; przy zmianie typów w cache podbij `cacheFormat` |
+| Integracja: silnik reguł na Dziś, korekta sesji (Plan, Dziś), teksty rekomendacji, zapis wyników, check-in | Michał, Wiktor | w `main` | `BackendPlanGenerator` (tymczasowy) do zastąpienia przez Maćka |
+| Ekran Plan | Michał | w `main` | tydzień, szczegóły sesji, start serii, „Przywróć oryginał”; bez oznaczania wykonania (Maciek: magazyn planu) |
+| Seria na żywo: przysiad, pompka, podciąganie, diagnostyka, eksport póz | Michał | w `main` | sprawdzone na symulacji i headless; **kamera i iPhone nie sprawdzone**, progi to wartości startowe |
+| Backend: szkielet (Michał), AI na Gemini z kaskadą i testami (Maciek) | Michał, Maciek | w `main` | 58 testów, `make check`; plany 6/6 i czat 9/9 na prawdziwym modelu; wymaga płatnego klucza; strumień SSE przez Vercel nie sprawdzony |
+| Wdrożenie na Vercel (szkielet) | Michał | w `main`, niewdrożone | decyzja do jutra rano (sekcja 5) |
+| Analiza z filmu: ekstraktor póz, `QualityGate` | Bartek | w `main` | obrót filmu z iPhone'a obsłużony; bez prawdziwych nagrań |
+| Analiza z filmu: `RepAnalyzer` + `TechniqueScorer` (#18), ekrany analizy (#22) | Bartek | drafty | #22 do rebase i poprawek (komentarze w PR), scoring tylko dla przysiadu |
+| HealthKit, `CheckInStore`, silnik reguł, `PlanAdjuster`, `CarePathway`, teksty rekomendacji | Wiktor | w `main` | dialog uprawnień sprawdzony na symulatorze; prawdziwe dane z zegarka i teksty z prawdziwym modelem nie sprawdzone |
+| Ekrany Postępy i Opieka | Wiktor | w `main` | wejście do Opieki z Dziś jest; z wyniku analizy po #22 |
+| Czat trenera (zgoda, narzędzia lokalne, historia), ekran Trener | Maciek | w `main` | wycofanie zgody czyści rozmowę (#31); nie sprawdzone na telefonie |
+| Swift `PlanGenerator`, magazyn planu, treść katalogu | Maciek | do zrobienia | tematy w sekcji 5 |
 
 ## 10. Co oddajemy (HackTribe)
 
@@ -221,13 +216,13 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie.
 
 ## 11. Otwarte sprawy
 
+- [ ] **Klucz Gemini z płatnego projektu** i limit budżetu: kto go zakłada i trzyma (jedna osoba). Darmowy poziom: 20 zapytań na dobę na model i Google może używać treści zapytań.
+- [ ] **Wdrożenie:** Vercel albo laptop + hotspot na demo (decyzja Michała do 4.10 rano). Zapas na demo: nagranie.
+- [ ] Zamrożenie funkcji 4.10 rano i godzina wysłania zgłoszenia (propozycja w sekcji 7), potwierdzenie przez zespół.
 - [ ] Potwierdzenie z organizatorami, że wcześniejsze planowanie jest w porządku.
-- [ ] Potwierdzenie mapowania loginów GitHub na osoby (sekcja 2).
-- [ ] Modele iPhone'ów i wersje iOS w zespole (czy cel wdrożenia iOS 17 wystarcza).
-- [ ] Nazwa aplikacji i zespołu.
-- [ ] Próg reguły „Odpuść” w silniku (zadanie Wiktora).
+- [ ] Potwierdzenie mapowania loginów GitHub na osoby (sekcja 2) oraz modele iPhone'ów i wersje iOS w zespole.
+- [ ] Nazwa aplikacji i zespołu na zgłoszenie.
 - [ ] Źródło filmów wzorcowych (własne nagranie albo materiał z jasną licencją).
-- [x] **Teraz lokalnie na laptopie; docelowo Vercel + Supabase.** Do zrobienia w `feat/michal-backend-deploy`, gdy przejdziemy na hosting: kto zakłada konta i projekty, zmienne środowiskowe, schemat bazy. Zapas na demo: laptop w tej samej sieci co telefon.
-- [ ] Kto trzyma klucz do modelu i token aplikacji (jedna osoba, limit wydatków na kluczu).
-- [ ] Wersje Pythona i narzędzi u osób, które będą ruszać backend (`make install` wymaga Pythona 3.11+).
 - [ ] Kanał komunikacji zespołu (np. Discord) i sposób zgłaszania blokad.
+- [x] Próg reguły „Odpuść” w silniku (4 sygnały regeneracji, #4).
+- [x] Dostawca modelu: Gemini (#11).

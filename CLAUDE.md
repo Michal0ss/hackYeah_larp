@@ -13,7 +13,7 @@ cp Config/Secrets.xcconfig.example Config/Secrets.xcconfig   # token backendu, n
 xcodegen generate && open Forma.xcodeproj
 ```
 
-Testy logiki (szybkie, bez symulatora): `cd Packages/Core && swift test`.
+Testy logiki (szybkie, bez symulatora): `cd Packages/Core && swift test`. Backend: `cd backend && make install && make dev` (tryb atrapy bez klucza), `make check` i `make test` przed PR. Budowanie na telefonie i test analizy na żywo: WORKINGPLAN.md, „Jak uruchomić i zbudować na telefonie”.
 Backend (opcjonalnie, działa bez klucza): `cd backend && make install && make dev`, a przed PR dotykającym `backend/` lub `content/` `make check`.
 Budowanie aplikacji: `xcodegen generate && xcodebuild -project Forma.xcodeproj -scheme Forma -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`.
 Plik `Forma.xcodeproj` jest generowany i nie wchodzi do repo. Po `git pull` z nowymi plikami uruchom `xcodegen generate`.
@@ -24,7 +24,7 @@ Plik `Forma.xcodeproj` jest generowany i nie wchodzi do repo. Po `git pull` z no
 |---|---|---|
 | `Packages/Core/Sources/Contracts` | wspólne (zmiany tylko addytywne, patrz niżej) | typy danych, interfejsy usług, dane przykładowe |
 | `Packages/Core/Sources/DesignSystem`, `App/` poza `Screens/*` | Michał | tokeny, szkło, komponenty, nawigacja, stan aplikacji |
-| `Packages/Core/Sources/LiveSet`, `Onboarding`, `App/Screens/LiveSet`, `App/Screens/Today`, `App/Screens/CheckIn`, `App/Screens/Onboarding` | Michał | seria na żywo, onboarding (w tym historia zdrowia zostająca na telefonie), ekran Dziś, check-in |
+| `Packages/Core/Sources/LiveSet`, `API`, `Onboarding`, `App/Screens/LiveSet`, `Today`, `CheckIn`, `Onboarding`, `Profile` | Michał | seria na żywo (przysiad, pompka, podciąganie: `MovementKind`), klient backendu, onboarding (historia zdrowia zostaje na telefonie), ekran Dziś, check-in, Profil |
 | `Packages/Core/Sources/Analysis`, `App/Screens/Analysis` | Bartek | analiza filmu, jakość nagrania, scoring |
 | `Packages/Core/Sources/Health`, `Insights`, `App/Screens/Progress`, `App/Screens/Care` | Wiktor | HealthKit, check-in (zapis), silnik reguł, opieka, postępy |
 | `Packages/Core/Sources/Plan`, `Coaching`, `Content`, `App/Screens/Plan`, `App/Screens/Coach` | Maciek | katalog, plan, klient modelu, czat trenera |
