@@ -42,6 +42,17 @@ public struct PoseFrame: Codable, Equatable, Sendable {
         self.peopleDetected = peopleDetected
     }
 
+    private enum CodingKeys: String, CodingKey { case time, joints, peopleDetected }
+
+    /// Custom so `peopleDetected` defaults to 1 for any `PoseFrame` JSON saved before this field
+    /// existed (fixtures, caches) instead of failing to decode.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        time = try container.decode(Double.self, forKey: .time)
+        joints = try container.decode([Joint].self, forKey: .joints)
+        peopleDetected = try container.decodeIfPresent(Int.self, forKey: .peopleDetected) ?? 1
+    }
+
     /// The joint if it was detected with at least `minConfidence`.
     public func joint(_ name: JointName, minConfidence: Double = 0.3) -> Joint? {
         joints.first { $0.name == name && $0.confidence >= minConfidence }

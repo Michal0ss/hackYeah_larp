@@ -34,6 +34,10 @@ public enum VisionPoseExtractor {
         guard let track = try await asset.loadTracks(withMediaType: .video).first else {
             throw ExtractionError.noVideoTrack
         }
+        // iPhone video is stored landscape with the actual orientation in the track's transform;
+        // without this Vision sees a sideways person and poses come out wrong or empty.
+        let transform = try await track.load(.preferredTransform)
+        let orientation = cgOrientation(for: transform)
 
         let reader = try AVAssetReader(asset: asset)
         let output = AVAssetReaderTrackOutput(
@@ -55,7 +59,7 @@ public enum VisionPoseExtractor {
             firstTimestamp = first
 
             let request = VNDetectHumanBodyPoseRequest()
-            let handler = VNImageRequestHandler(cvPixelBuffer: buffer, orientation: .up, options: [:])
+            let handler = VNImageRequestHandler(cvPixelBuffer: buffer, orientation: orientation, options: [:])
             try? handler.perform([request])
 
             let results = request.results ?? []
@@ -68,6 +72,17 @@ public enum VisionPoseExtractor {
             throw ExtractionError.readerFailed
         }
         return frames
+    }
+
+    /// Maps a video track's `preferredTransform` to the orientation Vision needs to see the frame
+    /// upright. Covers the four rotations iPhone recordings actually use.
+    static func cgOrientation(for transform: CGAffineTransform) -> CGImagePropertyOrientation {
+        switch (transform.a, transform.b, transform.c, transform.d) {
+        case (0, 1, -1, 0): return .right
+        case (0, -1, 1, 0): return .left
+        case (-1, 0, 0, -1): return .down
+        default: return .up
+        }
     }
 
     private static func score(_ observation: VNHumanBodyPoseObservation) -> Float {

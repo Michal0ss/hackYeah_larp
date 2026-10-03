@@ -59,6 +59,14 @@ final class VisionPoseExtractorTests: XCTestCase {
         XCTAssertTrue(frames.allSatisfy { $0.joints.isEmpty })
     }
 
+    func testOrientationMappingForStandardIPhoneRotations() {
+        // The four transforms AVFoundation actually produces for iPhone recordings.
+        XCTAssertEqual(VisionPoseExtractor.cgOrientation(for: .identity), .up)
+        XCTAssertEqual(VisionPoseExtractor.cgOrientation(for: CGAffineTransform(a: 0, b: 1, c: -1, d: 0, tx: 0, ty: 0)), .right)
+        XCTAssertEqual(VisionPoseExtractor.cgOrientation(for: CGAffineTransform(a: 0, b: -1, c: 1, d: 0, tx: 0, ty: 0)), .left)
+        XCTAssertEqual(VisionPoseExtractor.cgOrientation(for: CGAffineTransform(a: -1, b: 0, c: 0, d: -1, tx: 0, ty: 0)), .down)
+    }
+
     func testThrowsForAMissingFile() async {
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent("does-not-exist-\(UUID()).mov")
         do {
