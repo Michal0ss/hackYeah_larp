@@ -2,6 +2,7 @@ import SwiftUI
 import Contracts
 import DesignSystem
 import Insights
+import LiveSet
 import Onboarding
 
 /// Week plan: a day strip, the selected session and its exercises. Built by Michał while Maciek works on the
@@ -148,7 +149,7 @@ private struct SessionDetail: View {
             Text("\(item.sets) × \(item.repsMin)–\(item.repsMax)\(unit)")
                 .font(.formaNumber(15)).monospacedDigit().foregroundStyle(FormaColor.ink2)
             // The live coach reads a squat signal (hip depth), so it is offered for squat-pattern exercises only.
-            if exercise?.pattern == "squat" || exercise?.supportsAnalysis == true, item.tempo != nil {
+            if let exercise, MovementKind.kind(for: exercise) != nil, item.tempo != nil {
                 Button { onStart(item) } label: {
                     Image(systemName: "play.fill").font(.system(size: 14, weight: .bold))
                         .frame(width: 38, height: 38)

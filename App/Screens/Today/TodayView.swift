@@ -2,6 +2,7 @@ import SwiftUI
 import Contracts
 import DesignSystem
 import Insights
+import LiveSet
 import Onboarding
 
 /// "Dziś": the recommendation of the day, today's session and the recovery strip.
@@ -61,7 +62,8 @@ struct TodayView: View {
 
     /// Starts the live coach for the first exercise of the session that has a target tempo.
     private func startSet(in session: PlannedSession) {
-        guard let planned = session.exercises.first(where: { $0.tempo != nil }),
+        guard let planned = session.exercises.first(where: { item in
+                  item.tempo != nil && store.exercise(id: item.exerciseId).flatMap(MovementKind.kind(for:)) != nil }),
               let tempo = planned.tempo,
               let exercise = store.exercise(id: planned.exerciseId) else { return }
         // The session is already adjusted (PlanAdjuster), so its sets are the ones to do.
@@ -230,7 +232,8 @@ private struct SessionCard: View {
 
             AdjustmentNote(adjustment: adjustment, restored: restored, onToggle: onToggle)
 
-            if session.exercises.contains(where: { $0.tempo != nil }) {
+            if session.exercises.contains(where: { item in
+                item.tempo != nil && store.exercise(id: item.exerciseId).flatMap(MovementKind.kind(for:)) != nil }) {
                 Button(action: onStart) {
                     Label("Zacznij serię z trenerem", systemImage: "play.fill")
                         .frame(maxWidth: .infinity)

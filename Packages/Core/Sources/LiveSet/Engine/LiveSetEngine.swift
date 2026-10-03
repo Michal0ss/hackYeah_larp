@@ -37,13 +37,14 @@ public final class LiveSetEngine {
     private var lastFrameTime: Double?
 
     public let exerciseId: String
+    public let kind: MovementKind
     public let spec: TempoSpec
     public let setIndex: Int
     public let isSimulated: Bool
 
     private let voice: CoachVoice
     private let assessor: TechniqueAssessing
-    private var signal = SquatSignal()
+    private var signal: SquatSignal
     private var tracker = PhaseTracker()
     private var policy = CoachingPolicy()
     private var cueTask: Task<Void, Never>?
@@ -59,13 +60,15 @@ public final class LiveSetEngine {
     private var repBest: (depth: Double, frame: PoseFrame)?
 
     public init(exerciseId: String, spec: TempoSpec, setIndex: Int = 1, voice: CoachVoice,
-                assessor: TechniqueAssessing = BasicSquatAssessor(), isSimulated: Bool = false,
+                kind: MovementKind = .squat, assessor: TechniqueAssessing? = nil, isSimulated: Bool = false,
                 trackerConfig: PhaseTrackerConfig = PhaseTrackerConfig(), cooldownReps: Int? = nil) {
         self.exerciseId = exerciseId
+        self.kind = kind
+        self.signal = SquatSignal(kind: kind)
         self.spec = spec
         self.setIndex = setIndex
         self.voice = voice
-        self.assessor = assessor
+        self.assessor = assessor ?? kind.defaultAssessor
         self.isSimulated = isSimulated
         self.tracker = PhaseTracker(config: trackerConfig)
         if let cooldownReps { self.policy.cooldownReps = cooldownReps }
@@ -93,7 +96,7 @@ public final class LiveSetEngine {
     public func startCalibrationNow() {
         guard stage == .framing else { return }
         stage = .calibrating(progress: 0)
-        voice.speak("Stań prosto i nieruchomo", priority: .advice)
+        voice.speak(kind.calibrationSpoken, priority: .advice)
     }
 
     public func ingest(_ frame: PoseFrame) {
@@ -133,7 +136,7 @@ public final class LiveSetEngine {
     // MARK: - Stages
 
     private func handleFraming(_ frame: PoseFrame) {
-        framing = FramingAssessor.assess(frame)
+        framing = FramingAssessor.assess(frame, kind: kind)
         if framing.ready {
             lastHint = nil
             let since = readySince ?? frame.time
@@ -147,7 +150,7 @@ public final class LiveSetEngine {
     }
 
     private func handleCalibration(_ frame: PoseFrame) {
-        framing = FramingAssessor.assess(frame)
+        framing = FramingAssessor.assess(frame, kind: kind)
         if framing.ready { unreadySince = nil } else {
             let since = unreadySince ?? frame.time
             unreadySince = since
@@ -170,7 +173,7 @@ public final class LiveSetEngine {
     }
 
     private func handleActive(_ frame: PoseFrame) {
-        let report = FramingAssessor.assess(frame, checkSize: false)
+        let report = FramingAssessor.assess(frame, kind: kind, checkSize: false)
         totalFrames += 1
         if report.ready { goodFrames += 1 } else { lastHint = report.hint }
         framing = report
@@ -181,11 +184,13 @@ public final class LiveSetEngine {
 
         for event in tracker.update(time: frame.time, depth: depth) {
             switch event {
-            case let .phaseStarted(phase, _):
+            case let .phaseStarted(tracked, _):
+                let phase = kind.exercisePhase(tracked)
                 currentPhase = phase
                 phaseStartedAt = Date()
                 scheduleCues(for: phase, isFirstRep: tracker.repCount == 0)
             case var .repCompleted(rep):
+                rep = kind.exerciseRep(rep)
                 rep.startedAt -= setStart
                 reps.append(rep)
                 if let best = repBest { bottomFrames.append(best.frame) }

@@ -71,7 +71,7 @@ struct LiveSetView: View {
             background
             VStack(spacing: 0) {
                 topBar
-                if diagnostics { DiagnosticsHUD(engine: engine).padding(.top, FormaSpacing.s) }
+                if diagnostics { DiagnosticsHUD(engine: engine, kind: session.kind).padding(.top, FormaSpacing.s) }
                 Spacer()
                 panel
             }
@@ -194,7 +194,7 @@ struct LiveSetView: View {
     private var framingPanel: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.m) {
             Text("Ustaw telefon").formaStyle(.title2).foregroundStyle(FormaColor.ink)
-            Text("Postaw telefon bokiem do siebie, na wysokości bioder, 2–3 m od siebie. Załóż słuchawki.")
+            Text(session.kind.setupHint)
                 .formaStyle(.subheadline).foregroundStyle(FormaColor.ink2)
             ForEach(engine.framing.checks) { check in
                 Label(check.label, systemImage: check.passed ? "checkmark.circle.fill" : "circle.dashed")
@@ -221,11 +221,11 @@ struct LiveSetView: View {
     private func calibratingPanel(_ progress: Double) -> some View {
         HStack(spacing: FormaSpacing.l) {
             ProgressRing(progress: progress, lineWidth: 8) {
-                Image(systemName: "figure.stand").font(.system(size: 22)).foregroundStyle(FormaColor.ink)
+                Image(systemName: session.kind == .pullup ? "figure.climbing" : session.kind == .pushup ? "figure.strengthtraining.functional" : "figure.stand").font(.system(size: 22)).foregroundStyle(FormaColor.ink)
             }
             .frame(width: 64, height: 64)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Stój prosto i nieruchomo").formaStyle(.headline).foregroundStyle(FormaColor.ink)
+                Text(session.kind.calibrationTitle).formaStyle(.headline).foregroundStyle(FormaColor.ink)
                 Text("Kalibruję pozycję wyjściową.").formaStyle(.subheadline).foregroundStyle(FormaColor.ink2)
             }
         }

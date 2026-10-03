@@ -291,7 +291,7 @@
       "substituteIds": [
         "incline_pushup"
       ],
-      "supportsAnalysis": false,
+      "supportsAnalysis": true,
       "defaultTempo": {
         "eccentric": 2,
         "bottomPause": 1,
@@ -616,6 +616,29 @@
         "jumps",
         "deepSquats"
       ],
+      "timed": false
+    },
+    {
+      "id": "pullup",
+      "name": "Podciąganie",
+      "muscleGroup": "Plecy, ramiona",
+      "equipment": "gym",
+      "level": "intermediate",
+      "summary": "Podciąganie na drążku nachwytem, od pełnego zwisu do brody nad drążkiem.",
+      "videoURL": null,
+      "substituteIds": [
+        "lat_pulldown",
+        "dumbbell_row"
+      ],
+      "supportsAnalysis": true,
+      "defaultTempo": {
+        "eccentric": 3,
+        "bottomPause": 1,
+        "concentric": 2,
+        "topPause": 0
+      },
+      "pattern": "pull",
+      "movementTags": [],
       "timed": false
     }
   ]

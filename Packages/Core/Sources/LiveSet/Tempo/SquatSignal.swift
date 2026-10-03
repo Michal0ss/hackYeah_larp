@@ -13,6 +13,7 @@ public struct SquatSignal {
     private struct Sample { var t: Double; var hipY: Double; var torso: Double }
 
     public private(set) var stage: Stage = .calibrating(progress: 0)
+    public let kind: MovementKind
     private var samples: [Sample] = []
     private var standingY = 0.0
     private var torsoLength = 1.0
@@ -22,14 +23,24 @@ public struct SquatSignal {
     /// Max movement (frame fraction) allowed during calibration.
     public var stillnessTolerance = 0.012
 
-    public init() {}
-
-    public mutating func reset() {
-        self = SquatSignal()
+    public init(kind: MovementKind = .squat) {
+        self.kind = kind
     }
 
-    /// Hip height (0 = top of the frame) and torso length from one frame, if visible.
-    static func measure(_ frame: PoseFrame) -> (hipY: Double, torso: Double)? {
+    public mutating func reset() {
+        self = SquatSignal(kind: kind)
+    }
+
+    /// Height (0 = top of the frame) of the point that follows the movement, and torso length, if visible.
+    /// Squat: the hips. Push-up and pull-up: the neck (shoulder line).
+    static func measure(_ frame: PoseFrame, kind: MovementKind = .squat) -> (hipY: Double, torso: Double)? {
+        if kind != .squat {
+            guard let neck = frame.joint(.neck) ?? shoulderMid(frame),
+                  let root = frame.joint(.root) ?? frame.joint(.leftHip) ?? frame.joint(.rightHip) else { return nil }
+            let torso = hypot(neck.x - root.x, neck.y - root.y)
+            guard torso > 0.02 else { return nil }
+            return (neck.y, torso)
+        }
         let hipY: Double
         if let l = frame.joint(.leftHip), let r = frame.joint(.rightHip) {
             hipY = (l.y + r.y) / 2
@@ -48,12 +59,20 @@ public struct SquatSignal {
         return (hipY, torso)
     }
 
+    private static func shoulderMid(_ frame: PoseFrame) -> Joint? {
+        guard let l = frame.joint(.leftShoulder), let r = frame.joint(.rightShoulder) else {
+            return frame.joint(.leftShoulder) ?? frame.joint(.rightShoulder)
+        }
+        return Joint(name: .neck, x: (l.x + r.x) / 2, y: (l.y + r.y) / 2, confidence: min(l.confidence, r.confidence))
+    }
+
     /// Returns the current depth, or nil when the person is not visible enough or still calibrating.
     public mutating func depth(for frame: PoseFrame) -> Double? {
-        guard let m = Self.measure(frame) else { return nil }
+        guard let m = Self.measure(frame, kind: kind) else { return nil }
         switch stage {
         case .ready:
-            return (m.hipY - standingY) / torsoLength
+            // Pull-up: the body rises, so the screen height DEcreases while the movement progresses.
+            return (kind == .pullup ? (standingY - m.hipY) : (m.hipY - standingY)) / torsoLength
         case .calibrating:
             samples.append(Sample(t: frame.time, hipY: m.hipY, torso: m.torso))
             samples.removeAll { frame.time - $0.t > calibrationSeconds * 1.3 }
