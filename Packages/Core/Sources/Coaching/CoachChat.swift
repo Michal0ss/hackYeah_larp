@@ -87,6 +87,41 @@ public struct CoachChat: Sendable {
         "Jak poprawić technikę?",
     ]
 
+    /// Questions to offer in an empty conversation, by where the user is: between sets a few that fit the screen and
+    /// the last set (they match the in-workout scenarios in backend/evals), elsewhere the general ones.
+    public static func quickQuestions(for workout: WorkoutContext?) -> [String] {
+        guard let workout else { return starterQuestions }
+        let last = workout.lastSet
+        let hasNotes = last?.findings.contains { $0.severity != .good } ?? false
+        switch workout.screen {
+        case .today, .plan:
+            return starterQuestions
+        case .liveSet:
+            return ["Co znaczy to tempo?", "Jak oddychać przy tym ćwiczeniu?", "Boli mnie w trakcie serii"]
+        case .setSummary:
+            var questions = ["Co poprawić w następnej serii?"]
+            if hasNotes { questions.append("Dlaczego ta uwaga?") }
+            if let score = last?.techniqueScore, score >= 80 {
+                questions.append("Czy mogę dołożyć ciężar?")
+            } else {
+                questions.append("Zamień to ćwiczenie na łatwiejsze")
+            }
+            questions.append("Ile odpoczywać?")
+            return questions
+        case .rest:
+            var questions = ["Ile jeszcze odpoczywać?", "Co poprawić w następnej serii?"]
+            if let index = workout.setIndex, let total = workout.totalSets, index < total {
+                questions.append("Czy zrobić jeszcze jedną serię?")
+            }
+            return questions
+        case .sessionFeedback:
+            return ["Jak się zregenerować po tym treningu?", "Czy następny trening ma być lżejszy?",
+                    "Czy mój plan jest dobry?"]
+        case .analysis:
+            return ["Co poprawić w technice?", "Czym zastąpić to ćwiczenie?"]
+        }
+    }
+
     /// More proposals than this in one answer would be a wall of cards; the coach is told to wait for the user.
     static let maxProposalsPerAnswer = 2
 

@@ -81,7 +81,7 @@ struct CoachView: View {
                 LazyVStack(alignment: .leading, spacing: FormaSpacing.m) {
                     consentArea(model)
                     if model.messages.isEmpty, !model.isResponding {
-                        CoachEmptyState { model.send($0) }
+                        CoachEmptyState(questions: CoachChat.quickQuestions(for: model.workout)) { model.send($0) }
                     }
                     ForEach(model.messages) { message in
                         CoachBubble(message: message)

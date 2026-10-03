@@ -71,6 +71,7 @@ class AIGateway(Protocol):
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
         max_tokens: int,
+        fast: bool = False,
     ) -> AsyncIterator[ChatEvent]: ...
 
     async def aclose(self) -> None: ...
@@ -121,6 +122,7 @@ class MockGateway:
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
         max_tokens: int,
+        fast: bool = False,
     ) -> AsyncIterator[ChatEvent]:
         self._calls += 1
         last = messages[-1]["content"]

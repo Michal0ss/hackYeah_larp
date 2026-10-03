@@ -254,8 +254,11 @@ def describe_workout(workout: WorkoutContext, content: ContentStore) -> str:
         lines.append(describe_last_set(workout.last_set))
     if workout.screen in IN_WORKOUT_SCREENS:
         lines.append(
-            "- To trening w toku: odpowiadaj w najwyżej 3 zdaniach, bez wstępu, z jedną konkretną wskazówką na "
-            "następną serię (albo na odpoczynek). Odnieś się do liczb z ostatniej serii."
+            "- To trening w toku, użytkownik czyta odpowiedź między seriami: najwyżej 3 krótkie zdania (do 45 słów), "
+            "bez wstępu, z jedną konkretną wskazówką na następną serię (albo na odpoczynek). Odnieś się do jednej, "
+            "najważniejszej liczby z ostatniej serii, nie do wszystkich. Pytanie dotyczy tej serii, więc nie wplataj "
+            "snu ani innych danych o regeneracji, chyba że pytanie dotyczy ciężaru, liczby serii albo odpoczynku. "
+            "O ograniczeniach użytkownika (np. unikany ruch) wspominaj tylko wtedy, gdy dotyczą pytania."
         )
     return "\n".join(lines)
 
