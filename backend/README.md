@@ -90,7 +90,10 @@ movements, a short reason that passes the generated-text checks); the app checks
 and answers the model with an error it can explain when the change is not possible.
 
 Other tools: `get_training_log` (finished sessions and live-coach sets, numbers only: no consent needed) and
-`propose_plan_change` with `swap_exercise`, `lighter_session`, `move_session` and `skip_session`.
+`propose_plan_change` with `swap_exercise`, `lighter_session`, `move_session`, `skip_session`, `add_exercise`,
+`remove_exercise` and `edit_exercise` (sets, reps or seconds, rest). Exercises always come from the catalog: an exercise
+that is not in it cannot be added, and an added or swapped-in exercise must fit the person (equipment, level, avoided
+movements). Numbers outside the app's limits (`Plan.PlanLimits`) are dropped by the server, never clamped.
 
 Tools that read health data (`get_today_recommendation`, `get_recovery_summary`, `get_checkins`,
 `get_session_feedback`) are offered only when `consent.health` is true. Without consent they are not in the model's
