@@ -209,8 +209,8 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie.
 | Magazyn planu | Maciek | `feat/maciek-plan-store` | do zrobienia | |
 | Backend z prawdziwym modelem (prompty, narzędzia, jakość planu) | Maciek | `feat/maciek-backend-ai` | gotowe (PR #11) | tylko Gemini, kaskada modeli zapasowych, testy jednostkowe (`make test`); na żywo: plany 6/6, czat 9/9, plan ok. 3 s i 0,002 USD; wymaga klucza z płatnego projektu (darmowy: 20 zapytań na dobę na model) |
 | Generator planu (Swift, wywołuje backend) | Maciek | `feat/maciek-plan-generator` | do zrobienia | |
-| Czat trenera (Swift: SSE, narzędzia, zgoda) | Maciek | `feat/maciek-coach-chat` | do zrobienia | |
-| Ekrany Plan i Trener | Maciek | `feat/maciek-plan-coach-screens` | Plan: gotowy (Michał, `feat/michal-plan-screen`: tydzień, szczegóły sesji, start serii); Trener: do zrobienia | |
+| Czat trenera (Swift: SSE, narzędzia, zgoda) | Maciek | `feat/maciek-coach-chat` | gotowe (PR) | `ConsentStore`, historia rozmowy lokalnie, 5 narzędzi na protokołach usług, pętla `CoachChat`, 44 testy; sprawdzone w symulatorze na prawdziwym backendzie (zgoda, narzędzie, odpowiedź, błąd i ponowienie); niesprawdzone na telefonie |
+| Ekrany Plan i Trener | Maciek | `feat/maciek-plan-coach-screens` | Plan: gotowy (Michał, `feat/michal-plan-screen`); Trener: gotowy (w PR czatu: zgoda, pusta rozmowa, trener pisze, błąd z ponowieniem, menu) | |
 
 ## 10. Co oddajemy (HackTribe)
 

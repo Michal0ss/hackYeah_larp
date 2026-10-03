@@ -76,7 +76,8 @@ TOOLS: dict[str, CoachTool] = {
         CoachTool(
             name="get_checkins",
             description=(
-                "Returns the user's recent daily check-ins: energy, soreness, stress and mood on short scales."
+                "Returns the user's recent daily check-ins: mood, stress and energy on a 1 to 5 scale, with averages. "
+                "Free-text notes are never included."
             ),
             input_schema={
                 "type": "object",
