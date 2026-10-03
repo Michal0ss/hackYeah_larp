@@ -92,6 +92,35 @@ public final class LiveSetEngine {
         voice.prepare()
     }
 
+    /// True while the setup can still be started over: before the first repetition of the set.
+    public var canRestartSetup: Bool {
+        switch stage {
+        case .framing, .calibrating: return true
+        case .active: return reps.isEmpty
+        case .summary: return false
+        }
+    }
+
+    /// Starts the setup over: back to the framing check and a fresh calibration. Used after the camera was switched,
+    /// because the calibration (standing height, body size) belongs to one view. A set that already counts
+    /// repetitions keeps its view, so this does nothing then.
+    public func restartSetup() {
+        guard canRestartSetup else { return }
+        cueTask?.cancel()
+        currentPhase = nil
+        phaseStartedAt = nil
+        latestDepth = nil
+        readySince = nil
+        unreadySince = nil
+        repBest = nil
+        bottomFrames = []
+        goodFrames = 0
+        totalFrames = 0
+        signal.reset()
+        tracker.reset()
+        stage = .framing
+    }
+
     /// Skip the framing check (the person knows the framing is fine).
     public func startCalibrationNow() {
         guard stage == .framing else { return }

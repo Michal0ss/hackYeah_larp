@@ -220,6 +220,7 @@ Nawigacja: pasek zakładek **Dziś · Plan · Analiza · Trener · Postępy**. O
 - **Cel:** poprowadzić serię głosem, tak żeby nie trzeba było patrzeć w ekran.
 - **Etapy:** ustawienie telefonu (lista warunków kadru z podpowiedzią, np. „Odejdź krok do tyłu, nie widzę stóp”) → kalibracja pozycji wyjściowej („Stój prosto i nieruchomo”) → seria → podsumowanie.
 - **W trakcie serii:** podgląd z kamerą i szkieletem, duży licznik powtórzeń, pierścień bieżącej fazy z czasem („W dół 1,8 s”), ostatnie słowo trenera, przycisk „Zakończ”. Seria kończy się też sama po kilku sekundach bez ruchu.
+- **Obrót kamery:** przycisk w pasku górnym przełącza kamerę tylną i przednią (przednia pokazuje użytkownika jak w lusterku). Działa do pierwszego powtórzenia: po przełączeniu ustawianie i kalibracja zaczynają się od nowa, bo kalibracja należy do jednego widoku. Wybór jest zapamiętany na następne serie.
 - **Głos:** liczenie fazy raz na sekundę, w pierwszym powtórzeniu z nazwą fazy; krótkie korekty po powtórzeniu (najwyżej jedna, z przerwą kilku powtórzeń); przy złym kadrze podpowiedź głosowa o ustawieniu telefonu.
 - **Stany:** brak zgody na kamerę, brak słuchawek (dźwięk z głośnika, z ostrzeżeniem), zły kadr, brak wykrytych powtórzeń.
 
