@@ -255,7 +255,7 @@ private struct RecoveryStrip: View {
     let health: HealthDaySummary?
     /// False until the first read finished (then the numbers are placeholders, not "missing").
     let loaded: Bool
-    /// The user allowed Apple Health: sample numbers then mean "Health has nothing for you yet".
+    /// The user allowed Apple Health: no numbers then mean "Health has nothing for you yet".
     let accessGranted: Bool
     let checkIn: CheckIn?
 
@@ -309,13 +309,13 @@ private struct RecoveryStrip: View {
 
     /// What is missing and why, only when it matters.
     private var hint: String? {
-        guard loaded, let health else { return nil }
-        if health.isSimulated {
+        guard loaded else { return nil }
+        guard let health else {
             return accessGranted
-                ? "Apple Health nie ma jeszcze danych. Sprawdź dostęp w Ustawieniach: Zdrowie, Dostęp do danych i urządzenia."
+                ? "Brak danych w Apple Health. Sen, tętno i HRV zapisuje zwykle zegarek. Sprawdź dostęp w Ustawieniach: Zdrowie, Dostęp do danych i urządzenia."
                 : nil
         }
-        if health.restingHeartRate == nil && health.hrvMs == nil {
+        if !health.isSimulated, health.restingHeartRate == nil && health.hrvMs == nil {
             return "Brak tętna spoczynkowego i HRV. Zwykle mierzy je zegarek."
         }
         return nil
