@@ -12,6 +12,7 @@ struct FramingStepView: View {
         case .squat: return "figure.strengthtraining.traditional"
         case .pushup: return "figure.cross.training"
         case .pullup: return "figure.climbing"
+        case .dip: return "figure.strengthtraining.functional"
         }
     }
 

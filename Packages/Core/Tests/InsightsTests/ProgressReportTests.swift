@@ -19,8 +19,14 @@ final class ProgressReportTests: XCTestCase {
 
     private func checkIn(ago: Int, mood: Int) -> CheckIn { CheckIn(date: day(ago), mood: mood, stress: 3, energy: 3) }
 
-    private func make(results: [TechniqueResult] = [], snapshots: [RecoverySnapshot] = [], checkIns: [CheckIn] = []) -> ProgressReport {
-        ProgressReport.make(results: results, snapshots: snapshots, checkIns: checkIns, now: now, calendar: calendar)
+    private func weighted(ago: Int, exerciseId: String = "squat", kg: Double) -> WeightedSet {
+        WeightedSet(exerciseId: exerciseId, date: day(ago), weightKg: kg)
+    }
+
+    private func make(results: [TechniqueResult] = [], snapshots: [RecoverySnapshot] = [], checkIns: [CheckIn] = [],
+                      weightedSets: [WeightedSet] = []) -> ProgressReport {
+        ProgressReport.make(results: results, snapshots: snapshots, checkIns: checkIns, weightedSets: weightedSets,
+                            now: now, calendar: calendar)
     }
 
     func testEmpty() {
@@ -127,6 +133,57 @@ final class ProgressReportTests: XCTestCase {
         snaps.append(snapshot(ago: 0))
         XCTAssertTrue(make(snapshots: snaps).trendSentence!.contains("lepiej"))
         XCTAssertEqual(make(snapshots: (0..<10).map { snapshot(ago: $0) }).trendSentence, "Regeneracja i nastrój są stabilne.")
+    }
+
+    // MARK: Strength
+
+    func testNoWeightedSetsMeansNoStrengthProgress() {
+        XCTAssertNil(make().strength)
+    }
+
+    func testStrengthIsOldestFirstWithDeltaFromStart() throws {
+        let r = make(weightedSets: [weighted(ago: 10, kg: 40), weighted(ago: 5, kg: 45), weighted(ago: 0, kg: 50)])
+        let s = try XCTUnwrap(r.strength)
+        XCTAssertEqual(s.exerciseId, "squat")
+        XCTAssertEqual(s.points.map(\.weightKg), [40, 45, 50])
+        XCTAssertEqual(s.latest, 50)
+        XCTAssertEqual(s.deltaFromStart, 10)
+        XCTAssertTrue(s.summary.hasPrefix("Ciężar rośnie"))
+    }
+
+    func testSameDayTakesTheHeaviestSet() throws {
+        // A warm-up followed by the working weight on the same day should not look like two separate days.
+        let r = make(weightedSets: [weighted(ago: 0, kg: 20), weighted(ago: 0, kg: 50), weighted(ago: 0, kg: 45)])
+        let s = try XCTUnwrap(r.strength)
+        XCTAssertEqual(s.points.count, 1)
+        XCTAssertEqual(s.points.first?.weightKg, 50)
+    }
+
+    func testPicksTheExerciseLoggedOnTheMostDays() throws {
+        let sets = [weighted(ago: 10, exerciseId: "deadlift", kg: 80)]
+            + (0..<3).map { weighted(ago: $0, exerciseId: "squat", kg: 40) }
+        let s = try XCTUnwrap(make(weightedSets: sets).strength)
+        XCTAssertEqual(s.exerciseId, "squat")
+        XCTAssertEqual(s.points.count, 3)
+    }
+
+    func testSingleWeightHasNoTrendClaim() throws {
+        let s = try XCTUnwrap(make(weightedSets: [weighted(ago: 0, kg: 40)]).strength)
+        XCTAssertEqual(s.deltaFromStart, 0)
+        XCTAssertTrue(s.summary.hasPrefix("To pierwszy zapisany ciężar."))
+    }
+
+    func testFallingAndStableWeightWording() throws {
+        let falling = make(weightedSets: [weighted(ago: 5, kg: 50), weighted(ago: 0, kg: 45)])
+        XCTAssertTrue(try XCTUnwrap(falling.strength).summary.hasPrefix("Ostatni ciężar jest niższy"))
+        let stable = make(weightedSets: [weighted(ago: 5, kg: 50), weighted(ago: 0, kg: 50.25)])
+        XCTAssertTrue(try XCTUnwrap(stable.strength).summary.hasPrefix("Ciężar jest stabilny"))
+    }
+
+    func testStrengthIsNotLimitedToTheRecoveryWindow() throws {
+        // Strength is a trend across sessions, like technique, not a daily health signal like recovery/mood.
+        let s = try XCTUnwrap(make(weightedSets: [weighted(ago: 60, kg: 40), weighted(ago: 0, kg: 50)]).strength)
+        XCTAssertEqual(s.points.count, 2)
     }
 
     // MARK: Sample data

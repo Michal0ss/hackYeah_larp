@@ -15,8 +15,8 @@ Ten dokument opisuje, **jak liczymy kąty stawów z filmu**, **skąd są zakresy
 
 - **Stawy:** Apple Vision `VNDetectHumanBodyPoseRequest` (2D, 19 punktów, na telefonie). Jedna osoba na klatkę (ta z największą sumą pewności), film przerzedzany do ok. 30 kl./s.
 - **Kąt w stawie:** kąt wewnętrzny (180° = wyprostowana kończyna) z lepiej widocznej strony ciała (`PoseLimbs`), nigdy z mieszania lewej i prawej.
-- **Powtórzenia:** wysokość bioder (przysiad) albo barków (pompka, podciąganie) w długościach tułowia → mediana 5 próbek → średnia ruchoma 0,25 s → szczyty z prominencją co najmniej: przysiad 0,12, pompka 0,06, podciąganie 0,10 długości tułowia, szerokością co najmniej 0,3 s (odrzuca jedno–dwuklatkowe błędy śledzenia) i co najmniej połową typowej prominencji w nagraniu. Powtórzenie musi **zgiąć staw ćwiczenia** o co najmniej 20° (kolano, łokieć); przesunięcie całego ciała (podejście do telefonu, schylenie się) nie liczy się. Klatka „najniższego punktu” to nie klatka ekstremalna, tylko ćwierć drogi od ekstremum, żeby pojedynczy błąd nie stał się „dnem”.
-- **Ocena:** te same oceniacze co na żywo (`BasicSquatAssessor`, `BasicPushupAssessor`, `BasicPullupAssessor`), z progami z `scoring.json` → `angles`. Przysiad ma dodatkowo własny ważony wynik (głębokość, tułów, powtarzalność, tempo). W uwagach pokazujemy zmierzone liczby („kolano średnio 55°”, „łokcie na dole 87°”).
+- **Powtórzenia:** wysokość bioder (przysiad) albo barków (pompka, podciąganie) w długościach tułowia → mediana 5 próbek → średnia ruchoma 0,25 s → szczyty z prominencją co najmniej: przysiad 0,12, pompka 0,06, podciąganie 0,10, dipy 0,10 długości tułowia, szerokością co najmniej 0,3 s (odrzuca jedno–dwuklatkowe błędy śledzenia) i co najmniej połową typowej prominencji w nagraniu. Powtórzenie musi **zgiąć staw ćwiczenia** o co najmniej 20° (kolano, łokieć); przesunięcie całego ciała (podejście do telefonu, schylenie się) nie liczy się. Klatka „najniższego punktu” to nie klatka ekstremalna, tylko ćwierć drogi od ekstremum, żeby pojedynczy błąd nie stał się „dnem”.
+- **Ocena:** te same oceniacze co na żywo (`BasicSquatAssessor`, `BasicPushupAssessor`, `BasicPullupAssessor`, `BasicDipAssessor`), z progami z `scoring.json` → `angles`. Przysiad ma dodatkowo własny ważony wynik (głębokość, tułów, powtarzalność, tempo). W uwagach pokazujemy zmierzone liczby („kolano średnio 55°”, „łokcie na dole 87°”).
 
 ## 3. Zakresy i skąd pochodzą
 
@@ -34,6 +34,11 @@ Kąty to kąty **wewnętrzne** stawu (180° = prosto). **Pewność**: wysoka = z
 | Podciąganie | łokieć na górze | `pullupElbowTopMax` **100°** | W pełnym podciągnięciu łokieć jest mocno zgięty (opisy ruchu: ok. 30–55° przy brodzie nad drążkiem). 100° jest świadomie luźne, bo w widoku z przodu łokcie uciekają na boki i kąt z obrazu 2D jest zaniżany. | niska–średnia |
 | Podciąganie | zwis na początku | `pullupElbowHangMin` **155°** | Definicja pełnego powtórzenia: start z wyprostowanych ramion (pomiary pokazują wyprost ok. 170–190°). Informacja, nie wpływa na wynik. | średnia |
 | Podciąganie | broda nad drążkiem | nos nad nadgarstkami o `pullupNoseMargin` **0,02** wysokości obrazu | Drążka nie wykrywamy; ręce trzymają drążek, więc głowa nad rękami przybliża „brodę nad drążkiem”. | średnia |
+
+| Dipy (poręcze) | łokieć na dole | `dipElbowBottomMax` **100°** | Standard techniki: zejście, aż ramię jest mniej więcej **równolegle do podłogi** (barki na wysokości łokci), czyli ok. 90° w łokciu ([StrongLifts](https://stronglifts.com/dips/), [Gravitus](https://gravitus.com/guides/exercises/dip/)). W badaniu z kątami łokcia 75°, 85° i 95° ([Kinesiologia Slovenica](https://journals.uni-lj.si/kinsi/article/view/29659), 10 mężczyzn) mięsień trójgłowy pracował najmocniej przy najgłębszym kącie (75°), klatka podobnie przy każdym. 100° to 90° plus tolerancja błędu 2D. | średnia |
+| Dipy | wyprost łokcia na górze | `dipElbowTopMin` **155°** | Pełne powtórzenie zaczyna się i kończy w podporze na wyprostowanych ramionach. Wpływa na wynik (40%), bo bez wyprostu zakres jest niepełny. W nagraniach z lekkim niedoprostem kąt wynosił 170–179°, więc 155° ma zapas na błąd 2D. | średnia |
+| Dipy | bardzo głębokie zejście | `dipElbowDeepMin` **45°** | Tylko informacja, bez wpływu na wynik. Opisy techniki i artykuł o kinematyce dipów ([McKenzie i in. 2022, „Bench, Bar, and Ring Dips”](https://pdfs.semanticscholar.org/1640/606e956e51163d4c92b648e13327b87b3d03.pdf)) wskazują, że głębokie zejście i duży wyprost w barku mocniej obciążają przód barku, szczególnie u osób z bólem lub urazem barku. 45° to wartość inżynierska, **niska** pewność. W trzech nagraniach dna miały 52–73°, więc nikt jej nie przekroczył. | niska |
+| Dipy | pochylenie tułowia | bez progu | Tylko informacja: pochylenie do przodu (ok. 30°) przesuwa pracę na klatkę, pionowo mocniej pracują triceps (opisy techniki). To styl, nie błąd, więc nie oceniamy. W nagraniach 29–35° od pionu na dole. | – |
 
 Zastrzeżenia do źródeł podciągania: liczby pochodzą z opisów ruchu i prac uczelnianych znalezionych w wyszukiwaniu ([przykład](https://public.websites.umich.edu/~mvs330/w97/pullups/results2.html)), nie zweryfikowaliśmy ich w pełnych tekstach badań (np. Youdas i in. 2010, *J Strength Cond Res* 24(12): 3404–3414). Dlatego przy podciąganiu mamy luźne progi i mocny nacisk na regułę „głowa nad rękami”.
 
@@ -62,3 +67,23 @@ Zastrzeżenia do źródeł podciągania: liczby pochodzą z opisów ruchu i prac
 2. Dla jednego powtórzenia w każdym filmie zmierz kąt na zatrzymanym obrazie w najniższym punkcie (linijka kątowa w Zdjęciach, Kinovea albo kątomierz na ekranie) i porównaj z kątem w aplikacji (karta powtórzenia pod wykresem, albo „Wyślij pozy (JSON)” z testu na żywo).
 3. Cel: średni błąd kąta ≤ 10° i poprawny werdykt (głębokość, linia, głowa nad rękami) w ≥ 90% powtórzeń. Jeśli błąd jest systematyczny, popraw tolerancje w `scoring.json` → `angles`, jeśli powtórzenia są liczone źle, w `clip`. Wartości są w konfiguracji, więc strojenie nie wymaga wydania aplikacji (`python scripts/sync_content.py`, backend `/v1/config`).
 4. Zapisz zmierzone pary (kąt z ręki, kąt z aplikacji) w `feat/bartek-fixtures`; to będą testy regresji.
+
+## 7. Dipy: co sprawdziliśmy na prawdziwych nagraniach
+
+Dodane jako czwarte ćwiczenie z analizą (`MovementKind.dip`, katalog: `dip`). Sygnał do liczenia powtórzeń jest taki jak w pompce (szyja i barki idą w dół, start w pełnym wyproście), oceniacz to `BasicDipAssessor`: głębokość (łokieć do ok. 100°) i wyprost na górze, plus informacje o bardzo głębokim zejściu i pochyleniu tułowia.
+
+**Trzy filmy testowe** (iPhone, widok z boku, poręcze na drabince gimnastycznej, trzy różne osoby, jedna strona ciała widoczna, 17–19 s):
+
+| Film | Powtórzenia (liczone ręcznie → aplikacja) | Łokieć na dole | Wyprost na górze | Pochylenie tułowia na dole |
+|---|---|---|---|---|
+| IMG_3025 | 7 → 7 | 52–68° | 170–174° | 31–37° |
+| IMG_3026 | 6 → 6 | 54–64° | 174–179° | 23–33° |
+| IMG_3027 | 5 → 5 | 66–73° | 175–179° | 35–36° |
+
+- Vision czytał pozę poprawnie (stawy po widocznej stronie ciała w 100% klatek, druga strona zasłonięta w 30–50%).
+- W IMG_3025 pierwsze 5 s to wejście na poręcze (osoba stoi z rękami na poręczy, pochyla się i wskakuje). Samo w sobie ma kształt powtórzenia (łokieć 133° → 88°), ale nie zaczyna się od wyprostu, więc **powtórzenie jest odrzucane regułą „start z łokciem ≥ 145°”** (`minStartElbowForClip`). Bez niej film miał 8 powtórzeń zamiast 7.
+- Wszystkie trzy osoby schodzą **głębiej niż 90°** (barki poniżej łokci o 2–6% wysokości kadru), więc próg 100° nikogo nie karze, a próg „bardzo głęboko” (45°) nikogo nie flaguje.
+- Filmy zawierają tylko **dobrze wykonane** powtórzenia. Wykrywanie „za płytko” i „bez wyprostu” sprawdzone jest na pozach syntetycznych (`DipTests`), nie na prawdziwym człowieku. Do kalibracji brakuje nagrań płytkich dipów i dipów bez wyprostu.
+- Testy regresji: pozy z trzech filmów (10 kl./s) są w `Packages/Core/Tests/AnalysisTests/Fixtures/dips/`, sprawdzamy liczbę powtórzeń, kąty i wynik.
+
+**Nie obsługujemy** (jeszcze): dipów na ławce lub krześle (inna geometria: ręce za plecami, stopy na podłodze), dipów z obciążeniem, widoku z przodu (kąt łokcia z 2D byłby zaniżony), oceny wymachu (kipping) i rozstawu łokci.

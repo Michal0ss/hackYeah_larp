@@ -17,7 +17,7 @@ struct EmptyProgressCard: View {
             Text("Jeszcze nic do pokazania")
                 .formaStyle(.title2)
                 .foregroundStyle(FormaColor.ink)
-            Text("Po pierwszej analizie przysiadu i kilku check-inach zobaczysz tu wynik techniki, regenerację i nastrój w czasie.")
+            Text("Po pierwszej analizie przysiadu i kilku check-inach zobaczysz tu wynik techniki, regenerację i nastrój w czasie. Ciężar z treningów pojawi się tu, gdy go zapiszesz.")
                 .formaStyle(.body)
                 .foregroundStyle(FormaColor.ink2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -169,6 +169,92 @@ private struct TechniqueChart: View {
         }
         .accessibilityLabel("Wynik techniki w czasie")
         .accessibilityValue(points.map { "\($0.score)" }.joined(separator: ", "))
+    }
+}
+
+// MARK: Strength
+
+/// Weight over time for the exercise with the most days logged. Real data only: nothing simulated, like the
+/// recent-sets card — it shows nothing until the user has actually logged a weight at least once.
+struct StrengthCard: View {
+    @Environment(AppStore.self) private var store
+    let progress: StrengthProgress
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FormaSpacing.m) {
+            SectionLabel("Ciężar · \(store.exercise(id: progress.exerciseId)?.name ?? "Ćwiczenie")")
+            HStack(alignment: .firstTextBaseline, spacing: FormaSpacing.m) {
+                NumberText(WorkoutFormat.weight(progress.latest), size: 36, color: FormaColor.voltText)
+                if progress.points.count > 1 {
+                    WeightDeltaChip(delta: progress.deltaFromStart)
+                }
+            }
+            if progress.points.count > 1 {
+                StrengthChart(points: progress.points)
+                    .frame(height: 150)
+            }
+            Text(progress.summary)
+                .formaStyle(.subheadline)
+                .foregroundStyle(FormaColor.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(FormaSpacing.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+    }
+}
+
+/// "+2,5 kg od startu". Same idea as `DeltaChip`, for a `Double` weight instead of an `Int` score.
+private struct WeightDeltaChip: View {
+    let delta: Double
+
+    var body: some View {
+        let up = delta > 0.01, down = delta < -0.01
+        let color = up ? FormaColor.goText : down ? FormaColor.moderateText : FormaColor.ink2
+        let amount = WorkoutFormat.weight(abs(delta))
+        HStack(spacing: 4) {
+            Image(systemName: up ? "arrow.up.right" : down ? "arrow.down.right" : "equal")
+                .font(.system(size: 12, weight: .bold))
+            Text(up ? "+\(amount) od startu" : down ? "−\(amount) od startu" : "bez zmian")
+                .font(.system(size: 13, weight: .bold))
+        }
+        .foregroundStyle(color)
+        .padding(.horizontal, 10)
+        .frame(height: 28)
+        .background(color.opacity(0.14), in: Capsule())
+        .overlay { Capsule().strokeBorder(color.opacity(0.35), lineWidth: 1) }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct StrengthChart: View {
+    let points: [WeightPoint]
+
+    private var range: ClosedRange<Double> {
+        let values = points.map(\.weightKg)
+        let lower = max(0, (values.min() ?? 0) - 5)
+        let upper = (values.max() ?? 0) + 5
+        return lower...upper
+    }
+
+    var body: some View {
+        Chart(points) { p in
+            LineMark(x: .value("Data", p.date), y: .value("Ciężar", p.weightKg))
+                .interpolationMethod(.monotone)
+                .foregroundStyle(FormaColor.volt)
+                .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
+            PointMark(x: .value("Data", p.date), y: .value("Ciężar", p.weightKg))
+                .foregroundStyle(FormaColor.volt)
+                .symbolSize(p.id == points.last?.id ? 90 : 36)
+        }
+        .chartYScale(domain: range)
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+                AxisValueLabel(format: .dateTime.day().month(.abbreviated)).foregroundStyle(FormaColor.ink3)
+            }
+        }
+        .accessibilityLabel("Ciężar w czasie")
+        .accessibilityValue(points.map { WorkoutFormat.weight($0.weightKg) }.joined(separator: ", "))
     }
 }
 

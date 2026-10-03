@@ -25,6 +25,9 @@ struct DiagnosticsHUD: View {
             case .pushup:
                 line([("łokieć", d.elbowAngle.map { Self.f($0, 0) + "°" } ?? "—", d.elbowAngle != nil),
                       ("linia ciała", d.bodyLineAngle.map { Self.f($0, 0) + "°" } ?? "—", (d.bodyLineAngle ?? 0) >= 160)])
+            case .dip:
+                line([("łokieć", d.elbowAngle.map { Self.f($0, 0) + "°" } ?? "—", d.elbowAngle != nil),
+                      ("tułów", d.torsoLean.map { Self.f($0, 0) + "°" } ?? "—", d.torsoLean != nil)])
             case .pullup:
                 line([("łokieć", d.elbowAngle.map { Self.f($0, 0) + "°" } ?? "—", d.elbowAngle != nil),
                       ("nos nad rękami", d.noseAboveWrists.map { $0 ? "tak" : "nie" } ?? "—", d.noseAboveWrists != nil)])

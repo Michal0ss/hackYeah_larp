@@ -191,3 +191,98 @@ public struct BasicPullupAssessor: TechniqueAssessing {
         return sides.max(by: { $0.1 < $1.1 })?.0
     }
 }
+
+/// Dip on parallel bars from a side view, judged at the lowest point of each repetition: how far the elbows bent
+/// (the upper arm about parallel to the floor or lower) and, with the start frames, whether the arms were locked out
+/// at the top. How deep is too deep and the torso lean are reported but do not change the score: they depend on
+/// the person's shoulder mobility and on the style (leaning forward works the chest more, upright the triceps).
+/// Thresholds come from `AngleReference` (sources in docs/ANALIZA_TECHNIKI.md).
+public struct BasicDipAssessor: TechniqueAssessing {
+    /// Elbow angle at or below this counts as a full range (upper arm about parallel to the floor).
+    public var maxElbowAngle = 100.0
+    /// Elbow angle below this is flagged as very deep.
+    public var deepElbowAngle = 45.0
+    /// Elbow angle at the top at or above this counts as a lockout.
+    public var minTopElbowAngle = 155.0
+
+    public init() {}
+
+    public init(reference: AngleReference) {
+        maxElbowAngle = reference.dipElbowBottomMax
+        deepElbowAngle = reference.dipElbowDeepMin
+        minTopElbowAngle = reference.dipElbowTopMin
+    }
+
+    public func assess(bottomFrames: [PoseFrame]) -> TechniqueAssessment {
+        assess(bottomFrames: bottomFrames, startFrames: [])
+    }
+
+    public func assess(bottomFrames: [PoseFrame], startFrames: [PoseFrame]) -> TechniqueAssessment {
+        var measured = 0, deepEnough = 0, veryDeep = 0
+        var elbows: [Double] = [], leans: [Double] = []
+        for frame in bottomFrames {
+            guard let arm = PoseLimbs.arm(in: frame, minConfidence: 0.15) else { continue }
+            measured += 1
+            let elbow = arm.elbowAngle(in: frame)
+            elbows.append(elbow)
+            if elbow <= maxElbowAngle { deepEnough += 1 }
+            if elbow < deepElbowAngle { veryDeep += 1 }
+            if let neck = frame.joint(.neck, minConfidence: 0.15) ?? frame.joint(.leftShoulder, minConfidence: 0.15),
+               let root = frame.joint(.root, minConfidence: 0.15) ?? frame.joint(.leftHip, minConfidence: 0.15) {
+                leans.append(frame.angleFromVertical(from: root, to: neck))
+            }
+        }
+        guard measured > 0 else { return TechniqueAssessment(score: nil, findings: []) }
+
+        let elbowText = " Najniżej łokcie: średnio \(degrees(average(elbows))) (cel do ok. \(degrees(maxElbowAngle)))."
+        var findings: [TechniqueFinding] = []
+        let shallow = measured - deepEnough
+        findings.append(shallow == 0
+            ? TechniqueFinding(id: "depth_ok", title: "Zakres ruchu",
+                               detail: "Barki schodzą do poziomu łokci lub niżej w każdym powtórzeniu." + elbowText,
+                               severity: .good, repsAffected: 0, repsTotal: measured)
+            : TechniqueFinding(id: "dip_shallow", title: "Za płytko",
+                               detail: "Zejdź niżej, tak żeby ramię było w dolnej pozycji mniej więcej równolegle do podłogi." + elbowText,
+                               severity: shallow * 2 > measured ? .major : .minor, repsAffected: shallow, repsTotal: measured))
+
+        // Informational: very deep dips load the front of the shoulder more. A signal, not a verdict.
+        if veryDeep > 0 {
+            findings.append(TechniqueFinding(id: "dip_very_deep", title: "Bardzo głęboko",
+                                             detail: "Łokcie zginają się poniżej ok. \(degrees(deepElbowAngle)). Głębsze zejście mocniej obciąża przód barku. Zatrzymaj się wyżej, jeśli czujesz tam dyskomfort.",
+                                             severity: .minor, repsAffected: veryDeep, repsTotal: measured))
+        }
+
+        // The top of the movement: a lockout is part of a full repetition.
+        var tops: [Double] = []
+        for frame in startFrames {
+            if let arm = PoseLimbs.arm(in: frame, minConfidence: 0.15) { tops.append(arm.elbowAngle(in: frame)) }
+        }
+        var lockedOut = tops.count
+        if !tops.isEmpty {
+            let short = tops.filter { $0 < minTopElbowAngle }.count
+            lockedOut = tops.count - short
+            findings.append(short == 0
+                ? TechniqueFinding(id: "lockout_ok", title: "Pozycja górna",
+                                   detail: "Na górze ramiona są wyprostowane (średnio \(degrees(average(tops)))).",
+                                   severity: .good, repsAffected: 0, repsTotal: tops.count)
+                : TechniqueFinding(id: "dip_no_lockout", title: "Pozycja górna",
+                                   detail: "Na górze wyprostuj ramiona do końca (średnio \(degrees(average(tops))), cel od ok. \(degrees(minTopElbowAngle))).",
+                                   severity: short * 2 > tops.count ? .major : .minor, repsAffected: short, repsTotal: tops.count))
+        }
+
+        // The lean does not change the score: it only says which muscles do more of the work.
+        if !leans.isEmpty {
+            let lean = average(leans)
+            findings.append(TechniqueFinding(id: "torso_lean_info", title: "Pochylenie tułowia",
+                                             detail: lean >= 25
+                                                 ? "Tułów pochylony średnio o \(degrees(lean)) od pionu: to ustawienie mocniej pracuje klatką. Bardziej pionowo mocniej pracują triceps."
+                                                 : "Tułów prawie pionowo (średnio \(degrees(lean)) od pionu): mocniej pracują triceps. Pochylenie do przodu przesuwa pracę na klatkę.",
+                                             severity: .good, repsAffected: 0, repsTotal: leans.count))
+        }
+
+        let depthScore = 100.0 * Double(deepEnough) / Double(measured)
+        guard !tops.isEmpty else { return TechniqueAssessment(score: Int(depthScore.rounded()), findings: findings) }
+        let lockoutScore = 100.0 * Double(lockedOut) / Double(tops.count)
+        return TechniqueAssessment(score: Int((0.6 * depthScore + 0.4 * lockoutScore).rounded()), findings: findings)
+    }
+}

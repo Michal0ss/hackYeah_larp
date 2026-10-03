@@ -31,7 +31,10 @@
     "pushupBodyLineMin": 160,
     "pullupElbowTopMax": 100,
     "pullupElbowHangMin": 155,
-    "pullupNoseMargin": 0.02
+    "pullupNoseMargin": 0.02,
+    "dipElbowBottomMax": 100,
+    "dipElbowDeepMin": 45,
+    "dipElbowTopMin": 155
   },
   "clip": {
     "minConfidence": 0.15,
@@ -39,6 +42,7 @@
     "minProminenceSquat": 0.12,
     "minProminencePushup": 0.06,
     "minProminencePullup": 0.1,
+    "minProminenceDip": 0.1,
     "relativeProminence": 0.5,
     "minWidthSeconds": 0.3,
     "edgeShare": 0.1,

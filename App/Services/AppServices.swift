@@ -6,6 +6,7 @@ import Health
 import Insights
 import Onboarding
 import Plan
+import LiveSet
 
 /// The one place where real implementations replace the sample ones.
 /// Each owner changes only HIS line when his service is ready (small, conflict-free diffs):
@@ -32,8 +33,9 @@ struct AppServices {
     /// Results of live sets and analyses (Michał). The app and Bartek write through `localHistory`.
     let localHistory = LocalTechniqueHistory.shared
     var technique: TechniqueHistoryProviding
-    /// Feedback after a workout (RPE, pain, a note). Sample until Michał's local store lands (feat/michal-session-feedback).
-    var sessionFeedback: SessionFeedbackStoring = SampleServices()
+    /// Feedback after a workout (RPE, pain, a note), kept on the phone (Michał). The coach tool reads it after consent.
+    let sessionFeedbackStore = SessionFeedbackStore(fileURL: SessionFeedbackStore.defaultFileURL())
+    var sessionFeedback: SessionFeedbackStoring
     /// Coach text after a set and after a workout. Sample until Wiktor's SetFeedbackTexter lands.
     var setFeedback: SetFeedbackProviding = SampleServices()
     // Rule engine (Wiktor) over recovery (Apple Health or sample), the check-ins and the recorded results.
@@ -50,6 +52,7 @@ struct AppServices {
     let trainingLog = TrainingLogStore(fileURL: TrainingLogStore.defaultFileURL())
 
     init() {
+        sessionFeedback = sessionFeedbackStore
         recovery = healthKit
         healthAuthorization = healthKit
         checkIns = checkInStore
