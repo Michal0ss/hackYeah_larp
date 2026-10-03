@@ -27,6 +27,8 @@ struct LiveSetView: View {
 
     @Environment(AppStore.self) private var store
     @State private var session: LiveSetSession
+    /// Numbers, colours and pose export for checking the analysis on a real phone.
+    @State private var diagnostics = false
 
     init(exercise: ExerciseItem, spec: TempoSpec, setIndex: Int, totalSets: Int,
          onNextSet: @escaping () -> Void, onClose: @escaping () -> Void) {
@@ -69,6 +71,7 @@ struct LiveSetView: View {
             background
             VStack(spacing: 0) {
                 topBar
+                if diagnostics { DiagnosticsHUD(engine: engine, kind: session.kind).padding(.top, FormaSpacing.s) }
                 Spacer()
                 panel
             }
@@ -92,7 +95,7 @@ struct LiveSetView: View {
                 } else {
                     AmbientBackground()
                 }
-                SkeletonOverlay(frame: engine.latestFrame)
+                SkeletonOverlay(frame: engine.latestFrame, debug: diagnostics)
                     .frame(width: video.width, height: video.height)
                     .position(x: video.midX, y: video.midY)
                 LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .center, endPoint: .bottom)
@@ -149,6 +152,15 @@ struct LiveSetView: View {
                 }
                 .accessibilityLabel("Zakończ serię")
             }
+            Button {
+                diagnostics.toggle()
+                engine.recordsFrames = diagnostics
+            } label: {
+                Image(systemName: diagnostics ? "ladybug.fill" : "ladybug")
+                    .foregroundStyle(diagnostics ? FormaColor.volt : .white)
+                    .frame(width: 36, height: 36)
+            }
+            .accessibilityLabel("Diagnostyka")
             Image(systemName: engine.headphonesConnected ? "headphones" : "speaker.wave.2.fill")
                 .foregroundStyle(.white)
                 .frame(width: 36, height: 36)
@@ -182,7 +194,7 @@ struct LiveSetView: View {
     private var framingPanel: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.m) {
             Text("Ustaw telefon").formaStyle(.title2).foregroundStyle(FormaColor.ink)
-            Text("Postaw telefon bokiem do siebie, na wysokości bioder, 2–3 m od siebie. Załóż słuchawki.")
+            Text(session.kind.setupHint)
                 .formaStyle(.subheadline).foregroundStyle(FormaColor.ink2)
             ForEach(engine.framing.checks) { check in
                 Label(check.label, systemImage: check.passed ? "checkmark.circle.fill" : "circle.dashed")
@@ -209,11 +221,11 @@ struct LiveSetView: View {
     private func calibratingPanel(_ progress: Double) -> some View {
         HStack(spacing: FormaSpacing.l) {
             ProgressRing(progress: progress, lineWidth: 8) {
-                Image(systemName: "figure.stand").font(.system(size: 22)).foregroundStyle(FormaColor.ink)
+                Image(systemName: session.kind == .pullup ? "figure.climbing" : session.kind == .pushup ? "figure.strengthtraining.functional" : "figure.stand").font(.system(size: 22)).foregroundStyle(FormaColor.ink)
             }
             .frame(width: 64, height: 64)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Stój prosto i nieruchomo").formaStyle(.headline).foregroundStyle(FormaColor.ink)
+                Text(session.kind.calibrationTitle).formaStyle(.headline).foregroundStyle(FormaColor.ink)
                 Text("Kalibruję pozycję wyjściową.").formaStyle(.subheadline).foregroundStyle(FormaColor.ink2)
             }
         }

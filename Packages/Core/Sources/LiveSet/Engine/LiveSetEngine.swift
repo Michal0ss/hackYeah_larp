@@ -26,14 +26,25 @@ public final class LiveSetEngine {
     public private(set) var latestFrame: PoseFrame?
     public private(set) var summary: SetSummary?
 
+    // Diagnostics for testing on a real phone (see PoseDiagnostics and the diagnostics panel in the app).
+    /// Frames per second the pose stream is delivering (smoothed).
+    public private(set) var framesPerSecond = 0.0
+    /// Depth in torso lengths after calibration, nil before.
+    public private(set) var latestDepth: Double?
+    /// When true every incoming frame is kept in `recordedFrames` (joint numbers only, never video).
+    public var recordsFrames = false
+    public private(set) var recordedFrames: [PoseFrame] = []
+    private var lastFrameTime: Double?
+
     public let exerciseId: String
+    public let kind: MovementKind
     public let spec: TempoSpec
     public let setIndex: Int
     public let isSimulated: Bool
 
     private let voice: CoachVoice
     private let assessor: TechniqueAssessing
-    private var signal = SquatSignal()
+    private var signal: SquatSignal
     private var tracker = PhaseTracker()
     private var policy = CoachingPolicy()
     private var cueTask: Task<Void, Never>?
@@ -49,19 +60,33 @@ public final class LiveSetEngine {
     private var repBest: (depth: Double, frame: PoseFrame)?
 
     public init(exerciseId: String, spec: TempoSpec, setIndex: Int = 1, voice: CoachVoice,
-                assessor: TechniqueAssessing = BasicSquatAssessor(), isSimulated: Bool = false,
+                kind: MovementKind = .squat, assessor: TechniqueAssessing? = nil, isSimulated: Bool = false,
                 trackerConfig: PhaseTrackerConfig = PhaseTrackerConfig(), cooldownReps: Int? = nil) {
         self.exerciseId = exerciseId
+        self.kind = kind
+        self.signal = SquatSignal(kind: kind)
         self.spec = spec
         self.setIndex = setIndex
         self.voice = voice
-        self.assessor = assessor
+        self.assessor = assessor ?? kind.defaultAssessor
         self.isSimulated = isSimulated
         self.tracker = PhaseTracker(config: trackerConfig)
         if let cooldownReps { self.policy.cooldownReps = cooldownReps }
     }
 
     public var headphonesConnected: Bool { voice.headphonesConnected }
+
+    /// Smoothed depth and vertical speed (torso lengths and torso lengths per second) as the phase tracker sees them.
+    public var trackerDepth: Double { tracker.smoothedDepth }
+    public var trackerVelocity: Double { tracker.velocity }
+
+    /// The recorded pose frames as JSON, for sharing as test fixtures. Nil when nothing was recorded.
+    public func recordedPoseJSON() -> Data? {
+        guard !recordedFrames.isEmpty else { return nil }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return try? encoder.encode(recordedFrames)
+    }
 
     public func prepare() {
         voice.prepare()
@@ -71,10 +96,16 @@ public final class LiveSetEngine {
     public func startCalibrationNow() {
         guard stage == .framing else { return }
         stage = .calibrating(progress: 0)
-        voice.speak("Stań prosto i nieruchomo", priority: .advice)
+        voice.speak(kind.calibrationSpoken, priority: .advice)
     }
 
     public func ingest(_ frame: PoseFrame) {
+        if let last = lastFrameTime, frame.time > last {
+            let instant = 1 / (frame.time - last)
+            framesPerSecond = framesPerSecond == 0 ? instant : framesPerSecond * 0.9 + instant * 0.1
+        }
+        lastFrameTime = frame.time
+        if recordsFrames, recordedFrames.count < 30_000 { recordedFrames.append(frame) }
         latestFrame = frame
         switch stage {
         case .framing: handleFraming(frame)
@@ -105,7 +136,7 @@ public final class LiveSetEngine {
     // MARK: - Stages
 
     private func handleFraming(_ frame: PoseFrame) {
-        framing = FramingAssessor.assess(frame)
+        framing = FramingAssessor.assess(frame, kind: kind)
         if framing.ready {
             lastHint = nil
             let since = readySince ?? frame.time
@@ -119,7 +150,7 @@ public final class LiveSetEngine {
     }
 
     private func handleCalibration(_ frame: PoseFrame) {
-        framing = FramingAssessor.assess(frame)
+        framing = FramingAssessor.assess(frame, kind: kind)
         if framing.ready { unreadySince = nil } else {
             let since = unreadySince ?? frame.time
             unreadySince = since
@@ -142,21 +173,24 @@ public final class LiveSetEngine {
     }
 
     private func handleActive(_ frame: PoseFrame) {
-        let report = FramingAssessor.assess(frame, checkSize: false)
+        let report = FramingAssessor.assess(frame, kind: kind, checkSize: false)
         totalFrames += 1
         if report.ready { goodFrames += 1 } else { lastHint = report.hint }
         framing = report
 
         guard let depth = signal.depth(for: frame) else { return }
+        latestDepth = depth
         if tracker.phase != nil, depth > (repBest?.depth ?? -1) { repBest = (depth, frame) }
 
         for event in tracker.update(time: frame.time, depth: depth) {
             switch event {
-            case let .phaseStarted(phase, _):
+            case let .phaseStarted(tracked, _):
+                let phase = kind.exercisePhase(tracked)
                 currentPhase = phase
                 phaseStartedAt = Date()
                 scheduleCues(for: phase, isFirstRep: tracker.repCount == 0)
             case var .repCompleted(rep):
+                rep = kind.exerciseRep(rep)
                 rep.startedAt -= setStart
                 reps.append(rep)
                 if let best = repBest { bottomFrames.append(best.frame) }

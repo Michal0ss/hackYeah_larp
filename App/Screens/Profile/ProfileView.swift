@@ -11,6 +11,7 @@ struct ProfileView: View {
     @State private var confirmAll = false
     @State private var rebuilding = false
     @State private var rebuildFailed = false
+    @State private var liveLaunch: LiveSetLaunch?
 
     var body: some View {
         ZStack {
@@ -19,6 +20,7 @@ struct ProfileView: View {
                 VStack(alignment: .leading, spacing: FormaSpacing.l) {
                     header
                     planCard
+                    liveTestCard
                     healthCard
                     dataCard
                     Text("Forma nie jest poradą medyczną. Nie stawiamy diagnoz: wskazujemy sygnały i sugerujemy rozmowę ze specjalistą.")
@@ -29,6 +31,9 @@ struct ProfileView: View {
                 .padding(.bottom, FormaSpacing.xxl)
             }
             .scrollIndicators(.hidden)
+        }
+        .fullScreenCover(item: $liveLaunch) { launch in
+            LiveSetFlow(exercise: launch.exercise, spec: launch.spec, totalSets: launch.sets) { liveLaunch = nil }
         }
         .confirmationDialog("Usunąć historię zdrowia z telefonu?", isPresented: $confirmHealth, titleVisibility: .visible) {
             Button("Usuń historię zdrowia", role: .destructive) { store.deleteHealthHistory() }
@@ -85,6 +90,28 @@ struct ProfileView: View {
                 Text("Nie udało się ułożyć planu. Spróbuj ponownie.").formaStyle(.footnote).foregroundStyle(FormaColor.emberText)
             }
         }
+    }
+
+    /// Starts the live coach on any supported exercise without going through the plan, for testing on a phone.
+    private var liveTestCard: some View {
+        card {
+            SectionLabel("Test analizy na żywo")
+            Text("Uruchom trenera na żywo od razu, bez planu. Na telefonie: prawdziwa kamera i szkielet na obrazie, ikona biedronki pokazuje liczby.")
+                .formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
+            ForEach(["squat", "pushup", "pullup"], id: \.self) { id in
+                if let exercise = store.exercise(id: id) {
+                    Button { startLive(exercise) } label: {
+                        Label(exercise.name, systemImage: "play.fill").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.formaGlass)
+                }
+            }
+        }
+    }
+
+    private func startLive(_ exercise: ExerciseItem) {
+        let tempo = exercise.defaultTempo ?? TempoSpec(eccentric: 3, bottomPause: 1, concentric: 2)
+        liveLaunch = LiveSetLaunch(exercise: exercise, spec: tempo, sets: 1)
     }
 
     private var healthCard: some View {

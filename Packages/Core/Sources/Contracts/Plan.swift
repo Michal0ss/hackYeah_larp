@@ -106,11 +106,14 @@ public struct ExerciseItem: Codable, Equatable, Sendable, Identifiable {
     public var defaultTempo: TempoSpec?
     /// True when "reps" of this exercise are seconds (plank, marching). Absent in older catalogs.
     public var timed: Bool?
+    /// Movement pattern from the catalog (squat, hinge, lunge, push, pull, core, cardio). Absent in older catalogs.
+    public var pattern: String?
 
     public init(id: String, name: String, muscleGroup: String, equipment: Equipment, level: TrainingLevel,
                 summary: String, videoURL: URL? = nil, substituteIds: [String] = [],
-                supportsAnalysis: Bool = false, defaultTempo: TempoSpec? = nil, timed: Bool? = nil) {
+                supportsAnalysis: Bool = false, defaultTempo: TempoSpec? = nil, timed: Bool? = nil, pattern: String? = nil) {
         self.timed = timed
+        self.pattern = pattern
         self.id = id
         self.name = name
         self.muscleGroup = muscleGroup

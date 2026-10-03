@@ -24,12 +24,14 @@ public enum FramingAssessor {
 
     /// `checkSize` should be false while the person is moving through the exercise:
     /// a squatting person is naturally lower in the frame than a standing one.
-    public static func assess(_ frame: PoseFrame?, checkSize: Bool = true) -> FramingReport {
+    public static func assess(_ frame: PoseFrame?, kind: MovementKind = .squat, checkSize: Bool = true) -> FramingReport {
         guard let frame else {
             return FramingReport(ready: false, checks: [
                 QualityCheck(id: "visible", label: "Widzę sylwetkę", passed: false, hint: "Stań przed kamerą, tak żeby było widać całą sylwetkę"),
             ], hint: "Stań przed kamerą, tak żeby było widać całą sylwetkę")
         }
+
+        if kind != .squat { return assessUpperBody(frame, kind: kind, checkSize: checkSize) }
 
         let nose = frame.joint(.nose)
         let neck = frame.joint(.neck)
@@ -88,5 +90,49 @@ public enum FramingAssessor {
         let ratio = Double(goodFrames) / Double(totalFrames)
         let rating: FramingRating = ratio >= 0.9 ? .good : ratio >= 0.7 ? .fair : .poor
         return FramingSummary(rating: rating, goodFrameRatio: ratio, hint: rating == .good ? nil : lastHint)
+    }
+
+    /// Push-up and pull-up: the whole person must be seen; a push-up is also checked for side view and size
+    /// (the body is horizontal, so the size is its width).
+    private static func assessUpperBody(_ frame: PoseFrame, kind: MovementKind, checkSize: Bool) -> FramingReport {
+        let nose = frame.joint(.nose)
+        let neck = frame.joint(.neck)
+        let root = frame.joint(.root) ?? frame.joint(.leftHip) ?? frame.joint(.rightHip)
+        let ankles = [frame.joint(.leftAnkle), frame.joint(.rightAnkle)].compactMap { $0 }
+        let wrist = frame.joint(.leftWrist) ?? frame.joint(.rightWrist)
+
+        var checks: [QualityCheck] = []
+        let needFeet = kind == .pushup
+        let bodyOK = nose != nil && neck != nil && root != nil && (!needFeet || !ankles.isEmpty) && wrist != nil
+        let bodyHint: String? = nose == nil ? "Nie widzę głowy, ustaw telefon tak, żeby cała sylwetka była w kadrze"
+            : (needFeet && ankles.isEmpty) ? "Odsuń telefon, nie widzę stóp"
+            : wrist == nil ? "Nie widzę rąk, odsuń telefon albo ustaw go wyżej"
+            : !bodyOK ? "Odejdź kawałek, nie widzę całej sylwetki" : nil
+        checks.append(QualityCheck(id: "full_body", label: "Cała sylwetka w kadrze", passed: bodyOK, hint: bodyHint))
+
+        if kind == .pushup, checkSize {
+            var sizeOK = false
+            var sizeHint: String? = nil
+            let xs = ([nose, neck, root].compactMap { $0 } + ankles).map(\.x)
+            if let minX = xs.min(), let maxX = xs.max() {
+                let width = maxX - minX
+                if width < minBodyHeight { sizeHint = "Podejdź bliżej, sylwetka jest za mała w kadrze" }
+                else if width > maxBodyHeight { sizeHint = "Odsuń telefon, sylwetka nie mieści się w kadrze" }
+                else { sizeOK = true }
+            }
+            checks.append(QualityCheck(id: "size", label: "Odpowiednia wielkość w kadrze", passed: sizeOK, hint: sizeHint))
+        }
+
+        if kind == .pushup, let l = frame.joint(.leftShoulder), let r = frame.joint(.rightShoulder), let neck, let root {
+            let torso = hypot(neck.x - root.x, neck.y - root.y)
+            if torso > 0.02 {
+                let sideOK = abs(l.x - r.x) / torso <= maxShoulderRatio
+                checks.append(QualityCheck(id: "side_view", label: "Ujęcie z boku", passed: sideOK,
+                                           hint: sideOK ? nil : "Ustaw się bokiem do kamery"))
+            }
+        }
+
+        let hint = checks.first { !$0.passed }?.hint
+        return FramingReport(ready: checks.allSatisfy(\.passed), checks: checks, hint: hint)
     }
 }
