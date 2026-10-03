@@ -5,9 +5,10 @@ import Foundation
 // This is what lets everyone work in parallel on their own branch.
 //
 // Who implements what:
-//   ExerciseCatalogProviding, PlanProviding            Maciek  (Content, Plan)
+//   ExerciseCatalogProviding, PlanProviding,
+//   PlanGenerating                                     Maciek  (Content, Plan)
 //   RecoveryProviding, CheckInProviding,
-//   RecommendationProviding                            Wiktor  (Health, Insights)
+//   RecommendationProviding, HealthAuthorizing         Wiktor  (Health, Insights)
 //   TechniqueHistoryProviding                          Michał  (app store; Bartek supplies the results)
 
 public protocol ExerciseCatalogProviding: Sendable {
@@ -46,9 +47,22 @@ public protocol RecommendationProviding: Sendable {
     func todayRecommendation() async -> DailyRecommendation
 }
 
+public protocol HealthAuthorizing: Sendable {
+    /// Asks the user for read access to sleep, resting heart rate and HRV (Apple Health).
+    /// Returns false when the user declined or HealthKit is not available.
+    func requestAccess() async -> Bool
+}
+
+public protocol PlanGenerating: Sendable {
+    /// Builds the weekly plan for a profile. Must use only catalog exercises, honor `equipment`, `daysPerWeek`,
+    /// `avoidTags` and `easyStart`, and set `source`. Falls back to a template plan on model errors,
+    /// so it throws only for hard failures.
+    func generatePlan(for profile: UserProfile) async throws -> TrainingPlan
+}
+
 /// Simulated implementations of every service, backed by `SampleData`.
 public struct SampleServices: ExerciseCatalogProviding, PlanProviding, RecoveryProviding, CheckInProviding,
-                              TechniqueHistoryProviding, RecommendationProviding {
+                              TechniqueHistoryProviding, RecommendationProviding, HealthAuthorizing, PlanGenerating {
     public init() {}
 
     public var exercises: [ExerciseItem] { SampleData.catalog }
@@ -73,4 +87,10 @@ public struct SampleServices: ExerciseCatalogProviding, PlanProviding, RecoveryP
     public func setSummaries(limit: Int) async -> [SetSummary] { [] }
 
     public func todayRecommendation() async -> DailyRecommendation { SampleData.recommendation }
+
+    public func requestAccess() async -> Bool { true }
+
+    public func generatePlan(for profile: UserProfile) async throws -> TrainingPlan {
+        SamplePlanBuilder.plan(for: profile)
+    }
 }

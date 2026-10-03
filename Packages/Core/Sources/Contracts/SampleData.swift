@@ -10,7 +10,7 @@ public enum SampleData {
 
     public static let profile = UserProfile(
         goal: .strength, level: .intermediate, daysPerWeek: 3, sessionMinutes: 60,
-        equipment: .dumbbells, avoid: "Uważam na prawe kolano"
+        equipment: .dumbbells, avoid: "Uważam na prawe kolano", gear: [.dumbbells]
     )
 
     /// 14 days, newest first. Today: short sleep, low HRV, raised resting heart rate.

@@ -12,6 +12,39 @@ public enum Equipment: String, Codable, Sendable, CaseIterable {
     case none, dumbbells, gym
 }
 
+/// What the user has at hand. Onboarding is a multi-select; `Equipment` is the tier derived from it.
+public enum GearItem: String, Codable, Sendable, CaseIterable {
+    case none, dumbbells, kettlebell, gym
+}
+
+public extension Equipment {
+    /// Best tier for a selection: gym > dumbbells or kettlebell > none.
+    static func resolve(from gear: [GearItem]) -> Equipment {
+        if gear.contains(.gym) { return .gym }
+        if gear.contains(.dumbbells) || gear.contains(.kettlebell) { return .dumbbells }
+        return .none
+    }
+}
+
+/// Movement patterns the plan should leave out. Onboarding derives them from what the user reported;
+/// the plan generator and the templates map them to catalog exercises. They carry no medical detail,
+/// so they are safe to pass to the language model.
+public enum MovementTag: String, Codable, Sendable, CaseIterable {
+    case jumps, deepLunges, overheadPress, barbellDeadlift, deepSquats, loadedPushups
+
+    /// Polish name shown to the user ("Pomijamy: ...").
+    public var displayName: String {
+        switch self {
+        case .jumps: return "skoki"
+        case .deepLunges: return "głębokie wykroki"
+        case .overheadPress: return "wyciskanie nad głowę"
+        case .barbellDeadlift: return "martwy ciąg ze sztangą"
+        case .deepSquats: return "głębokie przysiady"
+        case .loadedPushups: return "pompki z obciążeniem"
+        }
+    }
+}
+
 public struct UserProfile: Codable, Equatable, Sendable {
     public var goal: TrainingGoal
     public var level: TrainingLevel
@@ -21,15 +54,39 @@ public struct UserProfile: Codable, Equatable, Sendable {
     public var equipment: Equipment
     /// Free text from the user ("czego unikać"). We do not judge it medically.
     public var avoid: String
+    /// Everything the user ticked in onboarding. `equipment` is derived from it.
+    public var gear: [GearItem]
+    /// Movements to leave out of the plan (derived from onboarding, no medical detail).
+    public var avoidTags: [MovementTag]
+    /// Plan the first weeks lighter (fewer sets). Set when onboarding suggests caution.
+    public var easyStart: Bool
 
     public init(goal: TrainingGoal, level: TrainingLevel, daysPerWeek: Int, sessionMinutes: Int,
-                equipment: Equipment, avoid: String = "") {
+                equipment: Equipment, avoid: String = "", gear: [GearItem] = [],
+                avoidTags: [MovementTag] = [], easyStart: Bool = false) {
         self.goal = goal
         self.level = level
         self.daysPerWeek = daysPerWeek
         self.sessionMinutes = sessionMinutes
         self.equipment = equipment
         self.avoid = avoid
+        self.gear = gear
+        self.avoidTags = avoidTags
+        self.easyStart = easyStart
+    }
+
+    // Profiles saved before the newer fields existed still decode.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        goal = try c.decode(TrainingGoal.self, forKey: .goal)
+        level = try c.decode(TrainingLevel.self, forKey: .level)
+        daysPerWeek = try c.decode(Int.self, forKey: .daysPerWeek)
+        sessionMinutes = try c.decode(Int.self, forKey: .sessionMinutes)
+        equipment = try c.decode(Equipment.self, forKey: .equipment)
+        avoid = try c.decodeIfPresent(String.self, forKey: .avoid) ?? ""
+        gear = try c.decodeIfPresent([GearItem].self, forKey: .gear) ?? []
+        avoidTags = try c.decodeIfPresent([MovementTag].self, forKey: .avoidTags) ?? []
+        easyStart = try c.decodeIfPresent(Bool.self, forKey: .easyStart) ?? false
     }
 }
 

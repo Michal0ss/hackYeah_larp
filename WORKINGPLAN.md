@@ -40,6 +40,8 @@ Każda osoba ma własną sesję Claude'a w tym repo (Claude czyta [CLAUDE.md](CL
 | `PlanProviding` | Maciek | Michał (Dziś), Wiktor (korekta sesji), Maciek (czat) |
 | `RecoveryProviding`, `CheckInProviding` | Wiktor | Michał (Dziś, Postępy), Maciek (narzędzia czatu), Wiktor (silnik reguł) |
 | `RecommendationProviding` | Wiktor | Michał (Dziś), Maciek (kontekst czatu) |
+| `HealthAuthorizing` | Wiktor (w `HealthKitService`) | Michał (krok Apple Health w onboardingu) |
+| `PlanGenerating` | Maciek (`PlanGenerator`) | Michał (krok „Układam plan” w onboardingu) |
 | `TechniqueHistoryProviding` | Michał (zapis wyników), wyniki dostarcza Bartek i seria na żywo | Maciek (narzędzia czatu), Wiktor (reguły), Michał (Postępy) |
 | `TechniqueAssessing` (w `LiveSet`) | `BasicSquatAssessor` (Michał), pełny scorer Bartka może go zastąpić | seria na żywo |
 
@@ -97,7 +99,7 @@ Jesteś Bartkiem (Analiza ruchu) w projekcie Forma. Przeczytaj CLAUDE.md, PROJEC
 
 | Gałąź | Zadanie | Gotowe, gdy |
 |---|---|---|
-| `feat/wiktor-healthkit` | `HealthKitService` jako `RecoveryProviding`: sen, tętno spoczynkowe, HRV jako **podsumowania** i punkt odniesienia, prośba o uprawnienia, fallback na `SampleData` z oznaczeniem symulacji | logika agregacji przetestowana na tablicach próbek, na iPhonie widać prawdziwe dane (jeśli są) |
+| `feat/wiktor-healthkit` | `HealthKitService` jako `RecoveryProviding` **i `HealthAuthorizing`** (prośba o uprawnienia wołana z onboardingu): sen, tętno spoczynkowe, HRV jako **podsumowania** i punkt odniesienia, fallback na `SampleData` z oznaczeniem symulacji | logika agregacji przetestowana na tablicach próbek, na iPhonie widać prawdziwe dane (jeśli są) |
 | `feat/wiktor-checkin-store` | Zapis i odczyt `CheckIn` jako `CheckInProviding` (plik JSON lokalnie) | zapis z ekranu check-inu wraca z `checkIns(days:)`, testy |
 | `feat/wiktor-insight-engine` | `InsightEngine` → `DailyRecommendation` (7.2–7.4). **Napraw próg „Odpuść”**: dziś 3 sygnały dają „Odpuść”, a przykład w prototypie to „Zmodyfikuj”. Zaproponuj w PR nowy próg | testy reguł dla scenariuszy (dobry dzień, 1–2 sygnały, wiele sygnałów, flaga opieki), implementacja `RecommendationProviding` |
 | `feat/wiktor-plan-adjuster-care` | `PlanAdjuster` (zmiana dzisiejszej sesji według decyzji) i `CarePathway` (flaga „warto rozważyć konsultację”, 7.4) | testy: „Zmodyfikuj” skraca serie i podmienia ćwiczenie z katalogu, „Odpuść” zamienia sesję na odpoczynek |
@@ -117,7 +119,7 @@ Jesteś Wiktorem (Dane i reguły) w projekcie Forma. Przeczytaj CLAUDE.md, PROJE
 | `feat/maciek-catalog-templates` | Katalog ćwiczeń 12–15 pozycji z domyślnym tempem i zamiennikami (`Resources/catalog.json`) jako `ExerciseCatalogProviding` oraz szablony planów (`templates.json`) wg celu, poziomu i dni | katalog ładuje się z zasobów, każdy zamiennik wskazuje istniejące ćwiczenie (test), szablony przechodzą walidację |
 | `feat/maciek-plan-store` | `PlanProviding`: aktualny plan i dzisiejsza sesja, zapis lokalny JSON, plan z szablonu dla profilu | `currentPlan()` i `todaySession()` działają, testy |
 | `feat/maciek-ai-client` | Klient modelu w Swifcie (`URLSession`, Messages API, streaming, pętla narzędzi). Adres z konfiguracji (`AnthropicBaseURL`), klucz z `AnthropicAPIKey`. Wstrzykiwany transport, żeby testować bez sieci | testy z fałszywym transportem (odpowiedź, streaming, wywołanie narzędzia) |
-| `feat/maciek-plan-generator` | `PlanGenerator`: model zwraca JSON planu, kod waliduje (istniejące `id`, sprzęt, limity, „czego unikać”), przy błędzie plan z szablonu. Plan ustawia `tempo` w pozycjach | testy walidatora na poprawnych i błędnych odpowiedziach, fallback działa |
+| `feat/maciek-plan-generator` | `PlanGenerator` jako `PlanGenerating`: model zwraca JSON planu, kod waliduje (istniejące `id`, sprzęt, limity, „czego unikać”, **`profile.avoidTags`** zamieniane na ćwiczenia z katalogu, **`profile.easyStart`** = mniej serii na start), przy błędzie plan z szablonu. Plan ustawia `tempo` w pozycjach | testy walidatora na poprawnych i błędnych odpowiedziach, fallback działa |
 | `feat/maciek-coach-chat` | `CoachChat`: instrukcja systemowa (3.6, 7.6), narzędzia (`get_training_plan`, `get_recovery_history`, `get_checkins`, `get_technique_results`, `get_exercise_info`) podpięte do protokołów usług, zgoda `DataConsent` | testy z fałszywym modelem: narzędzia wołane, brak danych zdrowotnych bez zgody, przy bólu odesłanie do specjalisty |
 | `feat/maciek-plan-coach-screens` | Ekrany Plan (tydzień, szczegóły sesji, tempo) i Trener (czat, zgoda, pusta rozmowa, błąd, trener pisze). Plan może przejąć Michał | ekrany na danych przykładowych i fałszywym modelu, potem na prawdziwym |
 
