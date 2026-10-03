@@ -35,7 +35,7 @@ struct TodayView: View {
                                     onStart: { startSet(in: adjustment.session) },
                                     onToggle: { store.toggleOriginal(entry.session) })
                     }
-                    RecoveryStrip(health: store.health, loaded: store.healthLoaded,
+                    RecoveryStrip(health: store.health, loaded: store.healthLoaded, report: store.healthReport,
                                   accessGranted: store.healthAccess == .granted, checkIn: store.checkIn)
                     actions
                 }
@@ -255,6 +255,8 @@ private struct RecoveryStrip: View {
     let health: HealthDaySummary?
     /// False until the first read finished (then the numbers are placeholders, not "missing").
     let loaded: Bool
+    /// What the last read found: the reason behind "no data".
+    let report: HealthReadReport?
     /// The user allowed Apple Health: no numbers then mean "Health has nothing for you yet".
     let accessGranted: Bool
     let checkIn: CheckIn?
@@ -278,6 +280,12 @@ private struct RecoveryStrip: View {
             }
             if let hint {
                 Text(hint)
+                    .formaStyle(.footnote)
+                    .foregroundStyle(FormaColor.ink3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let detail {
+                Text(detail)
                     .formaStyle(.footnote)
                     .foregroundStyle(FormaColor.ink3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -311,14 +319,22 @@ private struct RecoveryStrip: View {
     private var hint: String? {
         guard loaded else { return nil }
         guard let health else {
-            return accessGranted
-                ? "Brak danych w Apple Health. Sen, tętno i HRV zapisuje zwykle zegarek. Sprawdź dostęp w Ustawieniach: Zdrowie, Dostęp do danych i urządzenia."
-                : nil
+            guard accessGranted else { return nil }
+            if report?.failed == true {
+                return "Nie udało się odczytać Apple Health. Odblokuj telefon i otwórz aplikację ponownie."
+            }
+            return "Brak danych w Apple Health. Aplikacja czyta sen, tętno spoczynkowe i HRV, a dwa ostatnie zapisuje zwykle zegarek. Sprawdź dostęp w Ustawieniach: Zdrowie, Dostęp do danych i urządzenia."
         }
         if !health.isSimulated, health.restingHeartRate == nil && health.hrvMs == nil {
             return "Brak tętna spoczynkowego i HRV. Zwykle mierzy je zegarek."
         }
         return nil
+    }
+
+    /// The counts behind "no data", so a reader can tell "Health has none of these" from "the read failed".
+    private var detail: String? {
+        guard loaded, accessGranted, health == nil else { return nil }
+        return report?.summaryText
     }
 
     private func dayLabel(_ date: Date) -> String {
