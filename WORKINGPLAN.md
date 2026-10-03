@@ -201,7 +201,7 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie.
 | Ekrany Analiza i Wynik | Bartek | `feat/bartek-analysis-screens` | do zrobienia | |
 | HealthKit | Wiktor | `feat/wiktor-healthkit` | do zrobienia | |
 | Zapis check-inu | Wiktor | `feat/wiktor-checkin-store` | do zrobienia | |
-| Silnik reguł | Wiktor | `feat/wiktor-insight-engine` | do zrobienia | |
+| Silnik reguł | Wiktor | `feat/wiktor-insight-engine` | w przeglądzie (PR) | `restFromSignals` = 4, do „Odpuść” liczą się tylko sygnały regeneracji. `AppStore` (Michał) musi wołać `services.recommendation` |
 | Teksty rekomendacji (klient + backend) | Wiktor | `feat/wiktor-recommendation-text` | do zrobienia | |
 | Korekta sesji i opieka | Wiktor | `feat/wiktor-plan-adjuster-care` | do zrobienia | |
 | Ekrany Postępy i Opieka | Wiktor | `feat/wiktor-progress-care-screens` | do zrobienia | |

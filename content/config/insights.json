@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "note": "Progi inżynierskie na demo (PROJECT.md 7.3), nie wartości kliniczne. Próg 'rest' do ponownej oceny (rozbieżność z prototypem). Właściciel: Wiktor.",
+  "version": 2,
+  "note": "Progi inżynierskie na demo (PROJECT.md 7.3), nie wartości kliniczne. Do 'rest' liczą się tylko sygnały regeneracji (sen, HRV, tętno, stres, energia), technika wpływa najwyżej na 'adapt'. Właściciel: Wiktor.",
   "signals": {
     "sleepMinutesLow": 360,
     "hrvBelowBaselineRatio": -0.15,
@@ -11,10 +11,12 @@
   },
   "decision": {
     "adaptFromSignals": 1,
-    "restFromSignals": 3
+    "restFromSignals": 4
   },
   "care": {
     "repeatedFindingCount": 3,
-    "windowDays": 14
+    "windowDays": 14,
+    "persistentDays": 3,
+    "lowMood": 2
   }
 }

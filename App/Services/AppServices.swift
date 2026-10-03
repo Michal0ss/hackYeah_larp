@@ -1,4 +1,5 @@
 import Contracts
+import Insights
 
 /// The one place where real implementations replace the sample ones.
 /// Each owner changes only HIS line when his service is ready (small, conflict-free diffs):
@@ -12,7 +13,9 @@ struct AppServices {
     var recovery: RecoveryProviding = SampleServices()
     var checkIns: CheckInProviding = SampleServices()
     var technique: TechniqueHistoryProviding = SampleServices()
-    var recommendation: RecommendationProviding = SampleServices()
+    // Rule engine over the sample inputs until the real recovery and check-in stores are plugged in (Wiktor).
+    var recommendation: RecommendationProviding = InsightRecommendationService(
+        recovery: SampleServices(), checkIns: SampleServices(), technique: SampleServices(), catalog: SampleServices())
     var healthAuthorization: HealthAuthorizing = SampleServices()
     var planGenerator: PlanGenerating = SampleServices()
 }
