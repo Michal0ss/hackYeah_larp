@@ -47,6 +47,7 @@ final class AppStore {
         if arguments.contains("-reset-onboarding") {
             try? onboardingStorage.clear()
             services.planStore.clear()
+            services.trainingLog.clear()
         }
         #endif
         if let saved = onboardingStorage.load() {
@@ -222,6 +223,7 @@ final class AppStore {
     func deleteAllData() async {
         try? onboardingStorage.clear()
         services.planStore.clear()
+        services.trainingLog.clear()
         _ = try? await services.checkInStore.removeAll()
         services.localHistory.removeAll()
         services.consent.reset()
@@ -316,8 +318,10 @@ final class AppStore {
 
     /// Today's session, or the next planned one. Nil when the plan has run out.
     var todaySession: (session: PlannedSession, isToday: Bool)? {
-        guard let match = plan.sessionOnOrAfter(Date()) else { return nil }
-        return (match, plan.session(on: Date())?.id == match.id)
+        // The resolved plan, so a session finished today shows as done instead of offering to start it again.
+        let current = resolvedPlan
+        guard let match = current.sessionOnOrAfter(Date()) else { return nil }
+        return (match, current.session(on: Date())?.id == match.id)
     }
 
     /// True when every session of the plan is in the past: time to build the next one.

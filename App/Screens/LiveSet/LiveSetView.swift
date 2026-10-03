@@ -24,6 +24,10 @@ struct LiveSetView: View {
     let totalSets: Int
     let onNextSet: () -> Void
     let onClose: () -> Void
+    /// Set when a workout runner drives the sets: it gets the result instead of this view's own summary screen.
+    var onFinished: ((SetSummary) -> Void)?
+    /// Set by the workout runner: a way to ask the coach before the set starts.
+    var onAskCoach: (() -> Void)?
 
     @Environment(AppStore.self) private var store
     @State private var session: LiveSetSession
@@ -31,10 +35,13 @@ struct LiveSetView: View {
     @State private var diagnostics = false
 
     init(exercise: ExerciseItem, spec: TempoSpec, setIndex: Int, totalSets: Int,
-         onNextSet: @escaping () -> Void, onClose: @escaping () -> Void) {
+         onNextSet: @escaping () -> Void, onClose: @escaping () -> Void,
+         onFinished: ((SetSummary) -> Void)? = nil, onAskCoach: (() -> Void)? = nil) {
         self.totalSets = totalSets
         self.onNextSet = onNextSet
         self.onClose = onClose
+        self.onFinished = onFinished
+        self.onAskCoach = onAskCoach
         _session = State(initialValue: LiveSetSession(exercise: exercise, spec: spec, setIndex: setIndex))
     }
 
@@ -43,9 +50,14 @@ struct LiveSetView: View {
     var body: some View {
         ZStack {
             if engine.stage == .summary, let summary = engine.summary {
-                SetSummaryView(summary: summary, exerciseName: session.exercise.name, totalSets: totalSets,
-                               onNextSet: onNextSet, onClose: onClose)
-                    .onAppear { store.recordSet(summary) }
+                if let onFinished {
+                    // The runner records the set and shows its own screen.
+                    ProgressView().tint(FormaColor.voltText).onAppear { onFinished(summary) }
+                } else {
+                    SetSummaryView(summary: summary, exerciseName: session.exercise.name, totalSets: totalSets,
+                                   onNextSet: onNextSet, onClose: onClose)
+                        .onAppear { store.recordSet(summary) }
+                }
             } else {
                 live
             }
@@ -215,6 +227,12 @@ struct LiveSetView: View {
                 Text("Start bez czekania").frame(maxWidth: .infinity)
             }
             .buttonStyle(.formaGlass)
+            if let onAskCoach {
+                Button(action: onAskCoach) {
+                    Label("Zapytaj trenera", systemImage: "bubble.left.and.text.bubble.right").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.formaGlass)
+            }
         }
     }
 

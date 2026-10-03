@@ -86,9 +86,12 @@ public struct WorkoutRun: Equatable, Sendable {
 
     public var completedSets: Int { sets.count }
 
-    /// Sets of the exercises that are not skipped.
+    /// Sets to do: all sets of the exercises that are not skipped, and for a skipped one only the sets already done
+    /// (so a half-done exercise that was left out does not count as a missed one).
     public var plannedSets: Int {
-        session.exercises.indices.filter { !skippedExercises.contains($0) }.map { session.exercises[$0].sets }.reduce(0, +)
+        session.exercises.indices.map { index in
+            skippedExercises.contains(index) ? sets(of: session.exercises[index].exerciseId).count : session.exercises[index].sets
+        }.reduce(0, +)
     }
 
     /// What is next, looking from the current position.

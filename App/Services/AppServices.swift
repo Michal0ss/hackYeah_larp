@@ -46,6 +46,8 @@ struct AppServices {
     var planGenerator: PlanGenerating
     /// The weekly plan and the sessions finished in each week, kept on the phone (Maciek's PlanStore). `plan` reads it.
     let planStore: PlanStore
+    /// The sets the user did in a workout, with the weight where they typed one (Maciek's TrainingLogStore).
+    let trainingLog = TrainingLogStore(fileURL: TrainingLogStore.defaultFileURL())
 
     init() {
         recovery = healthKit

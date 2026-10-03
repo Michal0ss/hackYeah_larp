@@ -64,3 +64,8 @@ Te rzeczy są poza zakresem tego refaktoru. Nie są zapomniane, tylko odłożone
    telefonie trzeba zrobić osobno.
 9. **Dane zdrowotne w kontekście pytania.** `WorkoutContext` niesie tylko dane treningowe (liczby, ciężar). Ból i
    wysiłek idą do modelu wyłącznie przez narzędzie za zgodą, jak dotąd.
+10. **Przenoszenie sesji na dzisiejszą datę po treningu.** Trening można zacząć z dowolnej sesji planu (np. poniedziałkowej
+    w sobotę). Sesja zostaje na swojej dacie i dostaje status „wykonana”; nie przesuwamy jej na dzień, w którym ją zrobiono.
+11. **Usuwanie serii z zapisu treningu.** Serię można poprawić albo dopisać, ale nie ma jeszcze jej usunięcia (do poprawienia
+    pomyłki wystarczy zmienić liczby).
+12. **Podpowiadanie ciężaru z progresji.** Ciężar z ostatniego razu jest tylko podpowiedzią w polu; nie liczymy, ile dołożyć.

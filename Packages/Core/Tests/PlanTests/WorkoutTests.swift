@@ -228,7 +228,7 @@ final class WorkoutRunTests: XCTestCase {
         XCTAssertEqual(run.currentExercise?.exerciseId, "bridge")
         XCTAssertEqual(run.setIndex, 1)
         XCTAssertEqual(run.completedSets, 1, "the squat set already done stays")
-        XCTAssertEqual(run.plannedSets, 3, "the skipped squat no longer counts")
+        XCTAssertEqual(run.plannedSets, 4, "bridge 2 + plank 1, and the one squat set already done")
         XCTAssertNil(run.rest)
     }
 
