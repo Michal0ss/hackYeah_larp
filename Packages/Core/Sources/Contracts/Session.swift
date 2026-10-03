@@ -172,6 +172,28 @@ public struct SetDigest: Codable, Equatable, Sendable {
     }
 }
 
+/// What the user typed for a set (or corrected after the camera counted it): numbers only. Weight is optional and
+/// present only when the user entered it. Training data, not health data.
+public struct LoggedSetDigest: Codable, Equatable, Sendable {
+    public var setIndex: Int
+    public var reps: Int?
+    public var seconds: Int?
+    public var weightKg: Double?
+    /// The range planned for this exercise, to judge whether the set was easy or hard.
+    public var plannedMin: Int?
+    public var plannedMax: Int?
+
+    public init(setIndex: Int, reps: Int? = nil, seconds: Int? = nil, weightKg: Double? = nil,
+                plannedMin: Int? = nil, plannedMax: Int? = nil) {
+        self.setIndex = setIndex
+        self.reps = reps
+        self.seconds = seconds
+        self.weightKg = weightKg
+        self.plannedMin = plannedMin
+        self.plannedMax = plannedMax
+    }
+}
+
 /// Where in the workout a question to the coach was asked. Sent with the chat request (`ChatContext.workout`), so the
 /// coach answers about THIS set instead of in general. Everything is optional except the screen.
 public struct WorkoutContext: Codable, Equatable, Sendable {
@@ -183,15 +205,18 @@ public struct WorkoutContext: Codable, Equatable, Sendable {
     public var setIndex: Int?
     public var totalSets: Int?
     public var lastSet: SetDigest?
+    /// The numbers the user typed for the last set (for exercises without live analysis, or corrected by hand).
+    public var loggedSet: LoggedSetDigest?
 
     public init(screen: WorkoutScreen, sessionId: UUID? = nil, exerciseId: String? = nil, setIndex: Int? = nil,
-                totalSets: Int? = nil, lastSet: SetDigest? = nil) {
+                totalSets: Int? = nil, lastSet: SetDigest? = nil, loggedSet: LoggedSetDigest? = nil) {
         self.screen = screen
         self.sessionId = sessionId
         self.exerciseId = exerciseId
         self.setIndex = setIndex
         self.totalSets = totalSets
         self.lastSet = lastSet
+        self.loggedSet = loggedSet
     }
 }
 

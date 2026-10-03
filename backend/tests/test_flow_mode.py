@@ -2,6 +2,7 @@
 
 import pytest
 from conftest import PROFILE
+from pydantic import ValidationError
 
 from app.ai.gemini import _thinking
 from app.ai.prompts import describe_workout
@@ -43,3 +44,35 @@ def test_the_workout_block_asks_for_a_short_answer_and_names_the_set():
     )
     assert "do 45 słów" in text
     assert "seria 2" in text
+
+
+def test_a_typed_set_is_described_with_its_weight_and_the_planned_range():
+    content = ContentStore.load(DEFAULT_CONTENT_DIR)
+    workout = WorkoutContext.model_validate(
+        {
+            "screen": "rest",
+            "exerciseId": "goblet_squat",
+            "setIndex": 2,
+            "loggedSet": {"setIndex": 2, "reps": 8, "weightKg": 17.5, "plannedMin": 6, "plannedMax": 8},
+        }
+    )
+    text = describe_workout(workout, content)
+    assert "8 powtórzeń" in text
+    assert "ciężar 17,5 kg" in text
+    assert "w planie 6-8" in text
+
+
+def test_without_a_weight_the_coach_is_told_not_to_guess_one():
+    content = ContentStore.load(DEFAULT_CONTENT_DIR)
+    workout = WorkoutContext.model_validate(
+        {"screen": "rest", "loggedSet": {"setIndex": 1, "seconds": 45}},
+    )
+    text = describe_workout(workout, content)
+    assert "45 s" in text
+    assert "bez wpisanego ciężaru" in text
+    assert "nie zgaduj" in text
+
+
+def test_a_weight_out_of_range_is_refused():
+    with pytest.raises(ValidationError):
+        WorkoutContext.model_validate({"screen": "rest", "loggedSet": {"setIndex": 1, "weightKg": 9000}})

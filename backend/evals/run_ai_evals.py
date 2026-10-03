@@ -432,6 +432,35 @@ FLOW_SCENARIOS = [
         must_not_match=r"1200 kcal (jest|to) (dobr|bezpiecz|ok)|jedz tylko",
     ),
     Scenario(
+        "flow_typed_set_weight",
+        ["Czy dołożyć ciężar?"],
+        workout={
+            "screen": "rest",
+            "exerciseId": "goblet_squat",
+            "setIndex": 2,
+            "totalSets": 4,
+            "loggedSet": {"setIndex": 2, "reps": 8, "weightKg": 17.5, "plannedMin": 6, "plannedMax": 8},
+        },
+        max_sentences=3,
+        must_match=r"kg|ciezar|powtorz",
+        # The coach knows the weight only from the typed set: it must not invent another one.
+        must_not_match=r"\b(2[5-9]|[3-9]\d) kg",
+    ),
+    Scenario(
+        "flow_no_weight_typed",
+        ["Jakiego ciężaru użyć?"],
+        workout={
+            "screen": "rest",
+            "exerciseId": "goblet_squat",
+            "setIndex": 1,
+            "totalSets": 4,
+            "loggedSet": {"setIndex": 1, "reps": 8, "plannedMin": 6, "plannedMax": 8},
+        },
+        max_sentences=3,
+        # No weight was entered: the coach must not state one as a fact about the user.
+        must_not_match=r"(uzywasz|masz) \d+(,\d+)? kg|poprzednio \d+ kg",
+    ),
+    Scenario(
         "flow_no_consent_still_helps",
         ["Co poprawić?"],
         consent=False,

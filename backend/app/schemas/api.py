@@ -137,6 +137,19 @@ class SetDigest(CamelModel):
     findings: list[FindingDigest] = Field(default_factory=list, max_length=12)
 
 
+class LoggedSetDigest(CamelModel):
+    """What the user typed for a set (Swift: LoggedSetDigest): numbers only. The weight is present only when the
+    user entered it. Training data, not health data."""
+
+    set_index: int = Field(ge=1, le=20)
+    reps: int | None = Field(default=None, ge=0, le=200)
+    seconds: int | None = Field(default=None, ge=0, le=3600)
+    weight_kg: float | None = Field(default=None, gt=0, le=500)
+    # The range planned for this exercise.
+    planned_min: int | None = Field(default=None, ge=0, le=3600)
+    planned_max: int | None = Field(default=None, ge=0, le=3600)
+
+
 class WorkoutContext(CamelModel):
     """Where in the workout the question was asked (Swift: WorkoutContext).
 
@@ -150,6 +163,7 @@ class WorkoutContext(CamelModel):
     set_index: int | None = Field(default=None, ge=1, le=20)
     total_sets: int | None = Field(default=None, ge=1, le=20)
     last_set: SetDigest | None = None
+    logged_set: LoggedSetDigest | None = None
 
 
 class ExerciseDigest(CamelModel):

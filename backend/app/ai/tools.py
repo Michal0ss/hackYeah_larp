@@ -110,9 +110,10 @@ TOOLS: dict[str, CoachTool] = {
             name="get_training_log",
             description=(
                 "Returns what the user actually did in the last days: workouts finished from the plan (date, sets done "
-                "of the planned ones) and the sets done with the live coach (exercise, date, number of reps, tempo "
-                "and technique scores). Use it to answer how training is going and to judge whether the plan is "
-                "too easy or too hard. Numbers only, no health data."
+                "of the planned ones), the sets they logged (exercise, reps or seconds, and the weight only when they "
+                "typed one) and the sets done with the live coach (tempo and technique scores). Use it to answer how "
+                "training is going and to judge whether the plan is too easy or too hard. Never state a weight that "
+                "is not in the result. Numbers only, no health data."
             ),
             input_schema={
                 "type": "object",
