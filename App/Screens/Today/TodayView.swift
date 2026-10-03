@@ -15,6 +15,7 @@ struct TodayView: View {
     @State private var liveLaunch: LiveSetLaunch?
     @State private var showProfile = false
     @State private var showCare = false
+    @State private var showHealthData = false
     /// Same data and rules as the Postępy tab, to show the care signal here too.
     @State private var careModel = ProgressModel()
 
@@ -36,7 +37,8 @@ struct TodayView: View {
                                     onToggle: { store.toggleOriginal(entry.session) })
                     }
                     RecoveryStrip(health: store.health, loaded: store.healthLoaded, report: store.healthReport,
-                                  accessGranted: store.healthAccess == .granted, checkIn: store.checkIn)
+                                  accessGranted: store.healthAccess == .granted, checkIn: store.checkIn,
+                                  onOpen: { showHealthData = true })
                     actions
                 }
                 .padding(.horizontal, FormaSpacing.screen)
@@ -50,6 +52,9 @@ struct TodayView: View {
         }
         .sheet(isPresented: $showProfile) {
             ProfileView()
+        }
+        .sheet(isPresented: $showHealthData) {
+            HealthDataView(load: { await store.loadHealthOverview() })
         }
         .sheet(isPresented: $showCare) {
             if let care = careModel.care { CareView(assessment: care, simulated: careModel.careSimulated) }
@@ -260,13 +265,25 @@ private struct RecoveryStrip: View {
     /// The user allowed Apple Health: no numbers then mean "Health has nothing for you yet".
     let accessGranted: Bool
     let checkIn: CheckIn?
+    /// Opens the "Dane zdrowotne" panel.
+    let onOpen: () -> Void
 
     var body: some View {
+        Button(action: onOpen) { card }
+            .buttonStyle(.plain)
+            .accessibilityHint("Otwiera panel z danymi z Apple Health")
+    }
+
+    private var card: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.m) {
             HStack(alignment: .firstTextBaseline) {
-                SectionLabel("Regeneracja")
+                SectionLabel("Dane zdrowotne")
                 Spacer()
                 source
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(FormaColor.ink3)
+                    .accessibilityHidden(true)
             }
             HStack(alignment: .top, spacing: FormaSpacing.m) {
                 stat("Sen", sleepText, unit: nil, note: nil, spoken: nil)

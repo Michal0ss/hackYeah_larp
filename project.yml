@@ -62,7 +62,7 @@ targets:
         NSMicrophoneUsageDescription: "Mikrofon jest potrzebny, żeby aparat mógł nagrać film z ćwiczeniem i żebyś mógł rozmawiać z trenerem głosem. Nagranie głosu nie jest zapisywane ani wysyłane."
         NSSpeechRecognitionUsageDescription: "Rozpoznajemy Twoją mowę na telefonie, żeby zamienić pytanie do trenera na tekst. Do serwera trafia tylko tekst, nie nagranie."
         NSHealthUpdateUsageDescription: "Tylko w wersji testowej: zapis przykładowych danych do Zdrowia, żeby sprawdzić odczyt."
-        NSHealthShareUsageDescription: "Odczytujemy sen, tętno spoczynkowe i zmienność rytmu serca, żeby dopasować rekomendację dnia."
+        NSHealthShareUsageDescription: "Odczytujemy sen, tętno spoczynkowe, zmienność rytmu serca oraz kroki, kalorie aktywne, dystans, minuty ćwiczeń i piętra, żeby dopasować rekomendację dnia i pokazać twoje dane zdrowotne."
         NSLocationWhenInUseUsageDescription: "Lokalizacja pomaga znaleźć fizjoterapeutów w pobliżu."
         NSLocalNetworkUsageDescription: "Aplikacja łączy się z serwerem deweloperskim w sieci lokalnej."
         NSAppTransportSecurity:
