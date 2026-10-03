@@ -2,6 +2,9 @@ import SwiftUI
 import Contracts
 import DesignSystem
 import Plan
+#if os(iOS)
+import UIKit
+#endif
 
 /// A set of an exercise without live analysis: the user types the result (reps, or seconds for a plank) and, if they
 /// like, the weight. The weight starts from the last time; it is saved only when it is switched on.
@@ -14,8 +17,12 @@ struct ManualSetView: View {
 
     @State private var value: Int
     @State private var weight: Double?
-    /// Moment the stopwatch was started (timed exercises).
+    /// Moment the stopwatch was started.
     @State private var startedAt: Date?
+    /// What the stopwatch showed when it was stopped.
+    @State private var stoppedAt = 0
+    /// The target of a timed exercise was reached (one vibration).
+    @State private var reachedTarget = false
 
     init(model: WorkoutModel, planned: PlannedExercise, exercise: ExerciseItem, onAskCoach: @escaping () -> Void,
          onClose: @escaping () -> Void) {
@@ -42,7 +49,7 @@ struct ManualSetView: View {
                     Text("w planie \(planned.repsMin)–\(planned.repsMax)\(timed ? " s" : " powtórzeń")")
                         .formaStyle(.subheadline).foregroundStyle(FormaColor.ink3)
                 }
-                if timed { stopwatch }
+                stopwatch
                 VStack(alignment: .leading, spacing: FormaSpacing.m) {
                     SectionLabel("Wynik")
                     SetNumbersEditor(timed: timed, value: $value, weight: $weight,
@@ -83,20 +90,28 @@ struct ManualSetView: View {
         }
     }
 
-    /// For timed exercises: start, stop, and the seconds land in the result (which can still be changed).
+    /// A stopwatch for every set typed in. For an exercise counted in time, "Stop" puts the seconds in the result (it can
+    /// still be changed) and the phone vibrates once when the planned time is reached.
     private var stopwatch: some View {
         TimelineView(.periodic(from: .now, by: 0.2)) { context in
-            let elapsed = startedAt.map { max(0, Int(context.date.timeIntervalSince($0))) }
+            let elapsed = startedAt.map { max(0, Int(context.date.timeIntervalSince($0))) } ?? stoppedAt
             VStack(alignment: .leading, spacing: FormaSpacing.m) {
-                SectionLabel("Stoper")
+                SectionLabel(timed ? "Stoper (cel \(planned.repsMin) s)" : "Stoper serii")
                 HStack {
-                    NumberText("\(elapsed ?? 0)", size: 56, unit: "s")
+                    NumberText(WorkoutFormat.clock(TimeInterval(elapsed)), size: 56)
                     Spacer()
+                    if startedAt == nil, stoppedAt > 0 {
+                        Button("Zeruj") { stoppedAt = 0; reachedTarget = false }
+                            .formaStyle(.subheadline).foregroundStyle(FormaColor.ink3)
+                    }
                     Button {
                         if let started = startedAt {
-                            value = max(1, Int(Date().timeIntervalSince(started)))
+                            stoppedAt = max(1, Int(Date().timeIntervalSince(started)))
+                            if timed { value = stoppedAt }
                             startedAt = nil
                         } else {
+                            if stoppedAt > 0 { stoppedAt = 0 }
+                            reachedTarget = false
                             startedAt = Date()
                         }
                     } label: {
@@ -106,6 +121,14 @@ struct ManualSetView: View {
                 }
             }
             .padding(FormaSpacing.xl).frame(maxWidth: .infinity, alignment: .leading).glassCard()
+            .onChange(of: elapsed) { _, now in
+                if timed, startedAt != nil, !reachedTarget, now >= planned.repsMin {
+                    reachedTarget = true
+                    #if os(iOS)
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    #endif
+                }
+            }
         }
     }
 }
