@@ -42,13 +42,16 @@ public extension TrainingPlan {
         return sessions.first { $0.weekday == TrainingPlan.isoWeekday(of: day, calendar: calendar) }
     }
 
-    /// The session of `day`, or the next one after it. Nil when the plan has run out.
-    func sessionOnOrAfter(_ day: Date, calendar: Calendar = TrainingPlan.calendar) -> PlannedSession? {
-        if let today = session(on: day, calendar: calendar) { return today }
-        let start = calendar.startOfDay(for: day)
-        if isDated { return chronological.first { ($0.date ?? .distantPast) > start } }
+    /// The session of `day`, or the next one after it. Nil when the plan has run out. A skipped session does not
+    /// count unless `includeSkipped`.
+    func sessionOnOrAfter(_ day: Date, includeSkipped: Bool = false, calendar: Calendar = TrainingPlan.calendar) -> PlannedSession? {
+        let pool = chronological.filter { includeSkipped || $0.status != .skipped }
+        if isDated {
+            let start = calendar.startOfDay(for: day)
+            return pool.first { ($0.date ?? .distantPast) >= start }
+        }
         let weekday = TrainingPlan.isoWeekday(of: day, calendar: calendar)
-        return chronological.first { $0.weekday > weekday } ?? chronological.first
+        return pool.first { $0.weekday >= weekday } ?? pool.first
     }
 
     /// True when the plan has dates and its last session is before `day`.

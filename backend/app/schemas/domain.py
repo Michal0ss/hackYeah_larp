@@ -17,7 +17,7 @@ GearItem = Literal["none", "dumbbells", "kettlebell", "gym"]
 MovementTag = Literal["jumps", "deepLunges", "overheadPress", "barbellDeadlift", "deepSquats", "loadedPushups"]
 Pattern = Literal["squat", "hinge", "lunge", "push", "pull", "core", "cardio"]
 PlanSource = Literal["ai", "template"]
-SessionStatus = Literal["planned", "done", "adapted"]
+SessionStatus = Literal["planned", "done", "adapted", "skipped"]
 Decision = Literal["train", "adapt", "rest"]
 FactorSource = Literal["sleep", "hrv", "restingHeartRate", "checkIn", "technique"]
 

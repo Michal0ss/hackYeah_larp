@@ -89,6 +89,9 @@ the input (kind, weekdays 1 to 7, catalog ids, a replacement that fits the perso
 movements, a short reason that passes the generated-text checks); the app checks the request against the real plan
 and answers the model with an error it can explain when the change is not possible.
 
+Other tools: `get_training_log` (finished sessions and live-coach sets, numbers only: no consent needed) and
+`propose_plan_change` with `swap_exercise`, `lighter_session`, `move_session` and `skip_session`.
+
 Tools that read health data (`get_today_recommendation`, `get_recovery_summary`, `get_checkins`,
 `get_session_feedback`) are offered only when `consent.health` is true. Without consent they are not in the model's
 tool list, health context is left out of the prompt, and a history that contains health tool results is rejected

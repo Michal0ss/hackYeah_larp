@@ -1,6 +1,7 @@
 import API
 import Contracts
 import Foundation
+import Plan
 
 /// What a tool hands back to the model, plus what the app needs to show about it.
 public struct CoachToolOutput: Equatable, Sendable {
@@ -36,12 +37,22 @@ public enum CoachToolName {
     public static let recoverySummary = "get_recovery_summary"
     public static let checkIns = "get_checkins"
     public static let sessionFeedback = "get_session_feedback"
+    /// What was actually done: finished sessions and sets with the live coach. Numbers only, so not a health tool.
+    public static let trainingLog = "get_training_log"
     /// Not a health tool and not a writer: it only produces a proposal for the user to accept.
     public static let proposePlanChange = "propose_plan_change"
 
     /// Tools that read health data: they answer only with the user's consent.
     public static let health: Set<String> = [todayRecommendation, recoverySummary, checkIns, sessionFeedback]
 }
+
+/// The sessions the user finished (the plan store keeps them).
+public protocol SessionCompletionProviding: Sendable {
+    /// Newest first.
+    var completions: [SessionCompletion] { get }
+}
+
+extension PlanStore: SessionCompletionProviding {}
 
 /// Runs the coach tools against the shared service protocols, so they work on sample data and on the real services.
 ///
@@ -56,6 +67,7 @@ public struct CoachTools: CoachToolRunning {
     private let recommendation: RecommendationProviding
     private let feedback: SessionFeedbackStoring?
     private let proposer: PlanChangeProposer?
+    private let log: SessionCompletionProviding?
     private let hasHealthConsent: @Sendable () -> Bool
     private let calendar: Calendar
     private let now: @Sendable () -> Date
@@ -63,7 +75,8 @@ public struct CoachTools: CoachToolRunning {
     public init(plan: PlanProviding, catalog: ExerciseCatalogProviding, recovery: RecoveryProviding,
                 checkIns: CheckInProviding, technique: TechniqueHistoryProviding,
                 recommendation: RecommendationProviding, feedback: SessionFeedbackStoring? = nil,
-                proposer: PlanChangeProposer? = nil, hasHealthConsent: @escaping @Sendable () -> Bool,
+                proposer: PlanChangeProposer? = nil, log: SessionCompletionProviding? = nil,
+                hasHealthConsent: @escaping @Sendable () -> Bool,
                 calendar: Calendar = .current, now: @escaping @Sendable () -> Date = { Date() }) {
         self.plan = plan
         self.catalog = catalog
@@ -73,6 +86,7 @@ public struct CoachTools: CoachToolRunning {
         self.recommendation = recommendation
         self.feedback = feedback
         self.proposer = proposer
+        self.log = log
         self.hasHealthConsent = hasHealthConsent
         self.calendar = calendar
         self.now = now
@@ -92,6 +106,7 @@ public struct CoachTools: CoachToolRunning {
         case CoachToolName.proposePlanChange:
             return await proposer?.propose(input) ?? CoachToolOutput(
                 content: Self.json(["error": .string("Zmiany w planie nie są teraz dostępne.")]), isError: true)
+        case CoachToolName.trainingLog: return await trainingLog(days: Self.clamp(input["days"]?.intValue ?? 14, 1, 30))
         case CoachToolName.sessionFeedback: return await recentSessionFeedback(limit: Self.clamp(input["limit"]?.intValue ?? 3, 1, 10))
         default:
             return CoachToolOutput(content: Self.json(["error": .string("Nieznane narzędzie.")]), isError: true)
@@ -153,6 +168,43 @@ public struct CoachTools: CoachToolRunning {
         ]
         if let tempo = planned.tempo { fields["tempo"] = .string(tempo.label) }
         return .object(fields)
+    }
+
+    // MARK: training log
+
+    /// What the user did in the last `days` days: sessions finished from the plan and sets done with the live coach.
+    private func trainingLog(days: Int) async -> CoachToolOutput {
+        let since = calendar.date(byAdding: .day, value: -days, to: calendar.startOfDay(for: now())) ?? .distantPast
+        let plan = await plan.currentPlan()
+        let sessions: [JSONValue] = (log?.completions ?? []).filter { $0.date >= since }.prefix(20).map { done in
+            var fields: [String: JSONValue] = [
+                "date": .string(Self.dayFormatter.string(from: done.date)),
+                "title": .string(plan?.sessions.first { $0.id == done.sessionId }?.title ?? "sesja"),
+            ]
+            if let completed = done.completedSets { fields["setsDone"] = .number(Double(completed)) }
+            if let planned = done.plannedSets { fields["setsPlanned"] = .number(Double(planned)) }
+            return .object(fields)
+        }
+        let allSets = await technique.setSummaries(limit: 200).filter { $0.date >= since }
+        let sets: [JSONValue] = allSets.prefix(30).map { set in
+            var fields: [String: JSONValue] = [
+                "date": .string(Self.dayFormatter.string(from: set.date)),
+                "exerciseId": .string(set.exerciseId),
+                "name": .string(name(of: set.exerciseId)),
+                "reps": .number(Double(set.reps.count)),
+                "tempoScore": .number(Double(set.tempoScore)),
+            ]
+            if let technique = set.techniqueScore { fields["techniqueScore"] = .number(Double(technique)) }
+            return .object(fields)
+        }
+        let content = Self.json([
+            "days": .number(Double(days)),
+            "sessionsFinished": .array(sessions),
+            "setsWithLiveCoach": .array(sets),
+            "setsWithLiveCoachTotal": .number(Double(allSets.count)),
+        ])
+        return CoachToolOutput(content: content, sourceLabel: "historia treningów",
+                               isSimulated: allSets.contains { $0.isSimulated })
     }
 
     // MARK: technique

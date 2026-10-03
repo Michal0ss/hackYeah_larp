@@ -143,6 +143,71 @@ final class AppStore {
         }
     }
 
+    // MARK: Plan edited by the user
+
+    /// The last manual edit, so the Plan screen can offer "Cofnij". Cleared by the next edit and by dismissing.
+    struct PlanEditUndo: Equatable {
+        var summary: String
+        var previous: TrainingPlan
+    }
+    private(set) var lastEdit: PlanEditUndo?
+
+    private var editor: PlanEditor { PlanEditor(catalog: catalog, profile: profile) }
+
+    /// Exercises the person can put in a session: from the catalog, fitting equipment, level and avoided movements.
+    func exerciseCandidates(excluding ids: Set<String>, timed: Bool? = nil) -> [ExerciseItem] {
+        editor.candidates(excluding: ids, timed: timed)
+    }
+
+    /// One change of a session made by hand. Finished sessions are final, so the editor sees the plan with `done`.
+    @MainActor
+    @discardableResult
+    func edit(_ edit: PlanEdit, sessionId: UUID, scope: PlanEditScope = .thisSession) -> Result<String, PlanChangeError> {
+        do {
+            let result = try editor.apply(edit, to: sessionId, scope: scope, in: resolvedPlan)
+            commit(result)
+            return .success(result.summary)
+        } catch let error as PlanChangeError {
+            return .failure(error)
+        } catch {
+            return .failure(.notApplied)
+        }
+    }
+
+    /// A session of your own on a free day.
+    @MainActor
+    @discardableResult
+    func addSession(on day: Date, title: String, exerciseIds: [String]) -> Result<String, PlanChangeError> {
+        do {
+            let result = try editor.addSession(on: day, title: title, exerciseIds: exerciseIds, in: resolvedPlan)
+            commit(result)
+            return .success(result.summary)
+        } catch let error as PlanChangeError {
+            return .failure(error)
+        } catch {
+            return .failure(.notApplied)
+        }
+    }
+
+    private func commit(_ result: PlanEditResult) {
+        lastEdit = PlanEditUndo(summary: result.summary, previous: plan)
+        services.planStore.save(result.plan)
+        plan = services.planStore.templatePlan ?? result.plan  // the saved plan never carries `done`
+        persistPlan()
+    }
+
+    /// Puts the plan back as it was before the last edit.
+    @MainActor
+    func undoLastEdit() {
+        guard let last = lastEdit else { return }
+        plan = last.previous
+        lastEdit = nil
+        services.planStore.save(plan)
+        persistPlan()
+    }
+
+    func dismissLastEdit() { lastEdit = nil }
+
     /// Saves the plan with the profile. Before onboarding is done nothing is written: a saved profile would make the
     /// next launch skip onboarding.
     private func persistPlan() {
@@ -181,7 +246,7 @@ final class AppStore {
     /// The session the rule engine's decision applies to: today's, or the next one when today is free (the one the
     /// Today screen shows). Other sessions stay as planned.
     func adjustment(for session: PlannedSession) -> PlanAdjustment {
-        guard session.id == todaySession?.session.id, !restoredSessionIds.contains(session.id),
+        guard session.id == todaySession?.session.id, session.status != .skipped, !restoredSessionIds.contains(session.id),
               !services.planStore.completedSessionIds().contains(session.id) else {
             return PlanAdjustment(original: session, session: session, changes: [], isRestDay: false)
         }

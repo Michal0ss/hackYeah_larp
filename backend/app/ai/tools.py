@@ -33,7 +33,7 @@ class CoachTool:
 
 _NO_INPUT: dict[str, Any] = {"type": "object", "properties": {}}
 
-PLAN_CHANGE_KINDS = ("swap_exercise", "lighter_session", "move_session")
+PLAN_CHANGE_KINDS = ("swap_exercise", "lighter_session", "move_session", "skip_session")
 
 TOOLS: dict[str, CoachTool] = {
     tool.name: tool
@@ -107,6 +107,19 @@ TOOLS: dict[str, CoachTool] = {
             needs_health_consent=True,
         ),
         CoachTool(
+            name="get_training_log",
+            description=(
+                "Returns what the user actually did in the last days: workouts finished from the plan (date, sets done "
+                "of the planned ones) and the sets done with the live coach (exercise, date, number of reps, tempo "
+                "and technique scores). Use it to answer how training is going and to judge whether the plan is "
+                "too easy or too hard. Numbers only, no health data."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {"days": {"type": "integer", "description": "How many days back, 1 to 30."}},
+            },
+        ),
+        CoachTool(
             name="propose_plan_change",
             description=(
                 "Proposes ONE change to the user's weekly plan. It does not change the plan: the app shows the "
@@ -115,7 +128,9 @@ TOOLS: dict[str, CoachTool] = {
                 "kinds: swap_exercise (replace exerciseId with replacementExerciseId in the session planned on "
                 "weekday), lighter_session (one set less in every exercise that has more than two sets, in the "
                 "session on weekday), move_session (move the session from weekday to newWeekday, which must be a "
-                "day without a session). weekday and newWeekday: 1 = Monday ... 7 = Sunday. Use exercise ids from "
+                "day without a session), skip_session (leave the session on weekday out; it stays in the plan as "
+                "skipped and the user can put it back). weekday and newWeekday: 1 = Monday ... 7 = Sunday; weekday "
+                "means the next such day within a week from today. Use exercise ids from "
                 "the catalog; a replacement must come from the list of exercises that fit this person. "
                 "Afterwards tell the user in one or two sentences what you propose and why, and that they can "
                 "accept it on the card; never say the plan is already changed."
@@ -197,6 +212,8 @@ def normalise_tool_input(
         return _normalise_plan_change(raw, content, profile)
     if name in ("get_recovery_summary", "get_checkins"):
         return {"days": _clamped_int(raw.get("days"), 1, 14, 7)}
+    if name == "get_training_log":
+        return {"days": _clamped_int(raw.get("days"), 1, 30, 14)}
     if name == "get_session_feedback":
         return {"limit": _clamped_int(raw.get("limit"), 1, 10, 3)}
     if name == "get_technique_history":

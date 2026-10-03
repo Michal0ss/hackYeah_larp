@@ -155,6 +155,8 @@ public struct PlannedExercise: Codable, Equatable, Sendable, Identifiable {
 
 public enum SessionStatus: String, Codable, Sendable {
     case planned, done, adapted
+    /// The user (or the coach, with the user's approval) left this session out. It stays in the plan, so it can be put back.
+    case skipped
 }
 
 public struct PlannedSession: Codable, Equatable, Sendable, Identifiable {

@@ -90,10 +90,14 @@ class MockGateway:
     mode = "mock"
 
     _TOOL_KEYWORDS: tuple[tuple[str, str], ...] = (
-        (r"zamie[ńn]|zast[ąa]p|przenie[śs]|l[żz]ejsz\w+ (sesj|trening)", "propose_plan_change"),
+        (
+            r"zamie[ńn]|zast[ąa]p|przenie[śs]|pomi[ńn]\w* (sesj|trening)|l[żz]ejsz\w+ (sesj|trening)",
+            "propose_plan_change",
+        ),
         (r"po trening\w*|rpe|dyskomfort|boli|b[óo]l", "get_session_feedback"),
         (r"sen|spa[łl]|regener|zm[ęe]cz|hrv|t[ęe]tno|stres", "get_recovery_summary"),
         (r"technik|przysiad|forma|g[łl][ęe]bok", "get_technique_history"),
+        (r"zrobi[łl]\w*|historia trening\w*|ile (serii|powt)", "get_training_log"),
         (r"plan|trening|dzi[śs]|tydzie[ńn]", "get_current_plan"),
     )
 

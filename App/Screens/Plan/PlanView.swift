@@ -15,6 +15,8 @@ struct PlanView: View {
     @State private var weekShift = 0
     @State private var rebuilding = false
     @State private var liveLaunch: LiveSetLaunch?
+    @State private var editing: PlannedSession?
+    @State private var addingSession = false
 
     private static let dayLetters = ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"]
     private static var calendar: Calendar { TrainingPlan.calendar }
@@ -50,7 +52,12 @@ struct PlanView: View {
                     if let session = selected {
                         let adjustment = store.adjustment(for: session)
                         SessionDetail(adjustment: adjustment, restored: store.isRestored(session),
-                                      onToggle: { store.toggleOriginal(session) }) { start($0, in: adjustment.session) }
+                                      onToggle: { store.toggleOriginal(session) }, onEdit: { editing = session },
+                                      onRestore: { store.edit(.restore, sessionId: session.id) }) { start($0, in: adjustment.session) }
+                        Button { addingSession = true } label: {
+                            Label("Dodaj własną sesję", systemImage: "plus").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.formaGlass)
                     } else {
                         emptyState
                     }
@@ -61,6 +68,9 @@ struct PlanView: View {
             }
             .scrollIndicators(.hidden)
         }
+        .overlay(alignment: .bottom) { undoBar }
+        .sheet(item: $editing) { SessionEditSheet(sessionId: $0.id) }
+        .sheet(isPresented: $addingSession) { AddSessionSheet() }
         .fullScreenCover(item: $liveLaunch) { launch in
             LiveSetFlow(exercise: launch.exercise, spec: launch.spec, totalSets: launch.sets) { liveLaunch = nil }
         }
@@ -151,6 +161,23 @@ struct PlanView: View {
         .padding(FormaSpacing.xl).frame(maxWidth: .infinity, alignment: .leading).glassCard()
     }
 
+    /// "Cofnij" for the last change made by hand.
+    @ViewBuilder
+    private var undoBar: some View {
+        if let last = store.lastEdit {
+            HStack(spacing: FormaSpacing.m) {
+                Text(last.summary).formaStyle(.subheadline).foregroundStyle(FormaColor.ink)
+                Spacer()
+                Button("Cofnij") { store.undoLastEdit() }.foregroundStyle(FormaColor.voltText).formaStyle(.subheadline)
+                Button { store.dismissLastEdit() } label: { Image(systemName: "xmark") }
+                    .foregroundStyle(FormaColor.ink3).accessibilityLabel("Ukryj")
+            }
+            .padding(FormaSpacing.l).glassCard(radius: 20)
+            .padding(.horizontal, FormaSpacing.screen).padding(.bottom, 96)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
     private var emptyState: some View {
         Text("Nie masz jeszcze planu. Ułożymy go po onboardingu.")
             .formaStyle(.body).foregroundStyle(FormaColor.ink2)
@@ -169,6 +196,8 @@ private struct SessionDetail: View {
     let adjustment: PlanAdjustment
     let restored: Bool
     let onToggle: () -> Void
+    let onEdit: () -> Void
+    let onRestore: () -> Void
     let onStart: (PlannedExercise) -> Void
 
     private var session: PlannedSession { adjustment.session }
@@ -179,7 +208,10 @@ private struct SessionDetail: View {
             HStack {
                 SectionLabel(Self.label(for: session))
                 Spacer()
-                if adapted {
+                if session.status == .skipped {
+                    Label("Pominięta", systemImage: "forward.end").font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(FormaColor.ink3)
+                } else if adapted {
                     Label(adjustment.isRestDay ? "Odpoczynek" : "Lżejsza dziś", systemImage: "slider.horizontal.3")
                         .font(.system(size: 13, weight: .bold)).foregroundStyle(FormaColor.moderateText)
                 }
@@ -193,10 +225,17 @@ private struct SessionDetail: View {
                 }
             }
             AdjustmentNote(adjustment: adjustment, restored: restored, onToggle: onToggle)
+            if session.status == .skipped {
+                Button(action: onRestore) { Text("Przywróć sesję").frame(maxWidth: .infinity) }.buttonStyle(.formaGlass)
+            } else if session.status != .done {
+                Button(action: onEdit) { Label("Edytuj sesję", systemImage: "slider.horizontal.3").frame(maxWidth: .infinity) }
+                    .buttonStyle(.formaGlass)
+            }
         }
         .padding(FormaSpacing.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
+        .opacity(session.status == .skipped ? 0.6 : 1)
     }
 
     private func row(_ item: PlannedExercise) -> some View {
