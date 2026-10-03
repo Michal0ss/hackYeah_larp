@@ -12,10 +12,10 @@ Budujemy aplikację na iPhone'a (SwiftUI): trener, plan treningowy i doradca w j
 
 | | Rola | Imię | iPhone / iOS | Xcode |
 |---|---|---|---|---|
-| **Osoba 1** | Lead, UI i integracja | [uzupełnić] | [uzupełnić] | [uzupełnić] |
-| **Osoba 2** | Analiza ruchu | [uzupełnić] | [uzupełnić] | [uzupełnić] |
-| **Osoba 3** | Dane i reguły | [uzupełnić] | [uzupełnić] | [uzupełnić] |
-| **Osoba 4** | Plan i trener AI | [uzupełnić] | [uzupełnić] | [uzupełnić] |
+| **1** | Lead, UI i integracja | Maciek | [uzupełnić] | [uzupełnić] |
+| **2** | Analiza ruchu | Bartek | [uzupełnić] | [uzupełnić] |
+| **3** | Dane i reguły | Wiktor | [uzupełnić] | [uzupełnić] |
+| **4** | Plan i trener AI | Michał | [uzupełnić] | [uzupełnić] |
 
 Projekt Xcode zakłada **osoba z Xcode 26** (projekt zapisany w Xcode 27 może się nie otwierać w 26). Kto ma 27, nie zgadza się na „upgrade project format”. Założy go: **[uzupełnić]**.
 
@@ -44,7 +44,7 @@ Do następnej fazy przechodzimy, gdy spełniony jest jej warunek ukończenia, a 
 
 ## 5. Zadania na osoby
 
-### Osoba 1: Lead, UI i integracja
+### Maciek: Lead, UI i integracja
 
 **Teraz (przed 23:00):**
 - [ ] Konto na HackTribe i dostęp do Discorda HackYeah.
@@ -61,9 +61,9 @@ Do następnej fazy przechodzimy, gdy spełniony jest jej warunek ukończenia, a 
 - [ ] Integracja modułów, nagranie demo, slajdy (12.1), README dla jury, zgłoszenie na HackTribe.
 
 **Dostarcza innym:** kontrakty i DesignSystem (jako pierwsze).
-**Wsparcie:** po skończeniu przejmuje UI ekranu **Plan** od Osoby 4.
+**Wsparcie:** po skończeniu przejmuje UI ekranu **Plan** od Michała.
 
-### Osoba 2: Analiza ruchu
+### Bartek: Analiza ruchu
 
 **Teraz (przed 23:00):**
 - [ ] Kamera i podpis aplikacji sprawdzone na **pustej aplikacji testowej poza projektem**.
@@ -78,9 +78,9 @@ Do następnej fazy przechodzimy, gdy spełniony jest jej warunek ukończenia, a 
 - [ ] Ekrany **Analiza** (wybór, ustawienie telefonu, nagrywanie, jakość, przetwarzanie) i **Wynik**.
 - [ ] Testy jednostkowe scoringu na zapisanych `PoseFrame`.
 
-**Dostarcza innym:** `TechniqueResult` (najpierw makieta z prawdziwymi polami) dla Osób 1 i 3.
+**Dostarcza innym:** `TechniqueResult` (najpierw makieta z prawdziwymi polami) dla Maćka i Wiktora.
 
-### Osoba 3: Dane i reguły
+### Wiktor: Dane i reguły
 
 **Teraz (przed 23:00):**
 - [ ] Uprawnienie HealthKit sprawdzone na **pustej aplikacji testowej poza projektem** przy darmowym podpisie.
@@ -95,9 +95,9 @@ Do następnej fazy przechodzimy, gdy spełniony jest jej warunek ukończenia, a 
 - [ ] Ekrany **Opieka** i **Postępy** (Swift Charts).
 - [ ] Funkcje dla narzędzi czatu: `get_recovery_history` i `get_checkins`.
 
-**Dostarcza innym:** `DailyRecommendation` (najpierw makieta) dla Osób 1 i 4.
+**Dostarcza innym:** `DailyRecommendation` (najpierw makieta) dla Maćka i Michała.
 
-### Osoba 4: Plan i trener AI
+### Michał: Plan i trener AI
 
 **Teraz (przed 23:00):**
 - [ ] Konto i klucz do Claude API z **limitem wydatków**, jedno zapytanie testowe poza projektem, klucz trzymany poza repozytorium.
@@ -108,19 +108,19 @@ Do następnej fazy przechodzimy, gdy spełniony jest jej warunek ukończenia, a 
 - [ ] Klient API w Swifcie (`URLSession`, streaming, pętla narzędzi). Adres wywołań modelu jako jedno ustawienie w konfiguracji.
 - [ ] `PlanGenerator`: model zwraca JSON, nasz kod **waliduje** (istniejące `id`, sprzęt, limity), a przy błędzie używa szablonu.
 - [ ] `CoachChat`: instrukcja systemowa (3.6, 7.6), narzędzia (`get_training_plan`, `get_recovery_history`, `get_checkins`, `get_technique_results`, `get_exercise_info`), **zgoda na dane zdrowotne** (`DataConsent`).
-- [ ] Ekrany **Plan** i **Trener** (zgoda, pusta rozmowa, trener pisze, błąd). Plan może przejąć Osoba 1.
+- [ ] Ekrany **Plan** i **Trener** (zgoda, pusta rozmowa, trener pisze, błąd). Plan może przejąć Maciek.
 - [ ] Testy walidatora planu i kilka testowych pytań do czatu (ból, uraz, „czy ćwiczyć dziś”).
 
-**Dostarcza innym:** `TrainingPlan` i dzisiejszą sesję dla Osób 1 i 3.
+**Dostarcza innym:** `TrainingPlan` i dzisiejszą sesję dla Maćka i Wiktora.
 
 ## 6. Zależności
 
 | Od | Do | Co |
 |---|---|---|
-| Osoba 1 | wszyscy | kontrakty i DesignSystem |
-| Osoba 2 | Osoby 1 i 3 | `TechniqueResult` (makieta, potem prawdziwy) |
-| Osoba 3 | Osoby 1 i 4 | `DailyRecommendation` i funkcje narzędzi czatu |
-| Osoba 4 | Osoby 1 i 3 | `TrainingPlan` i dzisiejsza sesja |
+| Maciek | wszyscy | kontrakty i DesignSystem |
+| Bartek | Maćka i Wiktora | `TechniqueResult` (makieta, potem prawdziwy) |
+| Wiktor | Maćka i Michała | `DailyRecommendation` i funkcje narzędzi czatu |
+| Michał | Maćka i Wiktora | `TrainingPlan` i dzisiejsza sesja |
 
 **Zasada:** każdy publikuje najpierw makietę swojego typu (z prawdziwymi polami), żeby nikt nie czekał na gotowy moduł.
 
@@ -151,18 +151,18 @@ Wyższy zawsze przed niższym (PROJECT.md, 4.2):
 
 ## 10. Status
 
-| Obszar | Osoba | Status | Uwagi |
+| Obszar | Kto | Status | Uwagi |
 |---|---|---|---|
-| Projekt i kontrakty | 1 | do zrobienia | |
-| DesignSystem i nawigacja | 1 | do zrobienia | |
-| Dziś / Check-in / Onboarding | 1 | do zrobienia | |
-| Analiza ruchu i scoring | 2 | do zrobienia | |
-| Ekrany Analiza i Wynik | 2 | do zrobienia | |
-| Dane, HealthKit, silnik reguł | 3 | do zrobienia | |
-| Opieka i Postępy | 3 | do zrobienia | |
-| Katalog i plan | 4 | do zrobienia | |
-| Czat trenera | 4 | do zrobienia | |
-| Slajdy, demo, README, zgłoszenie | 1 | do zrobienia | |
+| Projekt i kontrakty | Maciek | do zrobienia | |
+| DesignSystem i nawigacja | Maciek | do zrobienia | |
+| Dziś / Check-in / Onboarding | Maciek | do zrobienia | |
+| Analiza ruchu i scoring | Bartek | do zrobienia | |
+| Ekrany Analiza i Wynik | Bartek | do zrobienia | |
+| Dane, HealthKit, silnik reguł | Wiktor | do zrobienia | |
+| Opieka i Postępy | Wiktor | do zrobienia | |
+| Katalog i plan | Michał | do zrobienia | |
+| Czat trenera | Michał | do zrobienia | |
+| Slajdy, demo, README, zgłoszenie | Maciek | do zrobienia | |
 
 ## 11. Otwarte sprawy
 
