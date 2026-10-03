@@ -48,6 +48,8 @@ targets:
         product: Onboarding
       - package: Core
         product: API
+      - package: Core
+        product: CoachVoice
     info:
       path: App/Info.plist
       properties:
