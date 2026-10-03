@@ -1,45 +1,38 @@
 import SwiftUI
+import LiveSet
 import DesignSystem
 
-/// Step 2: how to position the phone before recording (PROJECT.md 5.3.2).
+/// Step 2: how to position the phone before recording (PROJECT.md 5.3.2), tailored to the chosen
+/// exercise (squat/push-up/pull-up each need a different setup — reuses the live set's own copy).
 struct FramingStepView: View {
     let model: AnalysisModel
 
-    private let tips: [(symbol: String, text: String)] = [
-        ("arrow.left.and.right", "Ustaw telefon bokiem do siebie, nie z przodu"),
-        ("ruler", "Na wysokości bioder, 2–3 metry od ćwiczącego"),
-        ("figure.stand", "Cała sylwetka w kadrze — od głowy po kostki"),
-        ("person.fill", "Jedna osoba w kadrze, bez innych w tle"),
-    ]
+    private var symbol: String {
+        switch model.kind {
+        case .squat: return "figure.strengthtraining.traditional"
+        case .pushup: return "figure.cross.training"
+        case .pullup: return "figure.climbing"
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.l) {
-            Text("Ustaw telefon")
+            Text("Ustaw telefon — \(model.kind.title.lowercased())")
                 .formaStyle(.title)
                 .foregroundStyle(FormaColor.ink)
 
-            Image(systemName: "figure.strengthtraining.traditional")
+            Image(systemName: symbol)
                 .font(.system(size: 64, weight: .semibold))
                 .foregroundStyle(FormaColor.voltText)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, FormaSpacing.xl)
                 .glassCard()
 
-            VStack(alignment: .leading, spacing: FormaSpacing.m) {
-                ForEach(tips, id: \.text) { tip in
-                    HStack(spacing: FormaSpacing.m) {
-                        Image(systemName: tip.symbol)
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(FormaColor.voltText)
-                            .frame(width: 28)
-                        Text(tip.text)
-                            .formaStyle(.callout)
-                            .foregroundStyle(FormaColor.ink2)
-                    }
-                }
-            }
-            .padding(FormaSpacing.l)
-            .glassCard()
+            Text(model.kind.setupHint)
+                .formaStyle(.callout)
+                .foregroundStyle(FormaColor.ink2)
+                .padding(FormaSpacing.l)
+                .glassCard()
 
             Button {
                 model.proceedFromFraming()

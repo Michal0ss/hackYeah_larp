@@ -68,7 +68,8 @@ public enum MovementKind: String, Codable, CaseIterable, Sendable {
         }
     }
 
-    func exerciseRep(_ tracked: RepTempo) -> RepTempo {
+    /// Public: Analysis reuses this to match the live set's eccentric/concentric swap for pull-ups.
+    public func exerciseRep(_ tracked: RepTempo) -> RepTempo {
         guard isReversed else { return tracked }
         var rep = tracked
         rep.eccentric = tracked.concentric
@@ -76,7 +77,9 @@ public enum MovementKind: String, Codable, CaseIterable, Sendable {
         return rep
     }
 
-    var defaultAssessor: TechniqueAssessing {
+    /// Public: Analysis scores push-up/pull-up with the exact same assessor the live set uses, so a
+    /// file analysis and a live set never show two different scores for the same exercise.
+    public var defaultAssessor: TechniqueAssessing {
         switch self {
         case .squat: return BasicSquatAssessor()
         case .pushup: return BasicPushupAssessor()

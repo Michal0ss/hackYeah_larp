@@ -2,6 +2,8 @@ import SwiftUI
 import Charts
 import Analysis
 import Contracts
+import LiveSet
+import Insights
 import DesignSystem
 
 /// Step 6: score, knee-angle chart, skeleton on the deepest frame, findings and a substitute exercise
@@ -11,6 +13,10 @@ struct ResultStepView: View {
     @Environment(AppRouter.self) private var router
     let model: AnalysisModel
 
+    /// Same care signal as Today (Wiktor's `ProgressModel`/`CarePathway`) — reused, not re-derived.
+    @State private var careModel = ProgressModel()
+    @State private var showingCare = false
+
     var body: some View {
         if let result = model.result {
             VStack(alignment: .leading, spacing: FormaSpacing.l) {
@@ -18,10 +24,13 @@ struct ResultStepView: View {
                 if result.isSimulated {
                     SimulatedBadge()
                 }
-                chartCard
-                componentScoresCard(result)
+                if model.kind == .squat { chartCard }
+                if !result.componentScores.isEmpty { componentScoresCard(result) }
                 findingsCard(result)
                 substituteCard(result)
+                if let care = careModel.care {
+                    careCard(care)
+                }
 
                 Button {
                     save(result)
@@ -35,9 +44,34 @@ struct ResultStepView: View {
                 }
                 .buttonStyle(.formaGlass)
             }
+            .task { await careModel.load(services: store.services) }
+            .sheet(isPresented: $showingCare) {
+                if let care = careModel.care {
+                    CareView(assessment: care, simulated: careModel.careSimulated)
+                }
+            }
         } else {
             Text("Brak wyniku.").formaStyle(.callout).foregroundStyle(FormaColor.ink3)
         }
+    }
+
+    private func careCard(_ care: CareAssessment) -> some View {
+        Button {
+            showingCare = true
+        } label: {
+            HStack(spacing: FormaSpacing.m) {
+                Image(systemName: "cross.case.fill").foregroundStyle(FormaColor.restText)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Warto rozważyć konsultację").formaStyle(.callout).fontWeight(.semibold).foregroundStyle(FormaColor.ink)
+                    Text(care.flag.reason).formaStyle(.footnote).foregroundStyle(FormaColor.ink3).lineLimit(2)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundStyle(FormaColor.ink3)
+            }
+            .padding(FormaSpacing.l)
+            .glassCard()
+        }
+        .buttonStyle(.formaPress)
     }
 
     private func scoreCard(_ result: TechniqueResult) -> some View {

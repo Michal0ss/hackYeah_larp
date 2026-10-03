@@ -9,7 +9,7 @@ final class RepAnalyzerTests: XCTestCase {
         sim.reps = 4
         sim.depthFactors = [1.0, 1.0, 1.0, 1.0]
 
-        let reps = RepAnalyzer.analyze(frames: sim.frames())
+        let reps = RepAnalyzer.analyze(frames: sim.frames()).reps
 
         XCTAssertEqual(reps.count, 4)
         XCTAssertTrue(reps.allSatisfy(\.hipBelowKnee), "full-depth reps should count as hip below knee")
@@ -26,7 +26,7 @@ final class RepAnalyzerTests: XCTestCase {
         sim.depthFactors = [0.4, 0.4, 0.4]
         sim.eccentricFactors = [1.0, 1.0, 1.0]
 
-        let reps = RepAnalyzer.analyze(frames: sim.frames())
+        let reps = RepAnalyzer.analyze(frames: sim.frames()).reps
 
         XCTAssertEqual(reps.count, 3)
         XCTAssertTrue(reps.allSatisfy { !$0.hipBelowKnee }, "a shallow squat should not reach hip-below-knee")
@@ -41,7 +41,7 @@ final class RepAnalyzerTests: XCTestCase {
         sim.depthFactors = [1.0]
         sim.eccentricFactors = [1.0]
 
-        let reps = RepAnalyzer.analyze(frames: sim.frames())
+        let reps = RepAnalyzer.analyze(frames: sim.frames()).reps
 
         XCTAssertEqual(reps.count, 1)
         XCTAssertEqual(reps[0].descentSeconds, 2.0, accuracy: 0.3)
@@ -49,6 +49,14 @@ final class RepAnalyzerTests: XCTestCase {
     }
 
     func testNoFramesProduceNoReps() {
-        XCTAssertEqual(RepAnalyzer.analyze(frames: []).count, 0)
+        XCTAssertEqual(RepAnalyzer.analyze(frames: []).reps.count, 0)
+    }
+
+    func testPushupKindUsesNeckDepthAndDefaultAssessor() {
+        // A minimal synthetic push-up isn't worth building (the geometry is Michał's); this just
+        // checks the kind parameter is threaded through without crashing on an empty/short clip.
+        let result = RepAnalyzer.analyze(frames: [], kind: .pushup)
+        XCTAssertTrue(result.reps.isEmpty)
+        XCTAssertTrue(result.bottomFrames.isEmpty)
     }
 }

@@ -2,18 +2,28 @@ import Contracts
 import Foundation
 import LiveSet
 
-/// Splits a recorded squat clip into repetitions and measures the angle/tempo metrics
-/// PROJECT.md 6.3 asks for. Reuses `SquatSignal`/`PhaseTracker` (the same rep-splitting LiveSet
-/// does live) instead of re-deriving the hip-depth signal from scratch.
+/// Splits a recorded clip into repetitions and measures the angle/tempo metrics PROJECT.md 6.3
+/// asks for. Reuses `SquatSignal`/`PhaseTracker` (the same rep-splitting LiveSet does live) instead
+/// of re-deriving the depth signal from scratch, so squat, push-up and pull-up all work the same way
+/// the live set already handles them (`MovementKind`).
 public enum RepAnalyzer {
-    /// Hip may be this far (frame fraction) above the knee and still count as deep enough.
+    /// Hip may be this far (frame fraction) above the knee and still count as deep enough. Squat only.
     public static var depthToleranceFrame = 0.02
 
-    public static func analyze(frames: [PoseFrame]) -> [RepMetrics] {
-        var signal = SquatSignal()
+    public struct Analysis {
+        public var reps: [RepMetrics]
+        /// One frame per rep — the deepest point for squat/push-up, the highest for pull-up — the
+        /// same "bottom frame" LiveSetEngine feeds to a `TechniqueAssessing` for live scoring.
+        public var bottomFrames: [PoseFrame]
+    }
+
+    public static func analyze(frames: [PoseFrame], kind: MovementKind = .squat) -> Analysis {
+        var signal = SquatSignal(kind: kind)
         var tracker = PhaseTracker()
         var results: [RepMetrics] = []
+        var bottomFrames: [PoseFrame] = []
         var currentRepFrames: [PoseFrame] = []
+        var repBest: (depth: Double, frame: PoseFrame)?
         var collecting = false
 
         for frame in frames {
@@ -23,20 +33,30 @@ public enum RepAnalyzer {
             if events.contains(where: { if case .phaseStarted(.eccentric, _) = $0 { return true }; return false }) {
                 collecting = true
                 currentRepFrames = []
+                repBest = nil
             }
-            if collecting { currentRepFrames.append(frame) }
+            if collecting {
+                currentRepFrames.append(frame)
+                if depth > (repBest?.depth ?? -1) { repBest = (depth, frame) }
+            }
 
             for event in events {
-                if case let .repCompleted(tempo) = event {
+                if case var .repCompleted(tempo) = event {
+                    tempo = kind.exerciseRep(tempo)
                     results.append(metrics(for: tempo, frames: currentRepFrames))
+                    if let best = repBest { bottomFrames.append(best.frame) }
                     collecting = false
                     currentRepFrames = []
+                    repBest = nil
                 }
             }
         }
-        return results
+        return Analysis(reps: results, bottomFrames: bottomFrames)
     }
 
+    /// Squat-specific per-rep metrics (knee angle, hip depth, torso lean). For push-up/pull-up only
+    /// `index`/`descentSeconds`/`ascentSeconds` are meaningful — their scoring comes from
+    /// `TechniqueScorer`'s reused `TechniqueAssessing` instead.
     private static func metrics(for tempo: RepTempo, frames: [PoseFrame]) -> RepMetrics {
         var minAngle = 180.0
         var leanAtBottom = 0.0
@@ -62,7 +82,7 @@ public enum RepAnalyzer {
                           ascentSeconds: tempo.concentric)
     }
 
-    /// Knee angle at every frame where hip/knee/ankle are all visible — for charting over time.
+    /// Knee angle at every frame where hip/knee/ankle are all visible — for charting over time (squat).
     public static func kneeAngleSeries(in frames: [PoseFrame]) -> [(time: Double, angle: Double)] {
         frames.compactMap { frame in
             guard let hip = frame.joint(.root) ?? frame.joint(.leftHip) ?? frame.joint(.rightHip),

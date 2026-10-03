@@ -34,7 +34,7 @@ struct CaptureStepView: View {
             Text("Nagraj albo wybierz film")
                 .formaStyle(.title)
                 .foregroundStyle(FormaColor.ink)
-            Text("Przysiady z boku, co najmniej 3 powtórzenia.")
+            Text("\(model.kind.title) z boku, co najmniej 3 powtórzenia.")
                 .formaStyle(.callout)
                 .foregroundStyle(FormaColor.ink2)
 
