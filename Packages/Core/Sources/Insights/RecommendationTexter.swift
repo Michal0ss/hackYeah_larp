@@ -12,13 +12,15 @@ import Contracts
 /// - **Cheap.** The same recommendation is fetched once (cached on the phone for a few days), concurrent calls share
 ///   one request, and a failed request is not repeated for a minute.
 public actor RecommendationTexter: RecommendationTexting {
+    /// `timeout` sits just above the backend's own text deadline (20 s) and below the API request timeout (25 s),
+    /// so a slow model still gets its answer through and the backend's template arrives before the phone gives up.
     public struct Options: Sendable {
         public var timeout: TimeInterval
         public var failureCooldown: TimeInterval
         public var maxCachedTexts: Int
         public var cacheDays: Int
 
-        public init(timeout: TimeInterval = 12, failureCooldown: TimeInterval = 60, maxCachedTexts: Int = 14,
+        public init(timeout: TimeInterval = 24, failureCooldown: TimeInterval = 60, maxCachedTexts: Int = 14,
                     cacheDays: Int = 3) {
             self.timeout = timeout
             self.failureCooldown = failureCooldown

@@ -2,7 +2,7 @@
 
     python scripts/check_texts.py            run the checks (used by `make check`)
     python scripts/check_texts.py --live     also send a few scenarios to the REAL model and print the results
-                                             (needs ANTHROPIC_API_KEY in the environment and costs a few cents)
+                                             (needs GEMINI_API_KEY in the environment)
 
 The corpus is the regression suite for `app/services/safety.py`: every phrase that slipped through once goes in
 BAD with the category that must catch it, every wording we want to keep goes in GOOD. Keep both lists growing.
@@ -159,7 +159,7 @@ def check_prompt_examples() -> None:
 class ScriptedGateway:
     """Returns what it is told to; stands in for the model."""
 
-    mode = "anthropic"
+    mode = "scripted"
 
     def __init__(self, answer: AiText | None = None, error: Exception | None = None):
         self.answer, self.error = answer, error
@@ -254,13 +254,13 @@ def check_flow() -> None:
 def live() -> int:
     import os
 
-    from app.ai.gateway import AnthropicGateway
-
-    if not os.environ.get("ANTHROPIC_API_KEY") and not os.environ.get("FORMA_ANTHROPIC_API_KEY"):
-        print("--live needs ANTHROPIC_API_KEY in the environment.", file=sys.stderr)
+    if not os.environ.get("GEMINI_API_KEY") and not os.environ.get("FORMA_GEMINI_API_KEY"):
+        print("--live needs GEMINI_API_KEY in the environment.", file=sys.stderr)
         return 2
-    settings = Settings(_env_file=None, ai_mode="anthropic", app_tokens=[])
-    gateway = AnthropicGateway(settings)
+    from app.main import build_gateway
+
+    settings = Settings(_env_file=None, ai_mode="gemini", app_tokens=[])
+    gateway = build_gateway(settings)
 
     async def run() -> int:
         bad = 0

@@ -334,6 +334,13 @@ final class RecommendationTexterTests: XCTestCase {
         XCTAssertTrue(results.allSatisfy { $0.source == .ai })
     }
 
+    func testDefaultTimeoutSitsBetweenTheBackendDeadlineAndTheRequestTimeout() {
+        // Backend text deadline is 20 s, FormaAPI.recommendationText times out at 25 s.
+        let timeout = RecommendationTexter.Options().timeout
+        XCTAssertGreaterThan(timeout, 20)
+        XCTAssertLessThan(timeout, 25)
+    }
+
     func testLocalTextIsAvailableWithoutAwaiting() {
         let t = texter(FakeFetcher(.fail)).localText(for: Fixtures.prototype)
         XCTAssertEqual(t, EngineText.make(for: Fixtures.prototype))
