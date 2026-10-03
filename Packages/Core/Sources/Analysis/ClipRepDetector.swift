@@ -218,19 +218,9 @@ public enum ClipRepDetector {
 
     // MARK: - Frames at the extremes
 
-    /// Within `radius` seconds of `time`: a frame at the bent end (wantMin) or the extended end of the exercise's joint
-    /// angle. Not the single most extreme frame but the one a quarter in from that end, so a one or two frames long
-    /// tracking glitch cannot become the "deepest point". Nil when no frame there shows the joints.
     private static func extremeFrame(in frames: [PoseFrame], around time: Double, radius: Double,
                                      kind: MovementKind, wantMin: Bool) -> PoseFrame? {
-        var candidates: [(frame: PoseFrame, angle: Double)] = []
-        for frame in frames where abs(frame.time - time) <= radius {
-            if let angle = kind.primaryAngle(in: frame, minConfidence: 0.15) { candidates.append((frame, angle)) }
-        }
-        guard !candidates.isEmpty else { return nil }
-        candidates.sort { $0.angle < $1.angle }
-        let rank = Int((0.25 * Double(candidates.count - 1)).rounded())
-        return wantMin ? candidates[rank].frame : candidates[candidates.count - 1 - rank].frame
+        kind.representativeFrame(in: frames, around: time, radius: radius, wantMin: wantMin)
     }
 
     // MARK: - Filters

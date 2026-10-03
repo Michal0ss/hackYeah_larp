@@ -88,3 +88,32 @@ public extension MovementKind {
         }
     }
 }
+
+public extension MovementKind {
+    /// A frame near `time` (within `radius` seconds) at the bent end (`wantMin`: the working end of a squat, a push-up
+    /// and a pull-up) or at the extended end (the start position) of the exercise's joint angle.
+    ///
+    /// It is not the single most extreme frame but the one a quarter in from that end, so a tracking glitch of one or
+    /// two frames cannot become the "deepest point". Nil when no frame there shows the joints.
+    func representativeFrame(in frames: [PoseFrame], around time: Double, radius: Double, wantMin: Bool,
+                             minConfidence: Double = 0.15) -> PoseFrame? {
+        var candidates: [(frame: PoseFrame, angle: Double)] = []
+        for frame in frames where abs(frame.time - time) <= radius {
+            if let angle = primaryAngle(in: frame, minConfidence: minConfidence) { candidates.append((frame, angle)) }
+        }
+        guard !candidates.isEmpty else { return nil }
+        candidates.sort { $0.angle < $1.angle }
+        let rank = Int((0.25 * Double(candidates.count - 1)).rounded())
+        return wantMin ? candidates[rank].frame : candidates[candidates.count - 1 - rank].frame
+    }
+}
+
+public extension MovementKind {
+    /// Whether the joint that defines the exercise (knee, elbow) bends by at least `degrees` between the start position
+    /// and the working end. Nil when the joint cannot be measured in one of the frames.
+    func bends(from start: PoseFrame, to bottom: PoseFrame, atLeast degrees: Double, minConfidence: Double = 0.15) -> Bool? {
+        guard let a = primaryAngle(in: start, minConfidence: minConfidence),
+              let b = primaryAngle(in: bottom, minConfidence: minConfidence) else { return nil }
+        return abs(a - b) >= degrees
+    }
+}

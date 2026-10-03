@@ -45,12 +45,15 @@ final class LiveSetSession {
         #endif
         self.source = source
         self.isFrontCamera = UserDefaults.standard.bool(forKey: Self.frontCameraKey)
+        let reference = AngleReference(values: ContentRepository.shared.numbers("scoring", "angles"))
         self.engine = LiveSetEngine(exerciseId: exercise.id, spec: spec, setIndex: setIndex,
                                     voice: BankedCoachVoice(), kind: kind,
-                                    assessor: kind.assessor(reference: AngleReference(values: ContentRepository.shared.numbers("scoring", "angles"))),
+                                    assessor: kind.assessor(reference: reference),
                                     isSimulated: source == .simulation,
                                     trackerConfig: PhaseTrackerConfig(values: ContentRepository.shared.numbers("tempo", "phaseTracker")),
-                                    cooldownReps: ContentRepository.shared.numbers("tempo", "policy")["cooldownReps"].map(Int.init))
+                                    cooldownReps: ContentRepository.shared.numbers("tempo", "policy")["cooldownReps"].map(Int.init),
+                                    reference: reference,
+                                    minBend: ContentRepository.shared.numbers("scoring", "clip")["minAngleChange"] ?? 20)
     }
 
     func start() {

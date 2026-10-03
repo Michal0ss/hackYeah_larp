@@ -21,16 +21,6 @@ public protocol TechniqueAssessing: Sendable {
     /// not use them falls back to `assess(bottomFrames:)`.
     func assess(bottomFrames: [PoseFrame], startFrames: [PoseFrame]) -> TechniqueAssessment
 
-    /// Whether this single frame plausibly is the bottom/peak of a repetition of *this* exercise —
-    /// not just "the body moved enough", which is all the depth signal (`PhaseTracker`) can tell on
-    /// its own. Checks only the one shape that defines the exercise (knee bend, elbow bend, chin
-    /// over the bar), not the finer form points `assess` scores, so an ugly-but-real rep still
-    /// counts and only gets marked down afterwards, not rejected outright.
-    ///
-    /// `nil` means the needed joints weren't visible (occlusion, bad framing): callers should not
-    /// reject a repetition just because they couldn't check, only when they checked and the shape
-    /// clearly doesn't match.
-    func looksLikeRep(at frame: PoseFrame) -> Bool?
 }
 
 public extension TechniqueAssessing {
@@ -59,12 +49,6 @@ public struct BasicSquatAssessor: TechniqueAssessing {
         kneeParallelMax = reference.squatKneeParallelMax
     }
 
-    public func looksLikeRep(at frame: PoseFrame) -> Bool? {
-        guard let hip = frame.joint(.root) ?? frame.joint(.leftHip) ?? frame.joint(.rightHip),
-            let knee = frame.joint(.leftKnee) ?? frame.joint(.rightKnee)
-        else { return nil }
-        return hip.y >= knee.y - depthTolerance
-    }
 
     public func assess(bottomFrames: [PoseFrame]) -> TechniqueAssessment {
         var deepEnough = 0

@@ -23,10 +23,6 @@ public struct BasicPushupAssessor: TechniqueAssessing {
         idealElbowAngle = reference.pushupElbowIdeal
     }
 
-    public func looksLikeRep(at frame: PoseFrame) -> Bool? {
-        guard let side = Self.bestSide(frame) else { return nil }
-        return frame.angle(side.shoulder, side.elbow, side.wrist) <= maxElbowAngle
-    }
 
     public func assess(bottomFrames: [PoseFrame]) -> TechniqueAssessment {
         assess(bottomFrames: bottomFrames, startFrames: [])
@@ -129,12 +125,6 @@ public struct BasicPullupAssessor: TechniqueAssessing {
         minHangElbowAngle = reference.pullupElbowHangMin
     }
 
-    public func looksLikeRep(at frame: PoseFrame) -> Bool? {
-        guard let nose = frame.joint(.nose) else { return nil }
-        let wrists = [frame.joint(.leftWrist), frame.joint(.rightWrist)].compactMap { $0 }
-        guard let wristY = wrists.map(\.y).min() else { return nil }
-        return nose.y < wristY - noseAboveWristsMargin
-    }
 
     public func assess(bottomFrames: [PoseFrame]) -> TechniqueAssessment {
         assess(bottomFrames: bottomFrames, startFrames: [])
