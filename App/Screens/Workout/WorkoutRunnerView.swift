@@ -81,7 +81,8 @@ struct WorkoutRunnerView: View {
                 LiveSetView(exercise: exercise, spec: tempo, setIndex: model.run.setIndex, totalSets: planned.sets,
                             onNextSet: {}, onClose: { confirmExit = true },
                             onFinished: { model.completeLive($0) },
-                            onAskCoach: { coachContext = model.coachContext(screen: .liveSet) })
+                            onAskCoach: { coachContext = model.coachContext(screen: .liveSet) },
+                            onSkipVideo: { model.skipVideo(planned) })
                     .id(key)
             } else {
                 ManualSetView(model: model, planned: planned, exercise: exercise,
@@ -131,6 +132,16 @@ private struct WorkoutOverviewView: View {
                 .padding(FormaSpacing.l).frame(maxWidth: .infinity, alignment: .leading).glassCard()
                 Button(action: onStart) { Text("Zacznij trening").frame(maxWidth: .infinity) }
                     .buttonStyle(.formaPrimary)
+                if model.session.exercises.contains(where: model.canAnalyse) {
+                    Toggle(isOn: Binding(get: { model.allVideoSkipped }, set: { model.setVideoSkippedForAll($0) })) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Pomiń analizę wideo").formaStyle(.headline).foregroundStyle(FormaColor.ink)
+                            Text("Wyniki wpiszesz ręcznie, bez kamery.").formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
+                        }
+                    }
+                    .tint(FormaColor.volt)
+                    .padding(FormaSpacing.l).glassCard(radius: 22)
+                }
                 Button(action: onGuide) {
                     Label("Przeprowadź mnie przez trening", systemImage: "figure.walk.motion").frame(maxWidth: .infinity)
                 }
