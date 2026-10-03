@@ -197,10 +197,11 @@ def describe_snapshot(snapshot: TrainingSnapshot, content: ContentStore, health_
         lines.append(f"- Plan tygodnia: {PLAN_SOURCE_LABELS[snapshot.plan_source]}.")
     session = snapshot.next_session
     if session:
+        day = WEEKDAYS[session.weekday - 1]
         when = (
-            "Dzisiejsza sesja"
+            f"Dzisiejsza sesja ({day}, dzień {session.weekday})"
             if snapshot.next_session_is_today
-            else (f"Dziś nie ma sesji; najbliższa to {WEEKDAYS[session.weekday - 1]}")
+            else f"Dziś nie ma sesji; najbliższa to {day} (dzień {session.weekday})"
         )
         lines.append(f"- {when}: {_session_line(session, content, health_consent)}")
         if session.adaptation_note and health_consent:
@@ -211,7 +212,10 @@ def describe_snapshot(snapshot: TrainingSnapshot, content: ContentStore, health_
     others = [s for s in sorted(snapshot.week, key=lambda s: s.weekday) if s.weekday != shown]
     if others:
         lines.append("- Pozostałe sesje w tygodniu:")
-        lines += [f"  {WEEKDAYS_SHORT[s.weekday - 1]}: {_session_line(s, content, health_consent)}" for s in others]
+        lines += [
+            f"  {WEEKDAYS_SHORT[s.weekday - 1]} (dzień {s.weekday}): {_session_line(s, content, health_consent)}"
+            for s in others
+        ]
     if snapshot.last_technique:
         technique = describe_technique(snapshot.last_technique, content)
         if technique:

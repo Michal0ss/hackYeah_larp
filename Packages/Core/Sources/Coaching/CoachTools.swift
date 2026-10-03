@@ -11,12 +11,16 @@ public struct CoachToolOutput: Equatable, Sendable {
     public var sourceLabel: String?
     /// True when the data is sample data; the answer is then marked "Dane przykładowe".
     public var isSimulated: Bool
+    /// A change of the plan the coach proposed. Shown to the user as a card; the plan stays as it is until they accept.
+    public var proposal: PlanChangeProposal?
 
-    public init(content: String, isError: Bool = false, sourceLabel: String? = nil, isSimulated: Bool = false) {
+    public init(content: String, isError: Bool = false, sourceLabel: String? = nil, isSimulated: Bool = false,
+                proposal: PlanChangeProposal? = nil) {
         self.content = content
         self.isError = isError
         self.sourceLabel = sourceLabel
         self.isSimulated = isSimulated
+        self.proposal = proposal
     }
 }
 
@@ -32,6 +36,8 @@ public enum CoachToolName {
     public static let recoverySummary = "get_recovery_summary"
     public static let checkIns = "get_checkins"
     public static let sessionFeedback = "get_session_feedback"
+    /// Not a health tool and not a writer: it only produces a proposal for the user to accept.
+    public static let proposePlanChange = "propose_plan_change"
 
     /// Tools that read health data: they answer only with the user's consent.
     public static let health: Set<String> = [todayRecommendation, recoverySummary, checkIns, sessionFeedback]
@@ -49,6 +55,7 @@ public struct CoachTools: CoachToolRunning {
     private let technique: TechniqueHistoryProviding
     private let recommendation: RecommendationProviding
     private let feedback: SessionFeedbackStoring?
+    private let proposer: PlanChangeProposer?
     private let hasHealthConsent: @Sendable () -> Bool
     private let calendar: Calendar
     private let now: @Sendable () -> Date
@@ -56,7 +63,7 @@ public struct CoachTools: CoachToolRunning {
     public init(plan: PlanProviding, catalog: ExerciseCatalogProviding, recovery: RecoveryProviding,
                 checkIns: CheckInProviding, technique: TechniqueHistoryProviding,
                 recommendation: RecommendationProviding, feedback: SessionFeedbackStoring? = nil,
-                hasHealthConsent: @escaping @Sendable () -> Bool,
+                proposer: PlanChangeProposer? = nil, hasHealthConsent: @escaping @Sendable () -> Bool,
                 calendar: Calendar = .current, now: @escaping @Sendable () -> Date = { Date() }) {
         self.plan = plan
         self.catalog = catalog
@@ -65,6 +72,7 @@ public struct CoachTools: CoachToolRunning {
         self.technique = technique
         self.recommendation = recommendation
         self.feedback = feedback
+        self.proposer = proposer
         self.hasHealthConsent = hasHealthConsent
         self.calendar = calendar
         self.now = now
@@ -81,6 +89,9 @@ public struct CoachTools: CoachToolRunning {
         case CoachToolName.todayRecommendation: return await todayRecommendation()
         case CoachToolName.recoverySummary: return await recoverySummary(days: Self.days(input, default: 7))
         case CoachToolName.checkIns: return await recentCheckIns(days: Self.days(input, default: 7))
+        case CoachToolName.proposePlanChange:
+            return await proposer?.propose(input) ?? CoachToolOutput(
+                content: Self.json(["error": .string("Zmiany w planie nie są teraz dostępne.")]), isError: true)
         case CoachToolName.sessionFeedback: return await recentSessionFeedback(limit: Self.clamp(input["limit"]?.intValue ?? 3, 1, 10))
         default:
             return CoachToolOutput(content: Self.json(["error": .string("Nieznane narzędzie.")]), isError: true)

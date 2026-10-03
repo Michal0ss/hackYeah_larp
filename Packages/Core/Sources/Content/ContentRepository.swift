@@ -29,7 +29,7 @@ public final class ContentRepository: ExerciseCatalogProviding, @unchecked Senda
     private var configETag: String?
     private let cacheDirectory: URL?
     /// Bump when the Codable types of the cached content change: older caches are then ignored and refetched.
-    private static let cacheFormat = "4"
+    private static let cacheFormat = "5"
 
     /// `cacheDirectory` nil = no disk cache (handy for previews).
     public init(cacheDirectory: URL? = ContentRepository.defaultCacheDirectory()) {

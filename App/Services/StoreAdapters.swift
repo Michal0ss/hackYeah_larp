@@ -1,5 +1,7 @@
+import Coaching
 import Contracts
 import Foundation
+import Plan
 
 // The coach reads the same data the screens show. Plan, recommendation and profile live in `AppStore` (on the main
 // actor); these adapters expose them through the service protocols the coach tools are written against.
@@ -36,5 +38,18 @@ struct StoreRecommendationProvider: RecommendationProviding, @unchecked Sendable
 
     func todayRecommendation() async -> DailyRecommendation {
         await MainActor.run { store.recommendation }
+    }
+}
+
+/// Makes the changes the user accepts on the coach's cards: edits the plan in `AppStore` and saves it.
+struct StorePlanChanger: PlanChangeApplying, @unchecked Sendable {
+    let store: AppStore
+
+    func apply(_ proposal: PlanChangeProposal) async -> Result<PlanChangeProposal, PlanChangeError> {
+        await MainActor.run { store.applyPlanChange(proposal) }
+    }
+
+    func undo(_ proposal: PlanChangeProposal) async -> Result<PlanChangeProposal, PlanChangeError> {
+        await MainActor.run { store.undoPlanChange(proposal) }
     }
 }

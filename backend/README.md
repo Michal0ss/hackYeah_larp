@@ -83,6 +83,12 @@ Tools are defined on the server (`app/ai/tools.py`) and executed by the **app** 
    `tool_result` block (`toolUseId`, `content` = JSON text, a summary only),
 3. the app posts again; the model answers.
 
+`propose_plan_change` is the one tool that is not a read, and it still never writes: the app turns the call into a
+card ("Zastosuj" / "Odrzuć") and the plan changes only when the user taps it. The server keeps only valid parts of
+the input (kind, weekdays 1 to 7, catalog ids, a replacement that fits the person's equipment, level and avoided
+movements, a short reason that passes the generated-text checks); the app checks the request against the real plan
+and answers the model with an error it can explain when the change is not possible.
+
 Tools that read health data (`get_today_recommendation`, `get_recovery_summary`, `get_checkins`,
 `get_session_feedback`) are offered only when `consent.health` is true. Without consent they are not in the model's
 tool list, health context is left out of the prompt, and a history that contains health tool results is rejected

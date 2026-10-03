@@ -90,6 +90,7 @@ class MockGateway:
     mode = "mock"
 
     _TOOL_KEYWORDS: tuple[tuple[str, str], ...] = (
+        (r"zamie[ńn]|zast[ąa]p|przenie[śs]|l[żz]ejsz\w+ (sesj|trening)", "propose_plan_change"),
         (r"po trening\w*|rpe|dyskomfort|boli|b[óo]l", "get_session_feedback"),
         (r"sen|spa[łl]|regener|zm[ęe]cz|hrv|t[ęe]tno|stres", "get_recovery_summary"),
         (r"technik|przysiad|forma|g[łl][ęe]bok", "get_technique_history"),
@@ -161,6 +162,15 @@ class MockGateway:
 
 
 def _mock_tool_input(name: str) -> dict[str, Any]:
+    if name == "propose_plan_change":
+        # Fits the sample plan in the app: Monday's session has a squat.
+        return {
+            "kind": "swap_exercise",
+            "weekday": 1,
+            "exerciseId": "squat",
+            "replacementExerciseId": "box_squat",
+            "reason": "Łatwiejszy wariant, gdy chcesz zacząć spokojniej.",
+        }
     if name == "get_recovery_summary":
         return {"days": 7}
     return {"limit": 3} if name == "get_session_feedback" else {}

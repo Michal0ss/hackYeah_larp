@@ -18,6 +18,8 @@ public struct CoachReply: Equatable, Sendable {
     public var isSimulated: Bool
     /// True when the model hit its length limit, so the answer may end abruptly.
     public var isTruncated: Bool
+    /// Changes of the plan the coach proposed while answering. Nothing is changed until the user accepts one.
+    public var proposals: [PlanChangeProposal] = []
 }
 
 public enum CoachEvent: Equatable, Sendable {
@@ -83,6 +85,9 @@ public struct CoachChat: Sendable {
         "Jak poprawić technikę?",
     ]
 
+    /// More proposals than this in one answer would be a wall of cards; the coach is told to wait for the user.
+    static let maxProposalsPerAnswer = 2
+
     /// The server accepts at most 40 messages, 4000 characters per text block and 40000 characters in total.
     static let maxHistoryMessages = 20
     static let maxTextCharacters = 3500
@@ -145,6 +150,7 @@ public struct CoachChat: Sendable {
         // The last set travels with the request, so the answer rests on it: say so under the answer.
         var sources: [String] = workout?.lastSet == nil ? [] : ["ostatnia seria"]
         var simulated = false
+        var proposals: [PlanChangeProposal] = []
 
         for round in 0...maxToolRounds {
             try Task.checkCancellation()
@@ -190,7 +196,7 @@ public struct CoachChat: Sendable {
                 let final = answer.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !final.isEmpty else { throw CoachChatError.emptyAnswer }
                 continuation.yield(.finished(CoachReply(text: final, sources: sources, isSimulated: simulated,
-                                                        isTruncated: stopReason == "max_tokens")))
+                                                        isTruncated: stopReason == "max_tokens", proposals: proposals)))
                 return
             }
             guard round < maxToolRounds else { throw CoachChatError.tooManyToolRounds }
@@ -201,7 +207,15 @@ public struct CoachChat: Sendable {
             for call in calls {
                 try Task.checkCancellation()
                 assistant.append(.toolUse(id: call.id, name: call.name, input: call.input))
-                let output = await tools.run(name: call.name, input: call.input)
+                var output = await tools.run(name: call.name, input: call.input)
+                if let proposal = output.proposal {
+                    if proposals.count < Self.maxProposalsPerAnswer {
+                        proposals.append(proposal)
+                    } else {
+                        output = CoachToolOutput(content: "{\"error\":\"Za dużo propozycji naraz. Poczekaj na decyzję użytkownika.\"}",
+                                                 isError: true)
+                    }
+                }
                 if let label = output.sourceLabel {
                     if !sources.contains(label) { sources.append(label) }
                     continuation.yield(.checking(label))
