@@ -33,10 +33,24 @@ public struct PoseFrame: Codable, Equatable, Sendable {
     /// Seconds from the start of the video.
     public var time: Double
     public var joints: [Joint]
+    /// How many people Vision found in this frame (the rest of the frame's data is for the best-scoring one).
+    public var peopleDetected: Int
 
-    public init(time: Double, joints: [Joint]) {
+    public init(time: Double, joints: [Joint], peopleDetected: Int = 1) {
         self.time = time
         self.joints = joints
+        self.peopleDetected = peopleDetected
+    }
+
+    private enum CodingKeys: String, CodingKey { case time, joints, peopleDetected }
+
+    /// Custom so `peopleDetected` defaults to 1 for any `PoseFrame` JSON saved before this field
+    /// existed (fixtures, caches) instead of failing to decode.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        time = try container.decode(Double.self, forKey: .time)
+        joints = try container.decode([Joint].self, forKey: .joints)
+        peopleDetected = try container.decodeIfPresent(Int.self, forKey: .peopleDetected) ?? 1
     }
 
     /// The joint if it was detected with at least `minConfidence`.
