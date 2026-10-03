@@ -33,10 +33,13 @@ public struct PoseFrame: Codable, Equatable, Sendable {
     /// Seconds from the start of the video.
     public var time: Double
     public var joints: [Joint]
+    /// How many people Vision found in this frame (the rest of the frame's data is for the best-scoring one).
+    public var peopleDetected: Int
 
-    public init(time: Double, joints: [Joint]) {
+    public init(time: Double, joints: [Joint], peopleDetected: Int = 1) {
         self.time = time
         self.joints = joints
+        self.peopleDetected = peopleDetected
     }
 
     /// The joint if it was detected with at least `minConfidence`.

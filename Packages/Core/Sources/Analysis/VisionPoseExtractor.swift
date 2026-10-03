@@ -58,8 +58,10 @@ public enum VisionPoseExtractor {
             let handler = VNImageRequestHandler(cvPixelBuffer: buffer, orientation: .up, options: [:])
             try? handler.perform([request])
 
-            let best = (request.results ?? []).max { score($0) < score($1) }
-            frames.append(PoseFrame(time: stamp - first, joints: best.map(joints(of:)) ?? []))
+            let results = request.results ?? []
+            let best = results.max { score($0) < score($1) }
+            frames.append(PoseFrame(time: stamp - first, joints: best.map(joints(of:)) ?? [],
+                                    peopleDetected: results.count))
         }
 
         if reader.status == .failed {
