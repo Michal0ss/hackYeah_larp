@@ -4,6 +4,7 @@ import Content
 import Contracts
 import Health
 import Insights
+import Plan
 
 /// The one place where real implementations replace the sample ones.
 /// Each owner changes only HIS line when his service is ready (small, conflict-free diffs):
@@ -40,7 +41,7 @@ struct AppServices {
     /// Health summaries go to the model only after the user agreed (`consent`, asked on the coach screen).
     var recommendationText: RecommendationTexting
     var healthAuthorization: HealthAuthorizing
-    /// Backend first, local fallback until Maciek's PlanGenerator replaces it.
+    /// Backend first, then the bundled template on the phone (Maciek's PlanGenerator); the plan carries a notice saying why.
     var planGenerator: PlanGenerating
 
     init() {
@@ -51,6 +52,6 @@ struct AppServices {
         recommendation = InsightRecommendationService(recovery: healthKit, checkIns: checkInStore,
                                                       technique: localHistory, catalog: ContentRepository.shared)
         recommendationText = RecommendationTexter(fetcher: BackendRecommendationFetcher(api: api), hasConsent: { [consent] in consent.isGranted })
-        planGenerator = BackendPlanGenerator(api: api, fallback: SampleServices())
+        planGenerator = PlanGenerator(backend: api, catalog: ContentRepository.shared)
     }
 }

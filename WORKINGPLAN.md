@@ -239,7 +239,7 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie. Stan: 3.10 
 |---|---|---|---|
 | Szkielet, kontrakty, DesignSystem, Dziś, Check-in, onboarding, Profil | Michał | w `main` | Profil: podgląd, usuwanie historii zdrowia i wszystkich danych, ponowne układanie planu; edycji pól jeszcze nie ma |
 | Klient API (`API`), `ContentRepository` (kopia treści, cache, ETag) | Michał | w `main` | po zmianie `content/` uruchom `python scripts/sync_content.py`; przy zmianie typów w cache podbij `cacheFormat` |
-| Integracja: silnik reguł na Dziś, korekta sesji (Plan, Dziś), teksty rekomendacji, zapis wyników, check-in | Michał, Wiktor | w `main` | `BackendPlanGenerator` (tymczasowy) do zastąpienia przez Maćka |
+| Integracja: silnik reguł na Dziś, korekta sesji (Plan, Dziś), teksty rekomendacji, zapis wyników, check-in | Michał, Wiktor | w `main` | `PlanGenerator` Maćka zastępuje tymczasowy `BackendPlanGenerator` (PR `feat/maciek-plan-generator`) |
 | Ekran Plan | Michał | w `main` | tydzień, szczegóły sesji, start serii, „Przywróć oryginał”; bez oznaczania wykonania (Maciek: magazyn planu) |
 | Seria na żywo: przysiad, pompka, podciąganie, diagnostyka, eksport póz | Michał | w `main` | sprawdzone na symulacji i headless; **kamera i iPhone nie sprawdzone**, progi to wartości startowe |
 | Backend: szkielet (Michał), AI na Gemini z kaskadą i testami (Maciek) | Michał, Maciek | w `main` | 58 testów, `make check`; plany 6/6 i czat 9/9 na prawdziwym modelu; 3.10: plan (`source: ai`) i strumień czatu sprawdzone `curl`-em na Vercelu z prawdziwym modelem; z telefonu nie sprawdzone |
@@ -251,7 +251,8 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie. Stan: 3.10 
 | HealthKit, `CheckInStore`, silnik reguł, `PlanAdjuster`, `CarePathway`, teksty rekomendacji | Wiktor | w `main` | dialog uprawnień sprawdzony na symulatorze; prawdziwe dane z zegarka i teksty z prawdziwym modelem nie sprawdzone |
 | Ekrany Postępy i Opieka | Wiktor | w `main` | wejście do Opieki z Dziś jest; z wyniku analizy w `feat/bartek-scoring-kinds` |
 | Czat trenera (zgoda, narzędzia lokalne, historia), ekran Trener | Maciek | w `main` | wycofanie zgody czyści rozmowę (#31); strumień z prawdziwym modelem sprawdzony `curl`-em na Vercelu (odpowiedź tekstowa i wywołanie narzędzia); z aplikacji i z telefonu nie sprawdzone |
-| Swift `PlanGenerator`, magazyn planu, treść katalogu | Maciek | do zrobienia | tematy w sekcji 5 |
+| Swift `PlanGenerator` (backend → sprawdzenie na telefonie → plan lokalny z szablonu, powód widoczny w UI) | Maciek | w PR `feat/maciek-plan-generator` | 32 testy, w tym zgodność z backendem na 99 profilach; sprawdzone na symulatorze z backendem i bez; niesprawdzone na telefonie |
+| Magazyn planu, treść katalogu | Maciek | do zrobienia | tematy w sekcji 5 |
 | Wątek „trener w przebiegu treningu”: kontrakty, sesja z planu, czat w treningu, feedback po treningu | Michał | do zrobienia | kontrakty gotowe w PR `feat/michal-contracts-session`; dziś `LiveSetView` prowadzi jedno ćwiczenie, nie całą sesję |
 | Tekst trenera po serii i po treningu, wpływ feedbacku na reguły | Wiktor | do zrobienia | `feat/wiktor-set-feedback-text`, `feat/wiktor-feedback-rules` |
 | Synchronizacja czatu z danymi aplikacji: stały kontekst (plan, ostatnia technika, moment treningu), narzędzie `get_session_feedback`, zgoda także dla planu zmienionego na dziś, nowa instrukcja trenera | Michał (na polecenie Leada, w modułach Maćka) | w PR `feat/michal-chat-sync` | sprawdzone: `swift test`, build, `make check`, zapytania do lokalnego backendu w trybie atrapy z i bez zgody; **nie sprawdzone na prawdziwym modelu** (Gemini jest tylko na Vercelu) |

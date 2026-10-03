@@ -30,7 +30,7 @@ let package = Package(
         // Wiktor: rule engine, plan adjuster, care pathway.
         .target(name: "Insights", dependencies: ["Contracts"]),
         // Maciek: plan generation, validation, templates.
-        .target(name: "Plan", dependencies: ["Contracts", "Content"], resources: [.process("Resources")]),
+        .target(name: "Plan", dependencies: ["Contracts", "Content", "API"], resources: [.process("Resources")]),
         // Maciek: API client, tools, chat.
         .target(name: "Coaching", dependencies: ["Contracts", "API", "Plan", "Content"]),
         // Maciek: exercise catalog and texts.
@@ -48,7 +48,7 @@ let package = Package(
         .testTarget(name: "AnalysisTests", dependencies: ["Analysis", "Contracts"]),
         .testTarget(name: "HealthTests", dependencies: ["Health", "Contracts"]),
         .testTarget(name: "InsightsTests", dependencies: ["Insights", "Contracts"]),
-        .testTarget(name: "PlanTests", dependencies: ["Plan", "Content", "Contracts"]),
+        .testTarget(name: "PlanTests", dependencies: ["Plan", "API", "Content", "Contracts"], resources: [.copy("Fixtures")]),
         .testTarget(name: "CoachingTests", dependencies: ["Coaching", "API", "Plan", "Content", "Contracts"]),
         .testTarget(name: "ContentTests", dependencies: ["Content", "Contracts"]),
     ]
