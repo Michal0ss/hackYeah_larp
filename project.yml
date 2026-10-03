@@ -1,0 +1,70 @@
+name: Forma
+options:
+  bundleIdPrefix: com.michal0ss
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  developmentLanguage: pl
+  xcodeVersion: "2600"
+configFiles:
+  Debug: Config/Base.xcconfig
+  Release: Config/Base.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+packages:
+  Core:
+    path: Packages/Core
+targets:
+  Forma:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes:
+          - Info.plist
+          - Forma.entitlements
+    dependencies:
+      - package: Core
+        product: Contracts
+      - package: Core
+        product: DesignSystem
+      - package: Core
+        product: Analysis
+      - package: Core
+        product: Health
+      - package: Core
+        product: Insights
+      - package: Core
+        product: Plan
+      - package: Core
+        product: Coaching
+      - package: Core
+        product: Content
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Forma
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        NSCameraUsageDescription: "Kamera służy do nagrywania ćwiczenia, które analizujemy na telefonie. Film nie opuszcza urządzenia."
+        NSHealthShareUsageDescription: "Odczytujemy sen, tętno spoczynkowe i zmienność rytmu serca, żeby dopasować rekomendację dnia."
+        NSLocationWhenInUseUsageDescription: "Lokalizacja pomaga znaleźć fizjoterapeutów w pobliżu."
+        AnthropicBaseURL: $(ANTHROPIC_BASE_URL)
+        AnthropicAPIKey: $(ANTHROPIC_API_KEY)
+    entitlements:
+      path: App/Forma.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID)
+        TARGET_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: $(DEVELOPMENT_TEAM)

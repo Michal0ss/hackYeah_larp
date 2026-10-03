@@ -1,0 +1,14 @@
+// Shared build settings. Do not put secrets here.
+// Per-developer overrides go to Config/Local.xcconfig (gitignored).
+// Secrets go to Config/Secrets.xcconfig (gitignored).
+
+APP_BUNDLE_ID = com.michal0ss.forma
+DEVELOPMENT_TEAM =
+
+// Model API. The base URL is one setting on purpose: later it can point to our proxy.
+// "//" starts a comment in xcconfig, hence the $() trick.
+ANTHROPIC_BASE_URL = https:/$()/api.anthropic.com
+ANTHROPIC_API_KEY =
+
+#include? "Local.xcconfig"
+#include? "Secrets.xcconfig"
