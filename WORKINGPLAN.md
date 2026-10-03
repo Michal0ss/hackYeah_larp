@@ -203,7 +203,7 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie.
 | Zapis check-inu | Wiktor | `feat/wiktor-checkin-store` | scalone (#6) | `CheckInStore` gotowy; podpięcie ekranu Check-in robi Michał (`AppStore.saveCheckIn` → `CheckInStore.standard`) |
 | Silnik reguł | Wiktor | `feat/wiktor-insight-engine` | scalone (#4, poprawki w #10) | `restFromSignals` = 4, do „Odpuść” liczą się tylko sygnały regeneracji, technika najwyżej „Zmodyfikuj”; liczą się analizy z ostatnich 14 dni |
 | Teksty rekomendacji (klient + backend) | Wiktor | `feat/wiktor-recommendation-text` | do zrobienia | |
-| Korekta sesji i opieka | Wiktor | `feat/wiktor-plan-adjuster-care` | do zrobienia | |
+| Korekta sesji i opieka | Wiktor | `feat/wiktor-plan-adjuster-care` | w przeglądzie (PR) | `PlanAdjuster` i `CarePathway` gotowe i przetestowane, jeszcze nie wołane z aplikacji: `Today`/`Plan` (Michał) mają użyć `PlanAdjuster`, ekran Opieka dostanie `CarePathway.assess` |
 | Ekrany Postępy i Opieka | Wiktor | `feat/wiktor-progress-care-screens` | do zrobienia | |
 | Katalog i szablony | Maciek | `feat/maciek-catalog-templates` | do zrobienia | |
 | Magazyn planu | Maciek | `feat/maciek-plan-store` | do zrobienia | |

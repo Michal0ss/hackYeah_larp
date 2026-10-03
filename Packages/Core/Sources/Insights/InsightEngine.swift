@@ -106,48 +106,12 @@ public struct InsightEngine: Sendable {
 
     // MARK: Care pathway (7.4)
 
-    /// "Warto rozważyć konsultację": repeated technique finding, pain noted by the user, or worrying recovery
-    /// together with low wellbeing over several days. Always a signal, never a diagnosis.
+    /// "Warto rozważyć konsultację" flag. The logic lives in `CarePathway`, which also gives the care screen its
+    /// evidence and steps.
     public func careFlag(_ input: InsightInput) -> CareFlag? {
-        let care = thresholds.care
-        let windowStart = calendar.date(byAdding: .day, value: -care.windowDays, to: input.now) ?? input.now
-
-        // 1. The same technique finding in several analyses.
-        var counts: [String: (count: Int, title: String)] = [:]
-        for r in input.techniqueResults where r.date >= windowStart && r.date <= input.now {
-            for f in r.findings where f.severity != .good && f.repsAffected > 0 {
-                counts[f.id, default: (0, f.title)].count += 1
-            }
-        }
-        if let top = counts.values.filter({ $0.count >= care.repeatedFindingCount }).max(by: { $0.count < $1.count }) {
-            return CareFlag(reason: "Ten sam sygnał („\(Self.lowercasedFirst(top.title))”) pojawił się w \(top.count) analizach z ostatnich \(care.windowDays) dni. To nie jest diagnoza. Fizjoterapeuta może ocenić ruch na żywo.")
-        }
-
-        // 2. Pain or discomfort written by the user in a recent check-in note.
-        let noteStart = calendar.date(byAdding: .day, value: -2, to: input.now) ?? input.now
-        if input.checkIns.contains(where: { $0.date >= noteStart && Self.mentionsPain($0.note) }) {
-            return CareFlag(reason: "Zaznaczasz ból lub dyskomfort podczas ćwiczenia. To nie jest diagnoza, ale warto porozmawiać ze specjalistą.")
-        }
-
-        // 3. Worrying recovery and low wellbeing on several days in a row.
-        if care.persistentDays > 0 {
-            let allWorrying = (0..<care.persistentDays).allSatisfy { offset in
-                guard let d = calendar.date(byAdding: .day, value: -offset, to: input.now),
-                      let s = input.snapshots.first(where: { calendar.isDate($0.date, inSameDayAs: d) }),
-                      let c = input.checkIns.first(where: { calendar.isDate($0.date, inSameDayAs: d) })
-                else { return false }
-                let flags = [s.sleepMinutes < thresholds.signals.sleepMinutesLow,
-                             s.hrvDeltaRatio < thresholds.signals.hrvBelowBaselineRatio,
-                             s.restingHeartRate - s.restingHeartRateBaseline > thresholds.signals.restingHeartRateAboveBaseline]
-                    .filter { $0 }.count
-                let lowWellbeing = c.mood <= care.lowMood || c.stress >= thresholds.signals.stressHigh
-                return flags >= 2 && lowWellbeing
-            }
-            if allWorrying {
-                return CareFlag(reason: "Od \(care.persistentDays) dni słabsza regeneracja idzie w parze z niższym samopoczuciem. To sygnał, nie diagnoza. Warto rozważyć rozmowę ze specjalistą.")
-            }
-        }
-        return nil
+        CarePathway(thresholds: thresholds, calendar: calendar)
+            .assess(snapshots: input.snapshots, checkIns: input.checkIns, techniqueResults: input.techniqueResults,
+                    now: input.now)?.flag
     }
 
     // MARK: Helpers
@@ -197,16 +161,5 @@ public struct InsightEngine: Sendable {
     static func lowercasedFirst(_ s: String) -> String {
         guard let f = s.first else { return s }
         return f.lowercased() + s.dropFirst()
-    }
-
-    private static let painWords: Set<String> = ["bol", "bolu", "bolem", "boli", "bola", "bole", "bolesny", "bolesne", "bolesna"]
-    private static let painPrefixes = ["bolesn", "kontuzj", "uraz", "dyskomfort", "ciagn", "kluj", "drewn"]
-
-    /// True when the note mentions pain or discomfort. Diacritic- and case-insensitive.
-    static func mentionsPain(_ note: String?) -> Bool {
-        guard let note, !note.isEmpty else { return false }
-        let folded = note.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "pl_PL"))
-        let tokens = folded.split { !$0.isLetter }.map(String.init)
-        return tokens.contains { t in painWords.contains(t) || painPrefixes.contains { t.hasPrefix($0) } }
     }
 }
