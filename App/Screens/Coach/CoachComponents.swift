@@ -87,7 +87,7 @@ struct CoachBubble: View {
 
     var body: some View {
         VStack(alignment: isUser ? .trailing : .leading, spacing: FormaSpacing.xs) {
-            Text(verbatim: message.text)
+            bubbleText
                 .formaStyle(.body)
                 .foregroundStyle(isUser ? FormaColor.onVolt : FormaColor.ink)
                 .textSelection(.enabled)
@@ -110,7 +110,12 @@ struct CoachBubble: View {
         .padding(.leading, isUser ? 40 : 0)
         .padding(.trailing, isUser ? 0 : 40)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel((isUser ? "Ty: " : "Trener: ") + message.text)
+        .accessibilityLabel((isUser ? "Ty: " : "Trener: ") + (isUser ? message.text : ChatText.plain(message.text)))
+    }
+
+    /// What the user typed stays as typed; the coach's answer gets its simple markup rendered.
+    private var bubbleText: Text {
+        isUser ? Text(verbatim: message.text) : Text(ChatText.attributed(message.text))
     }
 
     @ViewBuilder
@@ -145,7 +150,7 @@ struct CoachWritingBubble: View {
                 .padding(.vertical, FormaSpacing.m)
                 .glassCard(radius: 22)
             } else {
-                Text(verbatim: text)
+                Text(ChatText.attributed(text, streaming: true))
                     .formaStyle(.body).foregroundStyle(FormaColor.ink)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, FormaSpacing.l)
