@@ -19,13 +19,13 @@ struct AppServices {
     /// Apple Health summaries with sample fallback (marked as simulated), one service for data and permission.
     let healthKit = HealthKitService()
     var recovery: RecoveryProviding
-    /// In memory until Wiktor's check-in store lands. The app writes through `localCheckIns`.
-    let localCheckIns = InMemoryCheckIns()
+    /// Check-ins kept on the phone (Wiktor's CheckInStore). The app saves through `checkInStore`.
+    let checkInStore = CheckInStore.standard
     var checkIns: CheckInProviding
     /// Results of live sets and analyses (Michał). The app and Bartek write through `localHistory`.
     let localHistory = LocalTechniqueHistory.shared
     var technique: TechniqueHistoryProviding
-    // Rule engine (Wiktor) over recovery (sample), the check-ins and the recorded results.
+    // Rule engine (Wiktor) over recovery (Apple Health or sample), the check-ins and the recorded results.
     var recommendation: RecommendationProviding
     var healthAuthorization: HealthAuthorizing
     /// Backend first, local fallback until Maciek's PlanGenerator replaces it.
@@ -34,9 +34,9 @@ struct AppServices {
     init() {
         recovery = healthKit
         healthAuthorization = healthKit
-        checkIns = localCheckIns
+        checkIns = checkInStore
         technique = localHistory
-        recommendation = InsightRecommendationService(recovery: healthKit, checkIns: localCheckIns,
+        recommendation = InsightRecommendationService(recovery: healthKit, checkIns: checkInStore,
                                                       technique: localHistory, catalog: ContentRepository.shared)
         planGenerator = BackendPlanGenerator(api: api, fallback: SampleServices())
     }

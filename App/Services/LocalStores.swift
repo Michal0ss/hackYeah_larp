@@ -72,20 +72,3 @@ final class LocalTechniqueHistory: TechniqueHistoryProviding, @unchecked Sendabl
             .appendingPathComponent("Forma/history.json")
     }
 }
-
-/// Check-ins kept in memory until Wiktor's persistent store (`feat/wiktor-checkin-store`) replaces it.
-final class InMemoryCheckIns: CheckInProviding, @unchecked Sendable {
-    private let lock = NSLock()
-    private var items: [CheckIn] = [SampleData.checkIn]
-
-    func add(_ checkIn: CheckIn) {
-        lock.lock(); defer { lock.unlock() }
-        items.insert(checkIn, at: 0)
-    }
-
-    func checkIns(days: Int) async -> [CheckIn] {
-        lock.lock(); defer { lock.unlock() }
-        let start = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? .distantPast
-        return items.filter { $0.date >= start }.sorted { $0.date > $1.date }
-    }
-}
