@@ -12,6 +12,12 @@ public enum PlanChangeKind: String, Codable, Sendable, CaseIterable {
     case moveSession
     /// Leave a session out (it stays in the plan as skipped and can be put back).
     case skipSession
+    /// Add an exercise from the catalog to a session.
+    case addExercise
+    /// Take an exercise out of a session (a session keeps at least one).
+    case removeExercise
+    /// Change the sets, the reps (or seconds) and the rest of one exercise.
+    case editExercise
 }
 
 public enum PlanChangeStatus: String, Codable, Sendable {
@@ -32,6 +38,12 @@ public struct PlanChangeProposal: Codable, Equatable, Sendable, Identifiable {
     public var replacementExerciseId: String?
     /// `moveSession`: the weekday to move to.
     public var newWeekday: Int?
+    /// `addExercise` / `removeExercise` / `editExercise`: the exercise the change is about (`exerciseId`), and for
+    /// `addExercise` / `editExercise` the numbers asked for (nil = the usual for a new exercise, unchanged for an edit).
+    public var sets: Int?
+    public var repsMin: Int?
+    public var repsMax: Int?
+    public var restSeconds: Int?
     /// Polish description of the change, written by the app (the model's words are never shown as the change).
     public var summary: String
     /// One sentence from the coach about why. Data from the model: shown as a quote, never acted on.
@@ -43,7 +55,8 @@ public struct PlanChangeProposal: Codable, Equatable, Sendable, Identifiable {
     public init(id: UUID = UUID(), kind: PlanChangeKind, status: PlanChangeStatus = .pending, sessionId: UUID,
                 sessionTitle: String, weekday: Int, exerciseId: String? = nil, replacementExerciseId: String? = nil,
                 newWeekday: Int? = nil, summary: String, reason: String? = nil, before: PlannedSession? = nil,
-                after: PlannedSession? = nil) {
+                after: PlannedSession? = nil, sets: Int? = nil, repsMin: Int? = nil, repsMax: Int? = nil,
+                restSeconds: Int? = nil) {
         self.id = id
         self.kind = kind
         self.status = status
@@ -53,6 +66,10 @@ public struct PlanChangeProposal: Codable, Equatable, Sendable, Identifiable {
         self.exerciseId = exerciseId
         self.replacementExerciseId = replacementExerciseId
         self.newWeekday = newWeekday
+        self.sets = sets
+        self.repsMin = repsMin
+        self.repsMax = repsMax
+        self.restSeconds = restSeconds
         self.summary = summary
         self.reason = reason
         self.before = before

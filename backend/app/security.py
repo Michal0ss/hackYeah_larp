@@ -15,7 +15,9 @@ import time
 from collections import defaultdict, deque
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Protocol
 
+import httpx
 from fastapi import Depends, Request
 
 from app.config import Settings
@@ -71,8 +73,18 @@ def require_client(request: Request) -> ClientIdentity:
     return ClientIdentity(device_id=device_id, key=key)
 
 
+class Limiter(Protocol):
+    def check(self, bucket: str, client_key: str, limit: int) -> None: ...
+    def close(self) -> None: ...
+
+
 class RateLimiter:
-    """Sliding window: at most `limit` hits per `window` seconds for one (bucket, client) pair."""
+    """Sliding window: at most `limit` hits per `window` seconds for one (bucket, client) pair.
+
+    In memory, so it is per process: with several instances (e.g. Vercel) each one has its own
+    counters. `SupabaseRateLimiter` below shares counters across instances; this one is also its
+    fail-open fallback.
+    """
 
     def __init__(self, window_seconds: float = 60.0, clock: Callable[[], float] = time.monotonic):
         self.window = window_seconds
@@ -95,6 +107,69 @@ class RateLimiter:
         hits.append(now)
         if not hits:  # pragma: no cover - defensive
             self._hits.pop((bucket, client_key), None)
+
+    def close(self) -> None:
+        pass
+
+
+class SupabaseRateLimiter:
+    """Same fixed-window limit as `RateLimiter`, but shared across every backend instance via one
+    atomic Postgres function (`rate_limit_hit`, Supabase project, service_role only).
+
+    Fails open: any problem reaching or reading from Supabase (network, timeout, bad status, bad
+    body) falls back to an in-memory `RateLimiter` instead of ever turning into a 500. Only the
+    exception type is logged — never the URL or the key.
+    """
+
+    _RPC_PATH = "/rest/v1/rpc/rate_limit_hit"
+    _WINDOW_SECONDS = 60
+
+    def __init__(
+        self,
+        url: str,
+        service_key: str,
+        fallback: RateLimiter,
+        timeout: float = 1.5,
+        transport: httpx.BaseTransport | None = None,
+    ):
+        self._fallback = fallback
+        self._client = httpx.Client(
+            base_url=url,
+            headers={"apikey": service_key, "Authorization": f"Bearer {service_key}"},
+            timeout=timeout,
+            transport=transport,
+        )
+
+    def check(self, bucket: str, client_key: str, limit: int) -> None:
+        try:
+            response = self._client.post(
+                self._RPC_PATH,
+                json={
+                    "p_bucket": bucket,
+                    "p_client": client_key,
+                    "p_limit": limit,
+                    "p_window_seconds": self._WINDOW_SECONDS,
+                },
+            )
+            response.raise_for_status()
+            row = response.json()[0]
+            allowed = bool(row["allowed"])
+            retry_after = int(row["retry_after"])
+        except Exception as exc:
+            log.warning("limiter_fallback", extra={"error": type(exc).__name__})
+            self._fallback.check(bucket, client_key, limit)
+            return
+
+        if not allowed:
+            raise ApiError(
+                429,
+                "rate_limited",
+                "Za dużo zapytań. Spróbuj za chwilę.",
+                headers={"Retry-After": str(retry_after)},
+            )
+
+    def close(self) -> None:
+        self._client.close()
 
 
 def rate_limited(bucket: str, per_minute: Callable[[Settings], int]):

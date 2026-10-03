@@ -1,9 +1,9 @@
 {
-  "version": 1,
-  "note": "Wartości inżynierskie na demo (PROJECT.md 6.2 i 6.4). Do strojenia na prawdziwych nagraniach. Właściciel: Bartek.",
+  "version": 2,
+  "note": "Wartości inżynierskie na demo (PROJECT.md 6.2 i 6.4), zakresy kątów z docs/ANALIZA_TECHNIKI.md. Do strojenia na prawdziwych nagraniach. Właściciel: Bartek.",
   "quality": {
-    "minVisibleRatio": 0.85,
-    "minBodyHeight": 0.5,
+    "minVisibleRatio": 0.7,
+    "minBodyHeight": 0.35,
     "maxPeople": 1,
     "minReps": 3,
     "minFps": 24
@@ -19,5 +19,29 @@
     "depthToleranceFrame": 0.02,
     "repeatabilityToleranceDegrees": 15,
     "minControlledDescentSeconds": 1.0
+  },
+  "angles": {
+    "squatKneeParallelMax": 70,
+    "squatKneeDeepMax": 50,
+    "squatTorsoLeanMax": 45,
+    "squatDepthTolerance": 0.02,
+    "pushupElbowBottomMax": 100,
+    "pushupElbowIdeal": 90,
+    "pushupElbowTopMin": 155,
+    "pushupBodyLineMin": 160,
+    "pullupElbowTopMax": 100,
+    "pullupElbowHangMin": 155,
+    "pullupNoseMargin": 0.02
+  },
+  "clip": {
+    "minConfidence": 0.15,
+    "smoothSeconds": 0.25,
+    "minProminenceSquat": 0.12,
+    "minProminencePushup": 0.06,
+    "minProminencePullup": 0.1,
+    "relativeProminence": 0.5,
+    "minWidthSeconds": 0.3,
+    "edgeShare": 0.1,
+    "minAngleChange": 20
   }
 }

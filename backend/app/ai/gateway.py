@@ -92,6 +92,8 @@ class MockGateway:
 
     _TOOL_KEYWORDS: tuple[tuple[str, str], ...] = (
         (
+            r"dodaj\w*|dorzu[ćc]|usu[ńn]\w* (\w+ )?(ćwicz|wykrok|plank)|"
+            r"zmie[ńn]\w* (liczb\w+ |ilo[śs][ćc] )?(serii|serie|powt[óo]rze[ńn]|przerw)|"
             r"zamie[ńn]|zast[ąa]p|przenie[śs]|pomi[ńn]\w* (sesj|trening)|l[żz]ejsz\w+ (sesj|trening)",
             "propose_plan_change",
         ),
@@ -146,7 +148,7 @@ class MockGateway:
         else:
             wanted = next((tool for pattern, tool in self._TOOL_KEYWORDS if re.search(pattern, asked)), None)
             if wanted and wanted in available:
-                yield ToolCall(id=f"toolu_mock_{self._calls}", name=wanted, input=_mock_tool_input(wanted))
+                yield ToolCall(id=f"toolu_mock_{self._calls}", name=wanted, input=_mock_tool_input(wanted, asked))
                 yield Finished("tool_use", 10, 5)
                 return
             if wanted and wanted not in available:
@@ -167,9 +169,32 @@ class MockGateway:
         return None
 
 
-def _mock_tool_input(name: str) -> dict[str, Any]:
+def _mock_tool_input(name: str, asked: str = "") -> dict[str, Any]:
     if name == "propose_plan_change":
-        # Fits the sample plan in the app: Monday's session has a squat.
+        # All of these fit the sample plan in the app: Monday's session has a squat, a lunge and a plank.
+        if re.search(r"dodaj|dorzu[ćc]", asked):
+            return {
+                "kind": "add_exercise",
+                "weekday": 1,
+                "exerciseId": "glute_bridge",
+                "sets": 3,
+                "repsMin": 10,
+                "repsMax": 12,
+                "reason": "Uzupełnia pracę nad pośladkami.",
+            }
+        if re.search(r"usu[ńn]", asked):
+            return {"kind": "remove_exercise", "weekday": 1, "exerciseId": "lunge", "reason": "Krótsza sesja."}
+        if re.search(r"serii|serie|powt[óo]rze[ńn]|przerw", asked):
+            return {
+                "kind": "edit_exercise",
+                "weekday": 1,
+                "exerciseId": "squat",
+                "sets": 3,
+                "restSeconds": 90,
+                "reason": "Mniejsza objętość na ten tydzień.",
+            }
+        if re.search(r"pomi[ńn]", asked):
+            return {"kind": "skip_session", "weekday": 1, "reason": "Ten dzień jest zajęty."}
         return {
             "kind": "swap_exercise",
             "weekday": 1,

@@ -33,7 +33,20 @@ class CoachTool:
 
 _NO_INPUT: dict[str, Any] = {"type": "object", "properties": {}}
 
-PLAN_CHANGE_KINDS = ("swap_exercise", "lighter_session", "move_session", "skip_session")
+PLAN_CHANGE_KINDS = (
+    "swap_exercise",
+    "lighter_session",
+    "move_session",
+    "skip_session",
+    "add_exercise",
+    "remove_exercise",
+    "edit_exercise",
+)
+# Same limits as the app (Plan.PlanLimits): a number outside them is dropped, never clamped into a different change.
+_SETS = (1, 8)
+_REPS = (1, 100)
+_SECONDS = (5, 600)
+_REST = (0, 600)
 
 TOOLS: dict[str, CoachTool] = {
     tool.name: tool
@@ -130,9 +143,14 @@ TOOLS: dict[str, CoachTool] = {
                 "weekday), lighter_session (one set less in every exercise that has more than two sets, in the "
                 "session on weekday), move_session (move the session from weekday to newWeekday, which must be a "
                 "day without a session), skip_session (leave the session on weekday out; it stays in the plan as "
-                "skipped and the user can put it back). weekday and newWeekday: 1 = Monday ... 7 = Sunday; weekday "
-                "means the next such day within a week from today. Use exercise ids from "
-                "the catalog; a replacement must come from the list of exercises that fit this person. "
+                "skipped and the user can put it back), add_exercise (add exerciseId to the session on weekday, at "
+                "the end; optionally sets, repsMin, repsMax and restSeconds, otherwise the usual numbers of that "
+                "session; reps are seconds for exercises counted in time), remove_exercise (take exerciseId out of "
+                "the session; it keeps at least one exercise), edit_exercise (change sets, repsMin, repsMax or "
+                "restSeconds of exerciseId in the session; only the numbers you send change). weekday and "
+                "newWeekday: 1 = Monday ... 7 = Sunday; weekday means the next such day within a week from today. "
+                "Use exercise ids from the catalog only: an exercise that is not in the catalog cannot be added. A "
+                "replacement or an added exercise must come from the list of exercises that fit this person. "
                 "Afterwards tell the user in one or two sentences what you propose and why, and that they can "
                 "accept it on the card; never say the plan is already changed."
             ),
@@ -141,9 +159,19 @@ TOOLS: dict[str, CoachTool] = {
                 "properties": {
                     "kind": {"type": "string", "enum": list(PLAN_CHANGE_KINDS)},
                     "weekday": {"type": "integer", "description": "Weekday of the session to change, 1 to 7."},
-                    "exerciseId": {"type": "string", "description": "swap_exercise: the exercise to replace."},
+                    "exerciseId": {
+                        "type": "string",
+                        "description": (
+                            "swap_exercise: the exercise to replace. add_exercise: the exercise to add. "
+                            "remove_exercise / edit_exercise: the exercise in the session."
+                        ),
+                    },
                     "replacementExerciseId": {"type": "string", "description": "swap_exercise: the new exercise."},
                     "newWeekday": {"type": "integer", "description": "move_session: the new weekday, 1 to 7."},
+                    "sets": {"type": "integer", "description": "add_exercise / edit_exercise: sets, 1 to 8."},
+                    "repsMin": {"type": "integer", "description": "add/edit_exercise: lowest reps (or seconds)."},
+                    "repsMax": {"type": "integer", "description": "add/edit_exercise: highest reps (or seconds)."},
+                    "restSeconds": {"type": "integer", "description": "add_exercise / edit_exercise: rest, 0 to 600."},
                     "reason": {"type": "string", "description": "One short sentence in Polish: why."},
                 },
                 "required": ["kind", "weekday"],
@@ -175,6 +203,12 @@ def _weekday(value: Any) -> int | None:
     return int(value) if 1 <= int(value) <= 7 else None
 
 
+def _whole_number(value: Any) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int | float) or int(value) != value:
+        return None
+    return int(value)
+
+
 def _normalise_plan_change(raw: dict[str, Any], content: ContentStore, profile: UserProfile | None) -> dict[str, Any]:
     """Only valid parts survive. The app checks the proposal against the real plan and answers the model with an error
     when something is missing, so a dropped field here is never silently turned into a change."""
@@ -195,6 +229,24 @@ def _normalise_plan_change(raw: dict[str, Any], content: ContentStore, profile: 
             # With a profile the replacement must also fit the person (equipment, level, movements to avoid).
             if profile is None or replacement in {e.id for e in allowed_for(profile, content)}:
                 cleaned["replacementExerciseId"] = replacement
+    if kind in ("add_exercise", "remove_exercise", "edit_exercise"):
+        exercise_id = raw.get("exerciseId")
+        if isinstance(exercise_id, str) and exercise_id in content.by_id:
+            # An exercise that is added must fit the person (equipment, level, movements to avoid), like a replacement.
+            fits = profile is None or exercise_id in {e.id for e in allowed_for(profile, content)}
+            if kind != "add_exercise" or fits:
+                cleaned["exerciseId"] = exercise_id
+                if kind != "remove_exercise":
+                    timed = content.by_id[exercise_id].timed
+                    for key, (low, high) in (
+                        ("sets", _SETS),
+                        ("repsMin", _SECONDS if timed else _REPS),
+                        ("repsMax", _SECONDS if timed else _REPS),
+                        ("restSeconds", _REST),
+                    ):
+                        value = _whole_number(raw.get(key))
+                        if value is not None and low <= value <= high:
+                            cleaned[key] = value
     reason = raw.get("reason")
     # The reason is shown to the user as a quote, so it must pass the same checks as other generated copy (no
     # diagnoses, medicines, promises, links); a text that does not is simply left out.

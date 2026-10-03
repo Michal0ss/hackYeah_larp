@@ -102,12 +102,14 @@ struct LiveSetView: View {
             ZStack {
                 if session.source == .camera {
                     #if os(iOS)
-                    CameraPreview(session: session.camera.session)
+                    CameraPreview(session: session.camera.session, revision: session.cameraRevision)
                     #endif
                 } else {
                     AmbientBackground()
                 }
                 SkeletonOverlay(frame: engine.latestFrame, debug: diagnostics)
+                    // The camera mirrors the front picture itself; the simulated skeleton is mirrored to match.
+                    .scaleEffect(x: session.source == .simulation && session.isFrontCamera ? -1 : 1, y: 1)
                     .frame(width: video.width, height: video.height)
                     .position(x: video.midX, y: video.midY)
                 LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .center, endPoint: .bottom)
@@ -163,6 +165,16 @@ struct LiveSetView: View {
                         .glassCapsule(interactive: true)
                 }
                 .accessibilityLabel("Zakończ serię")
+            }
+            if session.canFlipCamera {
+                Button { session.flipCamera() } label: {
+                    Image(systemName: "camera.rotate")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .glassCapsule(interactive: true)
+                }
+                .accessibilityLabel(session.isFrontCamera ? "Przełącz na tylną kamerę" : "Przełącz na przednią kamerę")
             }
             Button {
                 diagnostics.toggle()
@@ -220,6 +232,10 @@ struct LiveSetView: View {
             }
             Label(engine.headphonesConnected ? "Słuchawki podłączone" : "Brak słuchawek: dźwięk z głośnika",
                   systemImage: engine.headphonesConnected ? "headphones" : "speaker.wave.2.fill")
+                .formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
+            Label(session.isFrontCamera ? "Kamera przednia: widzisz siebie na ekranie (przycisk w prawym górnym rogu przełącza)"
+                                        : "Kamera tylna (przycisk w prawym górnym rogu przełącza na przednią)",
+                  systemImage: "camera")
                 .formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
             Button {
                 engine.startCalibrationNow()

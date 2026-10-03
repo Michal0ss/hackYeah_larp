@@ -1,0 +1,8 @@
+{
+  "voiceId": "REPLACE_WITH_ELEVENLABS_VOICE_ID",
+  "modelId": "eleven_multilingual_v2",
+  "phrases": {
+    "w dół": [{ "text": "w dół", "file": "phase_w_dol" }],
+    "w górę": [{ "text": "w górę", "file": "phase_w_gore" }]
+  }
+}

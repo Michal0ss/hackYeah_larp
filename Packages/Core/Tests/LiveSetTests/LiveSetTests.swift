@@ -70,20 +70,13 @@ final class PhaseTrackerTests: XCTestCase {
 }
 
 final class CueAndPolicyTests: XCTestCase {
-    func testCountsOncePerSecondOfTheEccentricPhase() {
-        let cues = CuePlanner.cues(for: .eccentric, spec: .controlled, isFirstRep: false)
-        XCTAssertEqual(cues.map(\.text), ["jeden", "dwa", "trzy"])
-        XCTAssertEqual(cues.map(\.offset), [0, 1, 2])
+    func testPhaseLabels() {
+        XCTAssertEqual(CuePlanner.label(of: .eccentric), "w dół")
+        XCTAssertEqual(CuePlanner.label(of: .concentric), "w górę")
     }
 
-    func testFirstRepetitionNamesThePhase() {
-        let cues = CuePlanner.cues(for: .concentric, spec: .controlled, isFirstRep: true)
-        XCTAssertEqual(cues.first?.text, "w górę, jeden")
-        XCTAssertEqual(cues.count, 2)
-    }
-
-    func testNoCuesForAPhaseWithoutDuration() {
-        XCTAssertTrue(CuePlanner.cues(for: .topPause, spec: .controlled, isFirstRep: false).isEmpty)
+    func testPhaseDurationComesFromTheSpec() {
+        XCTAssertEqual(CuePlanner.duration(of: .eccentric, in: .controlled), TempoSpec.controlled.eccentric)
     }
 
     private func rep(_ i: Int, ecc: Double = 3, pause: Double = 1, conc: Double = 2, full: Bool = true) -> RepTempo {
@@ -220,10 +213,15 @@ final class LiveSetEngineTests: XCTestCase {
         XCTAssertNotNil(summary.techniqueScore)
         XCTAssertTrue(summary.tempoFindings.contains { $0.id == "tempo_ecc_fast" || $0.id == "tempo_ecc_ok" })
 
+        // The set start is a sound signal, not a spoken word.
+        XCTAssertEqual(voice.signalsSent, 1)
+
         let said = voice.spoken.map(\.text)
-        XCTAssertTrue(said.contains("Zaczynaj"))
-        XCTAssertTrue(said.contains("wolniej w dół"), "spoken: \(said)")
+        XCTAssertTrue(said.contains("w dół"), "spoken: \(said)")
+        XCTAssertTrue(said.contains("w górę"), "spoken: \(said)")
         XCTAssertTrue(said.contains { $0.hasPrefix("Koniec serii") })
+        // Corrections still happen (shown on screen as lastCue) but aren't spoken live anymore.
+        XCTAssertFalse(said.contains("wolniej w dół"), "spoken: \(said)")
     }
 
     func testBadFramingSpeaksHintAndDoesNotStart() {

@@ -212,7 +212,7 @@ Nawigacja: pasek zakładek **Dziś · Plan · Analiza · Trener · Postępy**. O
 - **Zawartość:** okno rozmowy, kilka gotowych pytań na start („Czy dziś ćwiczyć nogi?”, „Czym zastąpić przysiad?”, „Jak poprawić technikę?”), informacja, że to nie jest porada medyczna.
 - **Dostęp trenera do aplikacji:** stały kontekst (decyzja dnia, profil, plan i ostatnia analiza techniki, a w trakcie treningu także ekran i ostatnia seria) plus narzędzia, przez które pyta o historię, regenerację (z Apple Health), check-iny, feedback po treningach i wyniki analiz (patrz 7.6). Użytkownik widzi pod odpowiedzią, z jakich danych trener skorzystał (np. „na podstawie: sen z 7 dni, ostatnia analiza przysiadu”).
 - **Zgoda na dane zdrowotne:** ekran zgody przed pierwszą rozmową (patrz 7.6).
-- **Zasady odpowiedzi:** patrz 7.6. Przy wzmiance o bólu, urazie lub niepokojących objawach trener nie zgaduje przyczyny, tylko odsyła do specjalisty i pokazuje kartę „Warto rozważyć konsultację”.
+- **Zasady odpowiedzi:** patrz 7.6. Odpowiedź jest pokazywana jako prosty tekst: pogrubienie, kursywa i listy (kropki) są renderowane, gdy model mimo instrukcji ich użyje, nagłówek staje się pogrubioną linią, a linki z odpowiedzi nie są klikalne (widać tylko ich tekst), bo tekst modelu jest niezaufany. Przy wzmiance o bólu, urazie lub niepokojących objawach trener nie zgaduje przyczyny, tylko odsyła do specjalisty i pokazuje kartę „Warto rozważyć konsultację”.
 - **Stany:** błąd połączenia lub modelu (krótki komunikat i ponowienie), trwa odpowiedź (wskaźnik pisania), pusta rozmowa (gotowe pytania).
 
 ### 5.9 Seria na żywo
@@ -220,6 +220,7 @@ Nawigacja: pasek zakładek **Dziś · Plan · Analiza · Trener · Postępy**. O
 - **Cel:** poprowadzić serię głosem, tak żeby nie trzeba było patrzeć w ekran.
 - **Etapy:** ustawienie telefonu (lista warunków kadru z podpowiedzią, np. „Odejdź krok do tyłu, nie widzę stóp”) → kalibracja pozycji wyjściowej („Stój prosto i nieruchomo”) → seria → podsumowanie.
 - **W trakcie serii:** podgląd z kamerą i szkieletem, duży licznik powtórzeń, pierścień bieżącej fazy z czasem („W dół 1,8 s”), ostatnie słowo trenera, przycisk „Zakończ”. Seria kończy się też sama po kilku sekundach bez ruchu.
+- **Obrót kamery:** przycisk w pasku górnym przełącza kamerę tylną i przednią (przednia pokazuje użytkownika jak w lusterku). Działa do pierwszego powtórzenia: po przełączeniu ustawianie i kalibracja zaczynają się od nowa, bo kalibracja należy do jednego widoku. Wybór jest zapamiętany na następne serie.
 - **Głos:** liczenie fazy raz na sekundę, w pierwszym powtórzeniu z nazwą fazy; krótkie korekty po powtórzeniu (najwyżej jedna, z przerwą kilku powtórzeń); przy złym kadrze podpowiedź głosowa o ustawieniu telefonu.
 - **Stany:** brak zgody na kamerę, brak słuchawek (dźwięk z głośnika, z ostrzeżeniem), zły kadr, brak wykrytych powtórzeń.
 
@@ -248,7 +249,7 @@ Film (nagrany lub z galerii)
 
 ### 6.1 Wejście
 
-Film z kamery lub z galerii, ujęcie z boku. Klatki czytamy z pliku (`AVAssetReader`), na każdej uruchamiamy detekcję pozy człowieka. Dostajemy współrzędne znormalizowane (0–1) i pewność wykrycia dla stawów: nos, szyja, barki, łokcie, nadgarstki, biodra i środek bioder, kolana, kostki. Nie dostajemy pięt ani palców stóp (ograniczenie 2D i tego narzędzia).
+Film z kamery lub z galerii, ujęcie z boku. Klatki czytamy z pliku (`AVAssetReader`, przerzedzone do ok. 30 kl./s), na każdej uruchamiamy detekcję pozy człowieka i na ekranie pokazujemy klatkę z nałożonym szkieletem (jak w serii na żywo; obraz zostaje w pamięci, film kasujemy po odczycie). Dostajemy współrzędne znormalizowane (0–1) i pewność wykrycia dla stawów: nos, szyja, barki, łokcie, nadgarstki, biodra i środek bioder, kolana, kostki. Nie dostajemy pięt ani palców stóp (ograniczenie 2D i tego narzędzia). Współrzędne są ułamkami szerokości i wysokości obrazu, więc **każdą klatkę zapisujemy z proporcją obrazu (`aspect`) i wszystkie kąty liczymy po jej uwzględnieniu** (`PoseGeometry`); bez tego kąty z filmu w pionie są zniekształcone nawet o kilkanaście stopni. Zakresy kątów, ich źródła i dokładność: [docs/ANALIZA_TECHNIKI.md](docs/ANALIZA_TECHNIKI.md).
 
 ### 6.2 Ocena jakości nagrania (pierwszy krok, nasz wyróżnik)
 
@@ -257,19 +258,19 @@ Nagranie przechodzi dalej tylko wtedy, gdy:
 | Warunek | Wartość startowa |
 |---|---|
 | Cała sylwetka w kadrze (od głowy do kostek) | tak |
-| Kluczowe stawy widoczne z pewnością powyżej progu | w ponad 85% klatek |
-| Postać zajmuje wysokość kadru | co najmniej 50% |
+| Kluczowe stawy widoczne z pewnością powyżej progu | w ponad 70% klatek z ćwiczeniem |
+| Postać zajmuje wysokość kadru | co najmniej 35% |
 | Liczba osób w kadrze | dokładnie 1 |
 | Liczba powtórzeń | co najmniej 3 |
 | Ujęcie zgodne z ćwiczeniem (przysiad: z boku) | tak |
 | Klatki na sekundę | co najmniej 24 (30 preferowane) |
 
-Gdy warunek nie jest spełniony, aplikacja podaje **konkretną wskazówkę**: „Odejdź krok do tyłu, nie widzę stóp”, „Ustaw się bokiem do kamery”, „Zrób co najmniej 3 powtórzenia”. Wartości progowe są startowe i do strojenia.
+Gdy warunek nie jest spełniony, aplikacja podaje **konkretną wskazówkę** i **zmierzone liczby** („Wykryto 1 powtórzenie (wymagane 3)”, „62% klatek w porządku (wymagane 70%)”): „Odejdź krok do tyłu, nie widzę stóp”, „Ustaw się bokiem do kamery”, „Zrób co najmniej 3 powtórzenia”. Kadrowanie sprawdzamy tylko na fragmencie z ćwiczeniem (nie na dojściu do telefonu). Gdy w nagraniu widać co najmniej jedno powtórzenie, można je przeanalizować mimo uwag („Analizuj mimo to”), a wynik jest oznaczony jako orientacyjny. Wartości progowe są startowe i do strojenia.
 
 ### 6.3 Przetwarzanie
 
 1. **Wygładzenie** współrzędnych (np. filtr One Euro albo średnia ruchoma) i odrzucenie klatek o niskiej pewności.
-2. **Podział na powtórzenia** na podstawie ruchu bioder w pionie (szczyty i doliny).
+2. **Podział na powtórzenia** na podstawie ruchu bioder (przysiad) albo barków (pompka, podciąganie) w pionie, w długościach tułowia: szczyty wygładzonego sygnału z całego filmu naraz (`ClipRepDetector`, bez kalibracji jak na żywo), liczone tylko, gdy staw ćwiczenia (kolano, łokieć) naprawdę się zgina.
 3. **Obliczenie kątów** w każdej klatce: kąt kolana, kąt biodra, pochylenie tułowia względem pionu i względem piszczeli.
 4. **Metryki powtórzenia:** głębokość (minimalny kąt kolana i biodro względem kolana), pochylenie tułowia w najniższym punkcie, czas opadania i wstawania, powtarzalność między powtórzeniami.
 
@@ -396,7 +397,7 @@ Model (Gemini, szybki model „flash”) dostaje **gotową strukturę** z silnik
 | `get_checkins` (zgoda) | nastrój, stres, energia z ostatnich N dni |
 | `get_training_log` | to, co użytkownik faktycznie zrobił w ostatnich dniach: ukończone sesje z planu (data, wykonane serie z zaplanowanych) i serie z trenerem na żywo (ćwiczenie, liczba powtórzeń, wyniki tempa i techniki). Same liczby, więc bez zgody na dane zdrowotne |
 | `get_session_feedback` (zgoda) | feedback po ostatnich treningach: wysiłek (RPE 1–10), ocena, miejsca dyskomfortu z nasileniem, wykonane serie; bez notatek |
-| `propose_plan_change` | **propozycja** jednej zmiany planu: zamiana ćwiczenia na inne z katalogu (pasujące do sprzętu, poziomu i unikanych ruchów), lżejsza sesja (o serię mniej w ćwiczeniach z więcej niż dwiema seriami), przeniesienie sesji na wolny dzień albo pominięcie sesji (zostaje w planie jako pominięta i można ją przywrócić). Aplikacja sprawdza propozycję na planie i pokazuje kartę z opisem zmiany napisanym przez aplikację; plan zmienia się dopiero po kliknięciu „Zastosuj”, a zmianę można cofnąć. Bez zgody na dane zdrowotne też działa |
+| `propose_plan_change` | **propozycja** jednej zmiany planu: zamiana ćwiczenia na inne z katalogu (pasujące do sprzętu, poziomu i unikanych ruchów), dodanie ćwiczenia z katalogu do sesji (z podanymi seriami i powtórzeniami albo zwykłymi wartościami sesji), usunięcie ćwiczenia (sesja zachowuje przynajmniej jedno), zmiana serii, powtórzeń lub przerwy jednego ćwiczenia, lżejsza sesja (o serię mniej w ćwiczeniach z więcej niż dwiema seriami), przeniesienie sesji na wolny dzień albo pominięcie sesji (zostaje w planie jako pominięta i można ją przywrócić). Aplikacja sprawdza propozycję na planie i pokazuje kartę z opisem zmiany napisanym przez aplikację; plan zmienia się dopiero po kliknięciu „Zastosuj”, a zmianę można cofnąć. Bez zgody na dane zdrowotne też działa |
 
 Narzędzia tylko **czytają** dane; jedyny wyjątek, `propose_plan_change`, niczego nie zapisuje: pokazuje użytkownikowi kartę, a plan zmienia dopiero jego kliknięcie. Model nie ma narzędzia, które samo zmieniłoby plan lub dane. Narzędzia oznaczone „(zgoda)” czytają dane zdrowotne: backend **nie oferuje ich modelowi bez zgody**, nie dołącza do instrukcji dzisiejszej rekomendacji i odrzuca rozmowę, która zawiera takie wyniki mimo braku zgody. Opisy ćwiczeń i zamienniki model bierze z katalogu wklejonego do instrukcji, nie z narzędzia. Dodatkowo backend wykrywa w wiadomości użytkownika objawy alarmowe (ból w klatce piersiowej, omdlenie, duszność) i **zawsze** zaczyna odpowiedź stałym komunikatem o przerwaniu treningu i numerze 112, niezależnie od modelu.
 

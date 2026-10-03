@@ -1,21 +1,10 @@
 import Foundation
 import Contracts
 
-public struct SpokenCue: Equatable, Sendable {
-    /// Seconds after the start of the phase.
-    public var offset: Double
-    public var text: String
-
-    public init(offset: Double, text: String) {
-        self.offset = offset
-        self.text = text
-    }
-}
-
-/// Plans the counting that is spoken during a phase: "jeden, dwa, trzy" once per second.
+/// Phase durations (for the UI's phase timer) and the one word said when each phase starts. The
+/// live coach no longer counts seconds out loud — only `label(of:)` for the lifting/lowering
+/// phases is ever spoken (see `LiveSetEngine.announcePhase`); pauses get no spoken cue.
 public enum CuePlanner {
-    public static let words = ["jeden", "dwa", "trzy", "cztery", "pięć", "sześć", "siedem", "osiem"]
-
     public static func duration(of phase: RepPhase, in spec: TempoSpec) -> Double {
         switch phase {
         case .eccentric: return spec.eccentric
@@ -25,22 +14,13 @@ public enum CuePlanner {
         }
     }
 
-    /// Spoken name of the phase, said together with the first count of the first repetition.
+    /// Spoken name of the phase.
     public static func label(of phase: RepPhase) -> String {
         switch phase {
         case .eccentric: return "w dół"
         case .bottomPause: return "trzymaj"
         case .concentric: return "w górę"
         case .topPause: return "stop"
-        }
-    }
-
-    public static func cues(for phase: RepPhase, spec: TempoSpec, isFirstRep: Bool) -> [SpokenCue] {
-        let count = min(Int(duration(of: phase, in: spec).rounded()), words.count)
-        guard count > 0 else { return [] }
-        return (0..<count).map { i in
-            let text = (isFirstRep && i == 0) ? "\(label(of: phase)), \(words[i])" : words[i]
-            return SpokenCue(offset: Double(i), text: text)
         }
     }
 }

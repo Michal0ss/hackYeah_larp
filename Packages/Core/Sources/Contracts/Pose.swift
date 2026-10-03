@@ -35,14 +35,19 @@ public struct PoseFrame: Codable, Equatable, Sendable {
     public var joints: [Joint]
     /// How many people Vision found in this frame (the rest of the frame's data is for the best-scoring one).
     public var peopleDetected: Int
+    /// Width / height of the upright image the joints refer to (0.5625 for a portrait 720x1280 video). Vision
+    /// normalizes x by the width and y by the height, so without this ratio angles and lengths come out distorted.
+    /// Nil (older fixtures, synthetic frames) means "square": no correction.
+    public var aspect: Double?
 
-    public init(time: Double, joints: [Joint], peopleDetected: Int = 1) {
+    public init(time: Double, joints: [Joint], peopleDetected: Int = 1, aspect: Double? = nil) {
         self.time = time
         self.joints = joints
         self.peopleDetected = peopleDetected
+        self.aspect = aspect
     }
 
-    private enum CodingKeys: String, CodingKey { case time, joints, peopleDetected }
+    private enum CodingKeys: String, CodingKey { case time, joints, peopleDetected, aspect }
 
     /// Custom so `peopleDetected` defaults to 1 for any `PoseFrame` JSON saved before this field
     /// existed (fixtures, caches) instead of failing to decode.
@@ -51,6 +56,7 @@ public struct PoseFrame: Codable, Equatable, Sendable {
         time = try container.decode(Double.self, forKey: .time)
         joints = try container.decode([Joint].self, forKey: .joints)
         peopleDetected = try container.decodeIfPresent(Int.self, forKey: .peopleDetected) ?? 1
+        aspect = try container.decodeIfPresent(Double.self, forKey: .aspect)
     }
 
     /// The joint if it was detected with at least `minConfidence`.

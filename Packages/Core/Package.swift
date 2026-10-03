@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "LiveSet", targets: ["LiveSet"]),
         .library(name: "Onboarding", targets: ["Onboarding"]),
         .library(name: "API", targets: ["API"]),
+        .library(name: "CoachVoice", targets: ["CoachVoice"]),
     ],
     targets: [
         // Shared types between modules. Changes only with team agreement.
@@ -36,7 +37,12 @@ let package = Package(
         // Maciek: exercise catalog and texts.
         .target(name: "Content", dependencies: ["Contracts", "API"], resources: [.process("Resources")]),
         // Michał: live set coaching (camera pose, tempo engine, voice cues, set summary).
-        .target(name: "LiveSet", dependencies: ["Contracts"]),
+        // resources: voice_manifest.json + pre-recorded coach clips (scripts/generate_voice_bank.py).
+        .target(name: "LiveSet", dependencies: ["Contracts"], resources: [.process("Resources")]),
+        // Bartek: pure logic for the coach voice chat (App/Screens/Coach/Voice/) — sentence
+        // segmentation and markdown cleanup for speaking a streamed reply aloud. No AVFoundation/
+        // Speech here on purpose, so it's testable; the App target does the live mic/TTS glue.
+        .target(name: "CoachVoice", dependencies: ["Contracts"]),
         // Test targets exist for every module so nobody has to edit this file to add tests.
         // Michał: first-run flow (profile, health history kept on the phone, plan generation step).
         .target(name: "Onboarding", dependencies: ["Contracts"]),
@@ -51,5 +57,6 @@ let package = Package(
         .testTarget(name: "PlanTests", dependencies: ["Plan", "API", "Content", "Contracts"], resources: [.copy("Fixtures")]),
         .testTarget(name: "CoachingTests", dependencies: ["Coaching", "API", "Plan", "Content", "Contracts"]),
         .testTarget(name: "ContentTests", dependencies: ["Content", "Contracts"]),
+        .testTarget(name: "CoachVoiceTests", dependencies: ["CoachVoice", "Contracts"]),
     ]
 )

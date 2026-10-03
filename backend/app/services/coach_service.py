@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.ai.gateway import AIGateway, ChatEvent, Finished, TextDelta, ToolCall
+from app.ai.knowledge import knowledge_block, load_knowledge
 from app.ai.prompts import IN_WORKOUT_SCREENS, coach_system_prompt
 from app.ai.tools import TOOLS, is_health_tool, normalise_tool_input, tools_for
 from app.config import Settings
@@ -120,7 +121,7 @@ def prepare_conversation(request: CoachChatRequest, content: ContentStore, setti
         raise ApiError(422, "chat_too_long", "Rozmowa jest za długa. Skróć historię lub zacznij nową.")
 
     return Conversation(
-        system=coach_system_prompt(content, request.context, consent),
+        system=coach_system_prompt(content, request.context, consent, _knowledge_for(request, settings)),
         messages=prepared,
         tools=tools_for(consent.health),
         red_flag=_last_user_text_has_red_flag(messages[-1]),
@@ -129,6 +130,26 @@ def prepare_conversation(request: CoachChatRequest, content: ContentStore, setti
             request.context and request.context.workout and request.context.workout.screen in IN_WORKOUT_SCREENS
         ),
     )
+
+
+def _knowledge_for(request: CoachChatRequest, settings: Settings) -> str:
+    """Notes that fit the user's last questions (see app/ai/knowledge.py). Never fails the chat."""
+    try:
+        questions = [
+            text
+            for message in request.messages
+            if message.role == "user"
+            for text in (
+                [message.content]
+                if isinstance(message.content, str)
+                else [block.text for block in message.content if isinstance(block, TextBlock)]
+            )
+            if text.strip()
+        ]
+        return knowledge_block(questions, load_knowledge(settings.content_dir / "knowledge")) if questions else ""
+    except Exception as exc:
+        log.warning("knowledge_failed", extra={"excType": type(exc).__name__})
+        return ""
 
 
 def _consent_required() -> ApiError:

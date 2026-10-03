@@ -22,6 +22,14 @@ Use a key from a **paid** (billing-enabled) Google AI project with a budget limi
 prompts to improve its products (coach prompts carry health summaries) and the quota is tiny: 20 requests per
 day per model, after which every call answers 429.
 
+### Knowledge base (RAG) for the coach
+
+`content/knowledge/*.md`: short Polish notes (own summaries of open sources: WHO guidelines, studies on load and
+volume, Wikipedia on technique and recovery), each with `source`, `url`, `license`. For every question
+`app/ai/knowledge.py` picks the 1-3 notes that fit (BM25 in memory: no embeddings, no extra API call, works offline)
+and `coach_service` adds them to the system prompt with their sources. Missing or broken notes are skipped and never
+fail the chat. How to add a note and the licence status: `content/knowledge/README.md`.
+
 ### Models and what happens when Gemini misbehaves
 
 `FORMA_COACH_MODEL`, `FORMA_PLAN_MODEL` and `FORMA_TEXT_MODEL` (default `gemini-3.5-flash`) pick the model;
@@ -90,7 +98,10 @@ movements, a short reason that passes the generated-text checks); the app checks
 and answers the model with an error it can explain when the change is not possible.
 
 Other tools: `get_training_log` (finished sessions and live-coach sets, numbers only: no consent needed) and
-`propose_plan_change` with `swap_exercise`, `lighter_session`, `move_session` and `skip_session`.
+`propose_plan_change` with `swap_exercise`, `lighter_session`, `move_session`, `skip_session`, `add_exercise`,
+`remove_exercise` and `edit_exercise` (sets, reps or seconds, rest). Exercises always come from the catalog: an exercise
+that is not in it cannot be added, and an added or swapped-in exercise must fit the person (equipment, level, avoided
+movements). Numbers outside the app's limits (`Plan.PlanLimits`) are dropped by the server, never clamped.
 
 Tools that read health data (`get_today_recommendation`, `get_recovery_summary`, `get_checkins`,
 `get_session_feedback`) are offered only when `consent.health` is true. Without consent they are not in the model's
@@ -126,6 +137,7 @@ app/ai/gemini.py       Gemini gateway: tool translation, model fallback, cooldow
 app/ai/prompts/*.md    Polish system prompts (edit wording here)
 app/ai/prompts.py      fills prompts with sanitised data
 app/ai/tools.py        coach tool definitions, consent gating
+app/ai/knowledge.py    notes for the coach (content/knowledge), BM25 retrieval
 app/services/          plan_builder (templates), plan_validator, plan_service, coach_service,
                        text_service, safety
 app/routers/           one file per area
@@ -158,10 +170,30 @@ Environment variables of the Vercel project (Settings, or `npx vercel env add NA
 |---|---|---|
 | `FORMA_APP_TOKENS` | yes | the app token(s); the server refuses to start without it. Set. |
 | `GEMINI_API_KEY` | for the real model | key from a **paid** Google project with a budget limit. Not set yet: without it the server answers in mock mode (`/health` shows `aiMode: mock`). |
+| `FORMA_SUPABASE_URL`, `FORMA_SUPABASE_SERVICE_KEY` | for shared rate limits | see "Limity w Supabase" below. Both must be set; without them the in-memory limiter is used (current default, per-instance). |
 
 Redeploy: `npx vercel deploy --prod --yes --scope michal-team00` from the repo root (the CLI must be logged in:
 `npx vercel login`). Changing an environment variable needs a redeploy. Logs: Vercel dashboard, or the MCP tool
 `get_runtime_logs`.
+
+### Limity w Supabase
+
+Vercel runs several instances of the backend, so the in-memory limiter (`app/security.py: RateLimiter`) only
+limits per instance, not per device. `SupabaseRateLimiter` fixes this with one shared table in a Supabase
+Postgres project: a single atomic upsert-and-read SQL function (`public.rate_limit_hit`, fixed 60 s window) so
+two concurrent requests from the same device can't both slip through. Migration:
+`backend/supabase/migrations/20261003171750_rate_limits.sql` (apply with the Supabase MCP tool or
+`supabase db push`). RLS is on with no policies, so only `service_role` can call the function.
+
+Set both `FORMA_SUPABASE_URL` (project URL) and `FORMA_SUPABASE_SERVICE_KEY` (the `service_role` key, never the
+anon key) to enable it; `build_limiter` in `app/main.py` picks `SupabaseRateLimiter` only when both are set and
+the key is non-blank, otherwise it falls back to the in-memory limiter — same as today. **Fail-open**: any
+Supabase error (timeout, network, non-2xx, malformed response) logs `limiter_fallback` and checks the in-memory
+limiter instead of raising, so a Supabase outage never turns into a 500 or blocks requests. `/health` does not
+report which limiter is active; check the startup log line (`"rateLimiter": "supabase" | "memory"`).
+
+Getting the two values: ask Bartek — the Supabase project credentials are shared with the team privately
+(messenger), never through chat, commits or logs.
 
 App side: `FORMA_API_URL` and `FORMA_API_TOKEN` in `Config/Secrets.xcconfig` (gitignored). Ask Michał for the token.
 
@@ -171,8 +203,9 @@ Lessons from the first deploy (so nobody repeats them):
 - `includeFiles` with brace globs did not include the backend; the Python runtime bundles the project by default.
 - The GitHub integration was not connected for this repo, so deploys are made from the CLI, not by pushing.
 
-Known gaps: rate limits live in memory (per instance, so they barely work on Vercel: rely on the token and the
-spending limit on the key), cold starts, the Gemini key signature cache is per process.
+Known gaps: rate limits are in-memory (per instance) until `FORMA_SUPABASE_URL`/`FORMA_SUPABASE_SERVICE_KEY` are
+set (see "Limity w Supabase" above; until then rely on the token and the spending limit on the key), cold
+starts, the Gemini key signature cache is per process.
 
 `docker build -f backend/Dockerfile -t forma-backend .` from the repository root is the fallback (untested: no
 Docker on the build machine). In prod the docs and the schema endpoint are off.

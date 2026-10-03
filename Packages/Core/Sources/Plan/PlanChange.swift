@@ -16,6 +16,8 @@ public enum PlanChangeError: Error, Equatable, Sendable {
     case dayTaken
     case sameDay
     case nothingToLighten
+    /// An edit that leaves the exercise as it is.
+    case nothingToChange
     /// A number out of range (sets, reps, rest).
     case invalidValue(String)
     /// A session needs at least one exercise: skip the session instead.
@@ -43,6 +45,7 @@ public enum PlanChangeError: Error, Equatable, Sendable {
         case .dayTaken: return "W tym dniu jest już inna sesja."
         case .sameDay: return "Sesja już jest w tym dniu."
         case .nothingToLighten: return "Ta sesja jest już lekka: żadne ćwiczenie nie ma więcej niż dwóch serii."
+        case .nothingToChange: return "To ćwiczenie już tak wygląda, nic nie ma do zmiany."
         case .invalidValue(let what): return "Nieprawidłowa wartość: \(what)."
         case .lastExercise: return "Sesja musi mieć przynajmniej jedno ćwiczenie. Możesz ją pominąć."
         case .tooManyExercises: return "W jednej sesji może być najwyżej \(PlanLimits.maxExercises) ćwiczeń."
@@ -86,7 +89,8 @@ public struct PlanChanger: Sendable {
 
     /// A pending proposal for what the model asked, or the reason it cannot be done.
     public func propose(kind: PlanChangeKind, weekday: Int?, exerciseId: String?, replacementExerciseId: String?,
-                        newWeekday: Int?, reason: String?, in plan: TrainingPlan) throws -> PlanChangeProposal {
+                        newWeekday: Int?, reason: String?, sets: Int? = nil, repsMin: Int? = nil, repsMax: Int? = nil,
+                        restSeconds: Int? = nil, in plan: TrainingPlan) throws -> PlanChangeProposal {
         guard let weekday else { throw PlanChangeError.missingField("dzień sesji") }
         guard let session = plan.window(from: now(), calendar: calendar).first(where: { $0.weekday == weekday }) else {
             throw PlanChangeError.noSuchSession
@@ -108,6 +112,26 @@ public struct PlanChanger: Sendable {
             proposal.newWeekday = newWeekday
         case .skipSession:
             break
+        case .addExercise:
+            guard let exerciseId else { throw PlanChangeError.missingField("ćwiczenie do dodania") }
+            proposal.exerciseId = exerciseId
+            proposal.sets = sets
+            proposal.repsMin = repsMin
+            proposal.repsMax = repsMax
+            proposal.restSeconds = restSeconds
+        case .removeExercise:
+            guard let exerciseId else { throw PlanChangeError.missingField("ćwiczenie do usunięcia") }
+            proposal.exerciseId = exerciseId
+        case .editExercise:
+            guard let exerciseId else { throw PlanChangeError.missingField("ćwiczenie do zmiany") }
+            guard sets != nil || repsMin != nil || repsMax != nil || restSeconds != nil else {
+                throw PlanChangeError.missingField("serie, powtórzenia lub przerwa")
+            }
+            proposal.exerciseId = exerciseId
+            proposal.sets = sets
+            proposal.repsMin = repsMin
+            proposal.repsMax = repsMax
+            proposal.restSeconds = restSeconds
         }
         // Dry run: the same code that will run on "Zastosuj" decides whether it is possible and what it says.
         let result = try change(proposal, in: plan)
@@ -169,7 +193,92 @@ public struct PlanChanger: Sendable {
             var changed = session
             changed.status = .skipped
             return (changed, "Pomiń sesję „\(session.title)” (\(day)\(Self.datePart(session)))")
+        case .addExercise: return try add(proposal, session, plan)
+        case .removeExercise: return try remove(proposal, session, plan)
+        case .editExercise: return try editPrescription(proposal, session, plan)
         }
+    }
+
+    // MARK: exercises in a session (the same checks as the user's own edits, `PlanEditor`)
+
+    private var editor: PlanEditor { PlanEditor(catalog: catalog, profile: profile, calendar: calendar, now: now) }
+
+    /// The session after one `PlanEditor` edit; the editor decides whether it is allowed (catalog, fit, limits).
+    private func edited(_ edit: PlanEdit, _ session: PlannedSession, _ plan: TrainingPlan) throws -> (plan: TrainingPlan, session: PlannedSession) {
+        let result = try editor.apply(edit, to: session.id, in: plan)
+        guard let changed = result.plan.sessions.first(where: { $0.id == session.id }) else { throw PlanChangeError.noSuchSession }
+        return (result.plan, changed)
+    }
+
+    private func name(_ id: String) -> String { catalog.first { $0.id == id }?.name ?? id }
+
+    /// "sesji „Nogi” (poniedziałek, 5 paź)": the same form fits "do sesji", "z sesji" and "w sesji".
+    private func place(_ session: PlannedSession) -> String {
+        "sesji „\(session.title)” (\(Self.dayName(session.weekday))\(Self.datePart(session)))"
+    }
+
+    private func add(_ proposal: PlanChangeProposal, _ session: PlannedSession, _ plan: TrainingPlan) throws -> (PlannedSession, String) {
+        guard let id = proposal.exerciseId else { throw PlanChangeError.missingField("ćwiczenie do dodania") }
+        var result = try edited(.addExercise(id), session, plan)
+        if proposal.sets != nil || proposal.repsMin != nil || proposal.repsMax != nil || proposal.restSeconds != nil {
+            result = try edited(.setPrescription(exerciseId: id, sets: proposal.sets, repsMin: proposal.repsMin,
+                                                 repsMax: proposal.repsMax, restSeconds: proposal.restSeconds),
+                                result.session, result.plan)
+        }
+        guard let item = result.session.exercises.first(where: { $0.exerciseId == id }) else { throw PlanChangeError.noSuchExercise }
+        let timed = catalog.first { $0.id == id }?.timed ?? false
+        return (result.session, "Dodaj „\(name(id))” do \(place(session)): \(Self.prescription(item, timed: timed))")
+    }
+
+    private func remove(_ proposal: PlanChangeProposal, _ session: PlannedSession, _ plan: TrainingPlan) throws -> (PlannedSession, String) {
+        guard let id = proposal.exerciseId else { throw PlanChangeError.missingField("ćwiczenie do usunięcia") }
+        let result = try edited(.removeExercise(id), session, plan)
+        return (result.session, "Usuń „\(name(id))” z \(place(session))")
+    }
+
+    private func editPrescription(_ proposal: PlanChangeProposal, _ session: PlannedSession, _ plan: TrainingPlan) throws -> (PlannedSession, String) {
+        guard let id = proposal.exerciseId, let before = session.exercises.first(where: { $0.exerciseId == id }) else {
+            throw PlanChangeError.noSuchExercise
+        }
+        let result: (plan: TrainingPlan, session: PlannedSession)
+        do {
+            result = try edited(.setPrescription(exerciseId: id, sets: proposal.sets, repsMin: proposal.repsMin,
+                                                 repsMax: proposal.repsMax, restSeconds: proposal.restSeconds), session, plan)
+        } catch PlanChangeError.notApplied {
+            throw PlanChangeError.nothingToChange  // the editor sees no difference: say it in this context
+        }
+        guard let after = result.session.exercises.first(where: { $0.exerciseId == id }) else { throw PlanChangeError.noSuchExercise }
+        let timed = catalog.first { $0.id == id }?.timed ?? false
+        var parts: [String] = []
+        if after.sets != before.sets { parts.append("\(before.sets) → \(after.sets) \(Self.setsWord(after.sets))") }
+        if after.repsMin != before.repsMin || after.repsMax != before.repsMax {
+            let unit = timed ? "czas" : "powtórzenia"
+            parts.append("\(unit) \(Self.range(before, timed: timed)) → \(Self.range(after, timed: timed))")
+        }
+        if after.restSeconds != before.restSeconds {
+            parts.append("przerwa \(Self.clock(before.restSeconds)) → \(Self.clock(after.restSeconds))")
+        }
+        guard !parts.isEmpty else { throw PlanChangeError.nothingToChange }
+        return (result.session, "Zmień „\(name(id))” w \(place(session)): \(parts.joined(separator: ", "))")
+    }
+
+    // MARK: wording of numbers
+
+    private static func range(_ item: PlannedExercise, timed: Bool) -> String {
+        let reps = item.repsMin == item.repsMax ? "\(item.repsMin)" : "\(item.repsMin)–\(item.repsMax)"
+        return timed ? "\(reps) s" : reps
+    }
+
+    /// "3 × 8–12, przerwa 1:30", or "3 × 30–45 s, przerwa 0:45" for an exercise counted in seconds.
+    static func prescription(_ item: PlannedExercise, timed: Bool) -> String {
+        "\(item.sets) × \(range(item, timed: timed)), przerwa \(clock(item.restSeconds))"
+    }
+
+    private static func clock(_ seconds: Int) -> String { String(format: "%d:%02d", seconds / 60, seconds % 60) }
+
+    private static func setsWord(_ n: Int) -> String {
+        if n == 1 { return "seria" }
+        return (2...4).contains(n % 10) && !(12...14).contains(n % 100) ? "serie" : "serii"
     }
 
     private func swap(_ proposal: PlanChangeProposal, _ session: PlannedSession, _ day: String) throws -> (PlannedSession, String) {

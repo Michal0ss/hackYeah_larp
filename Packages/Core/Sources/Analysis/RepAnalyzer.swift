@@ -2,123 +2,82 @@ import Contracts
 import Foundation
 import LiveSet
 
-/// Splits a recorded clip into repetitions and measures the angle/tempo metrics PROJECT.md 6.3
-/// asks for. Reuses `SquatSignal`/`PhaseTracker` (the same rep-splitting LiveSet does live) instead
-/// of re-deriving the depth signal from scratch, so squat, push-up and pull-up all work the same way
-/// the live set already handles them (`MovementKind`).
+/// Splits a recorded clip into repetitions and measures the angle/tempo metrics PROJECT.md 6.3 asks for.
+/// Repetitions come from `ClipRepDetector` (the whole clip at once, no live calibration), angles from the
+/// aspect-corrected `PoseFrame.angle`, so squat, push-up and pull-up all measure real joint angles.
 public enum RepAnalyzer {
     /// Hip may be this far (frame fraction) above the knee and still count as deep enough. Squat only.
     public static var depthToleranceFrame = 0.02
 
     public struct Analysis {
         public var reps: [RepMetrics]
-        /// One frame per rep — the deepest point for squat/push-up, the highest for pull-up — the
-        /// same "bottom frame" LiveSetEngine feeds to a `TechniqueAssessing` for live scoring.
+        /// One frame per rep: the working end of the movement (deepest point of a squat/push-up, highest of a
+        /// pull-up), the one a `TechniqueAssessing` judges.
         public var bottomFrames: [PoseFrame]
+        /// One frame per rep: the position it started from (standing, the top of a push-up, the hang).
+        public var startFrames: [PoseFrame]
+        /// What the detector saw, for charts and for explaining a clip without repetitions.
+        public var detection: ClipRepDetection
+        public var clipReps: [ClipRep] { detection.reps }
     }
 
-    public static func analyze(frames: [PoseFrame], kind: MovementKind = .squat) -> Analysis {
-        var signal = SquatSignal(kind: kind)
-        var tracker = PhaseTracker()
-        var results: [RepMetrics] = []
-        var bottomFrames: [PoseFrame] = []
-        var currentRepFrames: [PoseFrame] = []
-        var repBest: (depth: Double, frame: PoseFrame)?
-        var collecting = false
-
-        for frame in frames {
-            guard let depth = signal.depth(for: frame) else { continue }
-            let events = tracker.update(time: frame.time, depth: depth)
-
-            if events.contains(where: { if case .phaseStarted(.eccentric, _) = $0 { return true }; return false }) {
-                collecting = true
-                currentRepFrames = []
-                repBest = nil
-            }
-            if collecting {
-                currentRepFrames.append(frame)
-                if depth > (repBest?.depth ?? -1) { repBest = (depth, frame) }
-            }
-
-            for event in events {
-                if case var .repCompleted(tempo) = event {
-                    tempo = kind.exerciseRep(tempo)
-                    results.append(metrics(for: tempo, frames: currentRepFrames))
-                    if let best = repBest { bottomFrames.append(best.frame) }
-                    collecting = false
-                    currentRepFrames = []
-                    repBest = nil
-                }
-            }
+    public static func analyze(frames: [PoseFrame], kind: MovementKind = .squat,
+                               config: ClipRepDetector.Config = ClipRepDetector.Config(),
+                               depthTolerance: Double = RepAnalyzer.depthToleranceFrame) -> Analysis {
+        let detection = ClipRepDetector.detect(frames: frames, kind: kind, config: config)
+        var metrics: [RepMetrics] = []
+        for rep in detection.reps {
+            let window = frames.filter { $0.time >= rep.startTime && $0.time <= rep.endTime }
+            // The pull-up is reversed: the way out is the pull (concentric), the way back is the lowering.
+            let descent = kind == .pullup ? rep.backSeconds : rep.outSeconds
+            let ascent = kind == .pullup ? rep.outSeconds : rep.backSeconds
+            metrics.append(self.metrics(index: rep.index, frames: window, bottom: rep.bottomFrame,
+                                        descent: descent, ascent: ascent, depthTolerance: depthTolerance))
         }
-        return Analysis(reps: results, bottomFrames: bottomFrames)
+        return Analysis(reps: metrics, bottomFrames: detection.reps.map(\.bottomFrame),
+                        startFrames: detection.reps.map(\.startFrame), detection: detection)
     }
 
-    /// Squat-specific per-rep metrics (knee angle, hip depth, torso lean). For push-up/pull-up only
-    /// `index`/`descentSeconds`/`ascentSeconds` are meaningful — their scoring comes from
-    /// `TechniqueScorer`'s reused `TechniqueAssessing` instead.
-    private static func metrics(for tempo: RepTempo, frames: [PoseFrame]) -> RepMetrics {
+    /// Per-rep metrics (knee angle, hip depth, torso lean). For push-up/pull-up only the tempo is meaningful here;
+    /// their scoring comes from the `TechniqueAssessing` the live set uses.
+    private static func metrics(index: Int, frames: [PoseFrame], bottom: PoseFrame, descent: Double, ascent: Double,
+                                depthTolerance: Double) -> RepMetrics {
         var minAngle = 180.0
         var leanAtBottom = 0.0
         var hipBelowKnee = false
 
-        for frame in frames {
-            guard let hip = frame.joint(.root) ?? frame.joint(.leftHip) ?? frame.joint(.rightHip),
-                  let knee = frame.joint(.leftKnee) ?? frame.joint(.rightKnee),
-                  let ankle = frame.joint(.leftAnkle) ?? frame.joint(.rightAnkle)
-            else { continue }
-
-            let angle = kneeAngle(hip: hip, knee: knee, ankle: ankle)
-            guard angle < minAngle else { continue }
-            minAngle = angle
-            hipBelowKnee = hip.y >= knee.y - depthToleranceFrame
-            if let neck = frame.joint(.neck) {
-                leanAtBottom = angleFromVertical(from: hip, to: neck)
+        // The angles of the frame the detector chose as the working end of the repetition (not the most extreme frame
+        // of the window, which could be a tracking glitch). Only when the legs are not visible there, the window is used.
+        for frame in [bottom] + frames {
+            guard let leg = PoseLimbs.leg(in: frame, minConfidence: 0.15) else { continue }
+            minAngle = leg.kneeAngle(in: frame)
+            hipBelowKnee = leg.hip.y >= leg.knee.y - depthTolerance
+            if let neck = frame.joint(.neck, minConfidence: 0.15) {
+                leanAtBottom = frame.angleFromVertical(from: leg.hip, to: neck)
             }
+            break
         }
 
-        return RepMetrics(index: tempo.index, minKneeAngle: minAngle, hipBelowKnee: hipBelowKnee,
-                          torsoLeanDegrees: leanAtBottom, descentSeconds: tempo.eccentric,
-                          ascentSeconds: tempo.concentric)
+        return RepMetrics(index: index, minKneeAngle: minAngle, hipBelowKnee: hipBelowKnee,
+                          torsoLeanDegrees: leanAtBottom, descentSeconds: descent, ascentSeconds: ascent)
     }
 
-    /// Knee angle at every frame where hip/knee/ankle are all visible — for charting over time (squat).
-    public static func kneeAngleSeries(in frames: [PoseFrame]) -> [(time: Double, angle: Double)] {
+    /// The main angle of the exercise (knee for a squat, elbow for a push-up and a pull-up) at every frame where its
+    /// three joints are visible, for charting over time.
+    public static func angleSeries(in frames: [PoseFrame], kind: MovementKind) -> [(time: Double, angle: Double)] {
         frames.compactMap { frame in
-            guard let hip = frame.joint(.root) ?? frame.joint(.leftHip) ?? frame.joint(.rightHip),
-                  let knee = frame.joint(.leftKnee) ?? frame.joint(.rightKnee),
-                  let ankle = frame.joint(.leftAnkle) ?? frame.joint(.rightAnkle)
-            else { return nil }
-            return (frame.time, kneeAngle(hip: hip, knee: knee, ankle: ankle))
+            kind.primaryAngle(in: frame, minConfidence: 0.15).map { (frame.time, $0) }
         }
     }
 
-    /// The frame across the whole clip with the smallest knee angle — a representative "bottom of a
-    /// squat" shot to overlay the skeleton on.
+    /// Knee angle at every frame where hip/knee/ankle are all visible, for charting over time (squat).
+    public static func kneeAngleSeries(in frames: [PoseFrame]) -> [(time: Double, angle: Double)] {
+        angleSeries(in: frames, kind: .squat)
+    }
+
+    /// The frame across the whole clip with the smallest knee angle: a representative "bottom of a squat" shot.
     public static func deepestFrame(in frames: [PoseFrame]) -> PoseFrame? {
-        frames.min { angleOrInfinity($0) < angleOrInfinity($1) }
-    }
-
-    private static func angleOrInfinity(_ frame: PoseFrame) -> Double {
-        guard let hip = frame.joint(.root) ?? frame.joint(.leftHip) ?? frame.joint(.rightHip),
-              let knee = frame.joint(.leftKnee) ?? frame.joint(.rightKnee),
-              let ankle = frame.joint(.leftAnkle) ?? frame.joint(.rightAnkle)
-        else { return .infinity }
-        return kneeAngle(hip: hip, knee: knee, ankle: ankle)
-    }
-
-    /// Angle at the knee between the hip and the ankle, in degrees (180 = straight leg).
-    private static func kneeAngle(hip: Joint, knee: Joint, ankle: Joint) -> Double {
-        let v1 = (x: hip.x - knee.x, y: hip.y - knee.y)
-        let v2 = (x: ankle.x - knee.x, y: ankle.y - knee.y)
-        let dot = v1.x * v2.x + v1.y * v2.y
-        let norm = hypot(v1.x, v1.y) * hypot(v2.x, v2.y)
-        guard norm > 0 else { return 180 }
-        return acos(min(1, max(-1, dot / norm))) * 180 / .pi
-    }
-
-    /// Angle between the vector `from -> to` and the vertical, in degrees.
-    private static func angleFromVertical(from: Joint, to: Joint) -> Double {
-        atan2(abs(to.x - from.x), abs(to.y - from.y)) * 180 / .pi
+        frames.compactMap { frame in MovementKind.squat.primaryAngle(in: frame, minConfidence: 0.15).map { (frame, $0) } }
+            .min { $0.1 < $1.1 }?.0
     }
 }

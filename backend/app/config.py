@@ -29,7 +29,10 @@ def _split_list(value: object) -> object:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="FORMA_", env_file=".env", extra="ignore")
+    # populate_by_name: lets tests build a Settings by field name (e.g. Settings(supabase_url=...))
+    # regardless of validation_alias, which otherwise inconsistently blocks kwarg construction
+    # depending on how many alias choices a field has (a pydantic-settings 2.15 quirk).
+    model_config = SettingsConfigDict(env_prefix="FORMA_", env_file=".env", extra="ignore", populate_by_name=True)
 
     # --- environment
     env: Literal["dev", "test", "prod"] = "dev"
@@ -74,6 +77,13 @@ class Settings(BaseSettings):
     # --- content
     content_dir: Path = DEFAULT_CONTENT_DIR
 
+    # --- rate limiting (optional: shared across instances via Supabase Postgres)
+    # Both must be set for the Supabase limiter to be used; otherwise the in-memory one (dev default).
+    supabase_url: str | None = Field(default=None, validation_alias=AliasChoices("FORMA_SUPABASE_URL"))
+    supabase_service_key: SecretStr | None = Field(
+        default=None, validation_alias=AliasChoices("FORMA_SUPABASE_SERVICE_KEY")
+    )
+
     @field_validator("app_tokens", "cors_origins", "fallback_models", mode="before")
     @classmethod
     def _parse_lists(cls, value: object) -> object:
@@ -100,3 +110,8 @@ class Settings(BaseSettings):
     @property
     def auth_enabled(self) -> bool:
         return bool(self.app_tokens)
+
+    @property
+    def supabase_configured(self) -> bool:
+        has_key = self.supabase_service_key and self.supabase_service_key.get_secret_value().strip()
+        return bool(self.supabase_url and has_key)

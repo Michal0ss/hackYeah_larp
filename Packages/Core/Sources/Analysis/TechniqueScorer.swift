@@ -63,10 +63,13 @@ public enum TechniqueScorer {
     /// depending on `kind`.
     public static func score(exerciseId: String, kind: MovementKind, frames: [PoseFrame],
                              weights: Weights = Weights(), thresholds: Thresholds = Thresholds(),
+                             reference: AngleReference = AngleReference(),
+                             clip: ClipRepDetector.Config = ClipRepDetector.Config(),
                              date: Date = Date(), isSimulated: Bool = false) -> TechniqueResult {
-        let analysis = RepAnalyzer.analyze(frames: frames, kind: kind)
+        let analysis = RepAnalyzer.analyze(frames: frames, kind: kind, config: clip, depthTolerance: reference.squatDepthTolerance)
         guard kind == .squat else {
-            let assessment = kind.defaultAssessor.assess(bottomFrames: analysis.bottomFrames)
+            let assessment = kind.assessor(reference: reference)
+                .assess(bottomFrames: analysis.bottomFrames, startFrames: analysis.startFrames)
             return TechniqueResult(exerciseId: exerciseId, date: date, score: assessment.score ?? 0,
                                    componentScores: [:], findings: assessment.findings, reps: analysis.reps,
                                    isSimulated: isSimulated)
@@ -103,8 +106,11 @@ public enum TechniqueScorer {
         let overall = weights.depth * depthScore + weights.torso * torsoScore
             + weights.repeatability * repeatabilityScore + weights.tempo * tempoScore
 
-        let findings = depthFindings(deepReps: deepReps, total: reps.count)
-            + torsoFindings(goodReps: goodLeanReps, total: reps.count)
+        let kneeAverage = reps.map(\.minKneeAngle).reduce(0, +) / Double(reps.count)
+        let leanAverage = reps.map(\.torsoLeanDegrees).reduce(0, +) / Double(reps.count)
+        let findings = depthFindings(deepReps: deepReps, total: reps.count, kneeAverage: kneeAverage)
+            + torsoFindings(goodReps: goodLeanReps, total: reps.count, leanAverage: leanAverage,
+                            maxLean: thresholds.maxTorsoLeanDegrees)
 
         let substitute = substituteExercise(depthScore: depthScore, torsoScore: torsoScore)
 
@@ -127,26 +133,29 @@ public enum TechniqueScorer {
         return 100.0 * perRep.reduce(0, +) / Double(perRep.count)
     }
 
-    private static func depthFindings(deepReps: Int, total: Int) -> [TechniqueFinding] {
+    private static func depthFindings(deepReps: Int, total: Int, kneeAverage: Double) -> [TechniqueFinding] {
         let shallow = total - deepReps
+        let measured = " Kąt kolana w najniższym punkcie: średnio \(Int(kneeAverage.rounded()))°."
         if shallow == 0 {
             return [TechniqueFinding(id: "depth_ok", title: "Głębokość",
-                detail: "Biodra schodzą do poziomu kolan lub niżej we wszystkich powtórzeniach.",
+                detail: "Biodra schodzą do poziomu kolan lub niżej we wszystkich powtórzeniach." + measured,
                 severity: .good, repsAffected: 0, repsTotal: total)]
         }
         return [TechniqueFinding(id: "depth_shallow", title: "Za płytko",
-            detail: "Biodra nie schodzą do poziomu kolan. Zejdź niżej, o ile pozwala na to komfort.",
+            detail: "Biodra nie schodzą do poziomu kolan. Zejdź niżej, o ile pozwala na to komfort." + measured,
             severity: shallow * 2 > total ? .major : .minor, repsAffected: shallow, repsTotal: total)]
     }
 
-    private static func torsoFindings(goodReps: Int, total: Int) -> [TechniqueFinding] {
+    private static func torsoFindings(goodReps: Int, total: Int, leanAverage: Double, maxLean: Double) -> [TechniqueFinding] {
         let high = total - goodReps
+        let measured = " Średnio \(Int(leanAverage.rounded()))° od pionu (granica ok. \(Int(maxLean.rounded()))°)."
         if high == 0 {
             return [TechniqueFinding(id: "torso_ok", title: "Tułów",
-                detail: "Pochylenie tułowia mieści się w zakresie.", severity: .good, repsAffected: 0, repsTotal: total)]
+                detail: "Pochylenie tułowia mieści się w zakresie." + measured,
+                severity: .good, repsAffected: 0, repsTotal: total)]
         }
         return [TechniqueFinding(id: "torso_lean_high", title: "Pochylenie tułowia",
-            detail: "Tułów pochyla się za bardzo w najniższym punkcie. Klatka do przodu, plecy proste.",
+            detail: "Tułów pochyla się za bardzo w najniższym punkcie. Klatka do przodu, plecy proste." + measured,
             severity: high * 2 > total ? .major : .minor, repsAffected: high, repsTotal: total)]
     }
 

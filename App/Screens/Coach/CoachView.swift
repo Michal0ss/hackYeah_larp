@@ -14,6 +14,7 @@ struct CoachView: View {
     @Environment(AppStore.self) private var store
     @Environment(AppRouter.self) private var router
     @State private var model: CoachViewModel?
+    @State private var voice: VoiceChatController?
     @State private var confirmClear = false
     @FocusState private var inputFocused: Bool
 
@@ -27,10 +28,15 @@ struct CoachView: View {
             }
         }
         .task {
-            if model == nil { model = CoachViewModel.make(store: store) }
+            if model == nil {
+                let model = CoachViewModel.make(store: store)
+                self.model = model
+                voice = VoiceChatController(viewModel: model)
+            }
             model?.workout = workout
             await model?.load()
         }
+        .onDisappear { voice?.endSession() }
     }
 
     private func content(_ model: CoachViewModel) -> some View {
@@ -39,7 +45,10 @@ struct CoachView: View {
             conversation(model)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            CoachInputBar(model: model, focused: $inputFocused)
+            VStack(spacing: 0) {
+                if let voice, voice.isAvailable { VoiceMicRow(controller: voice) }
+                CoachInputBar(model: model, focused: $inputFocused)
+            }
         }
         .confirmationDialog("Wyczyścić rozmowę z trenerem?", isPresented: $confirmClear, titleVisibility: .visible) {
             Button("Wyczyść rozmowę", role: .destructive) { Task { await model.clearConversation() } }
@@ -75,6 +84,9 @@ struct CoachView: View {
                 }
                 Button("Wyczyść rozmowę", systemImage: "trash", role: .destructive) { confirmClear = true }
                     .disabled(model.messages.isEmpty)
+                if let voice, voice.isAvailable {
+                    Toggle("Czytaj odpowiedzi", systemImage: "speaker.wave.2", isOn: Bindable(voice).readRepliesAloud)
+                }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 18, weight: .bold))

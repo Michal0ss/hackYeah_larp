@@ -22,7 +22,7 @@ from app.errors import register_exception_handlers
 from app.logging_setup import configure_logging, get_logger
 from app.middleware import RequestContextMiddleware
 from app.routers import api_v1, system
-from app.security import RateLimiter
+from app.security import Limiter, RateLimiter, SupabaseRateLimiter
 
 DESCRIPTION = """
 Backend of the Forma app. Stateless: no database, no stored videos, no stored health data.
@@ -45,6 +45,16 @@ def build_gateway(settings: Settings) -> AIGateway:
     return MockGateway(delay=0.015 if settings.env == "dev" else 0.0)
 
 
+def build_limiter(settings: Settings) -> Limiter:
+    fallback = RateLimiter()
+    if settings.supabase_configured:
+        assert settings.supabase_url is not None and settings.supabase_service_key is not None
+        return SupabaseRateLimiter(
+            settings.supabase_url, settings.supabase_service_key.get_secret_value(), fallback=fallback
+        )
+    return fallback
+
+
 def create_app(
     settings: Settings | None = None,
     gateway: AIGateway | None = None,
@@ -54,6 +64,7 @@ def create_app(
     log = configure_logging(settings.log_level)
     content = content or ContentStore.load(settings.content_dir)
     gateway = gateway or build_gateway(settings)
+    limiter = build_limiter(settings)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -64,11 +75,13 @@ def create_app(
                 "env": settings.env,
                 "aiMode": gateway.mode,
                 "auth": settings.auth_enabled,
+                "rateLimiter": "supabase" if settings.supabase_configured else "memory",
                 "contentVersion": content.content_version,
             },
         )
         yield
         await gateway.aclose()
+        limiter.close()
 
     is_prod = settings.env == "prod"
     app = FastAPI(
@@ -85,7 +98,7 @@ def create_app(
     app.state.settings = settings
     app.state.content = content
     app.state.gateway = gateway
-    app.state.limiter = RateLimiter()
+    app.state.limiter = limiter
 
     register_exception_handlers(app)
     app.include_router(system.router)
