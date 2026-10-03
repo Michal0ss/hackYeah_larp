@@ -69,7 +69,30 @@ final class InsightEngineTests: XCTestCase {
             techniques: [technique(score: 72, findings: [finding()], substitute: "goblet_squat")]))
         XCTAssertEqual(r.decision, .adapt)
         XCTAssertEqual(r.factors.filter(\.isNegative).map(\.source), [.sleep, .hrv, .checkIn, .technique])
-        XCTAssertTrue(r.suggestedAction.contains("przysiad kielichowy"))
+        XCTAssertTrue(r.suggestedAction.contains("Zamiast ćwiczenia „Przysiad” spróbuj: przysiad kielichowy"))
+    }
+
+    func testOldAnalysisDoesNotSteerToday() {
+        let old = technique(ago: 30, score: 40, findings: [finding(affected: 5)])
+        let r = engine.recommend(input(snapshots: [snapshot()], checkIns: [checkIn()], techniques: [old]))
+        XCTAssertEqual(r.decision, .train)
+        XCTAssertNil(r.factors.first { $0.source == .technique })
+    }
+
+    func testNewestAnalysisIsUsedWhateverTheOrder() {
+        let bad = technique(ago: 1, score: 40, findings: [finding(affected: 5)])
+        let good = technique(ago: 0, score: 90)
+        XCTAssertEqual(engine.recommend(input(techniques: [bad, good])).decision, .train)
+        XCTAssertEqual(engine.recommend(input(techniques: [good, bad])).decision, .train)
+    }
+
+    func testSubstituteTextWithoutKnownExerciseDoesNotInventAName() {
+        let t = technique(score: 40, findings: [finding(affected: 5)], substitute: "goblet_squat")
+        var i = input(snapshots: [snapshot()], techniques: [t])
+        i.catalog = SampleData.catalog.filter { $0.id != "squat" }
+        let r = engine.recommend(i)
+        XCTAssertTrue(r.suggestedAction.contains("Spróbuj: przysiad kielichowy"))
+        XCTAssertFalse(r.suggestedAction.contains("Zamiast ćwiczenia"))
     }
 
     func testFourRecoverySignalsRest() {

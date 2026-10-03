@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "note": "Progi inżynierskie na demo (PROJECT.md 7.3), nie wartości kliniczne. Do 'rest' liczą się tylko sygnały regeneracji (sen, HRV, tętno, stres, energia), technika wpływa najwyżej na 'adapt'. Właściciel: Wiktor.",
   "signals": {
     "sleepMinutesLow": 360,
@@ -7,7 +7,8 @@
     "restingHeartRateAboveBaseline": 5,
     "stressHigh": 4,
     "energyLow": 2,
-    "techniqueScoreLow": 60
+    "techniqueScoreLow": 60,
+    "techniqueMaxAgeDays": 14
   },
   "decision": {
     "adaptFromSignals": 1,

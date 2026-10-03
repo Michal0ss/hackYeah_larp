@@ -38,7 +38,9 @@ public struct InsightEngine: Sendable {
         let day = calendar.startOfDay(for: input.now)
         let snapshot = input.snapshots.first { calendar.isDate($0.date, inSameDayAs: input.now) }
         let checkIn = input.checkIns.first { calendar.isDate($0.date, inSameDayAs: input.now) }
-        let technique = input.techniqueResults.first
+        // The newest analysis from the last `techniqueMaxAgeDays` days. An old result must not steer today.
+        let techniqueCutoff = calendar.date(byAdding: .day, value: -thresholds.signals.techniqueMaxAgeDays, to: day) ?? day
+        let technique = input.techniqueResults.filter { $0.date >= techniqueCutoff }.max { $0.date < $1.date }
 
         var factors: [RecommendationFactor] = []
         var recoverySignals = 0
@@ -67,10 +69,11 @@ public struct InsightEngine: Sendable {
         }
 
         var techniqueSignal = false
+        let exerciseName = technique.flatMap { t in input.catalog.first { $0.id == t.exerciseId }?.name }
         if let t = technique {
             let finding = Self.repeatedInReps(t)
             techniqueSignal = t.score < thresholds.signals.techniqueScoreLow || finding != nil
-            let name = input.catalog.first { $0.id == t.exerciseId }?.name ?? "Technika"
+            let name = exerciseName ?? "Technika"
             if let f = finding {
                 factors.append(RecommendationFactor(
                     source: .technique,
@@ -93,7 +96,8 @@ public struct InsightEngine: Sendable {
 
         let substituteName = technique?.substituteExerciseId.flatMap { id in input.catalog.first { $0.id == id }?.name }
         let (headline, action) = Self.texts(decision: decision, hasRecoveryData: snapshot != nil,
-                                            recoverySignals: recoverySignals, substituteName: substituteName)
+                                            recoverySignals: recoverySignals, exerciseName: exerciseName,
+                                            substituteName: substituteName)
 
         let simulated = (snapshot?.isSimulated ?? false) || (technique?.isSimulated ?? false)
         return DailyRecommendation(date: day, decision: decision, headline: headline, factors: factors,
@@ -155,7 +159,7 @@ public struct InsightEngine: Sendable {
             .max { $0.repsAffected < $1.repsAffected }
     }
 
-    static func texts(decision: Decision, hasRecoveryData: Bool, recoverySignals: Int,
+    static func texts(decision: Decision, hasRecoveryData: Bool, recoverySignals: Int, exerciseName: String?,
                       substituteName: String?) -> (headline: String, action: String) {
         switch decision {
         case .train:
@@ -165,7 +169,10 @@ public struct InsightEngine: Sendable {
             return ("Trenuj według planu", "Nie mam danych o regeneracji, więc nie zmieniam sesji. Krótki check-in pozwoli ją doprecyzować.")
         case .adapt:
             var action = "Zrób o jedną serię mniej w każdym ćwiczeniu i obniż intensywność (RPE 6–7)."
-            if let sub = substituteName { action += " Przy przysiadzie sięgnij po: \(Self.lowercasedFirst(sub))." }
+            if let sub = substituteName {
+                let subject = exerciseName.map { "Zamiast ćwiczenia „\($0)” spróbuj" } ?? "Spróbuj"
+                action += " \(subject): \(Self.lowercasedFirst(sub))."
+            }
             return (recoverySignals > 0 ? "Dziś lżejszy trening" : "Dziś trening z uwagą na technikę", action)
         case .rest:
             return ("Dziś regeneracja", "Odpuść mocny trening. Wybierz odpoczynek albo lekką aktywność, np. spacer lub kilka minut mobilności.")
