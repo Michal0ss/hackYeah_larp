@@ -187,7 +187,7 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie.
 |---|---|---|---|---|
 | Szkielet, kontrakty, DesignSystem, Dziś, Check-in | Michał | `main` | gotowe (dane przykładowe) | |
 | Szkielet backendu (FastAPI: config, token, limity, bramka AI z atrapą, `/v1/{catalog,config,plans/generate,coach/chat,texts/recommendation}`, `content/`) | Michał | `main` | gotowe | działa w trybie atrapy (bez klucza); **nie uruchomiony z prawdziwym modelem** (brak klucza), obraz Dockera i CI niesprawdzone; bez testów automatycznych (decyzja: szkielet bez testów) |
-| Klient API w Swifcie (`API`) | Michał | `feat/michal-api-client` | do zrobienia | |
+| Klient API w Swifcie (`API`) | Michał | `feat/michal-api-client` | w PR | moduł `API`, `AppServices.api`; sprawdzony jednorazowo na działającym backendzie (zdrowie, katalog z 304, konfiguracja, plan, tekst, czat ze strumieniem i narzędziem, błąd), bez testów automatycznych; nie sprawdzony z prawdziwym modelem i na telefonie |
 | Wdrożenie i CI backendu | Michał | `feat/michal-backend-deploy` | do zrobienia | na razie lokalnie; Vercel + Supabase później, niesprawdzone |
 | Treść w aplikacji (kopia i odświeżanie) | Michał | `feat/michal-content-sync` | do zrobienia | |
 | Seria na żywo (tempo, głos, podsumowanie) | Michał | `main` | pierwsza wersja | silnik ma testy, kamera niesprawdzona na iPhonie |

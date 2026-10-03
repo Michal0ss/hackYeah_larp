@@ -17,6 +17,7 @@ let package = Package(
         .library(name: "Content", targets: ["Content"]),
         .library(name: "LiveSet", targets: ["LiveSet"]),
         .library(name: "Onboarding", targets: ["Onboarding"]),
+        .library(name: "API", targets: ["API"]),
     ],
     targets: [
         // Shared types between modules. Changes only with team agreement.
@@ -39,6 +40,8 @@ let package = Package(
         // Test targets exist for every module so nobody has to edit this file to add tests.
         // Michał: first-run flow (profile, health history kept on the phone, plan generation step).
         .target(name: "Onboarding", dependencies: ["Contracts"]),
+        // Michał: client of the backend (backend/): HTTP, auth headers, SSE chat stream, ETag content fetch.
+        .target(name: "API", dependencies: ["Contracts"]),
         .testTarget(name: "ContractsTests", dependencies: ["Contracts"]),
         .testTarget(name: "OnboardingTests", dependencies: ["Onboarding", "Contracts"]),
         .testTarget(name: "LiveSetTests", dependencies: ["LiveSet", "Contracts"]),

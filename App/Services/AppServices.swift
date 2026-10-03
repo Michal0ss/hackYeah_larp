@@ -1,3 +1,4 @@
+import API
 import Contracts
 
 /// The one place where real implementations replace the sample ones.
@@ -7,6 +8,8 @@ import Contracts
 ///   healthAuthorization                 Wiktor
 ///   technique                           Michał
 struct AppServices {
+    /// Backend client (adres i token z Config/*.xcconfig). Maciek and Wiktor use it in their services.
+    var api = FormaAPI()
     var catalog: ExerciseCatalogProviding = SampleServices()
     var plan: PlanProviding = SampleServices()
     var recovery: RecoveryProviding = SampleServices()

@@ -46,6 +46,8 @@ targets:
         product: LiveSet
       - package: Core
         product: Onboarding
+      - package: Core
+        product: API
     info:
       path: App/Info.plist
       properties:
