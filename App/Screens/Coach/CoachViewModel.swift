@@ -1,6 +1,7 @@
 import Coaching
 import Contracts
 import Observation
+import Insights
 import SwiftUI
 
 /// State of the coach screen: the conversation, the answer being written, errors and the data consent.
@@ -29,7 +30,12 @@ final class CoachViewModel {
 
     static let maxQuestionLength = 1000
 
-    init(chat: CoachChat, history: CoachHistoryStore, consentStore: ConsentStore) {
+    /// Runs after consent is withdrawn, besides clearing the conversation (e.g. drops cached model texts).
+    private let onConsentWithdrawn: (@Sendable () async -> Void)?
+
+    init(chat: CoachChat, history: CoachHistoryStore, consentStore: ConsentStore,
+         onConsentWithdrawn: (@Sendable () async -> Void)? = nil) {
+        self.onConsentWithdrawn = onConsentWithdrawn
         self.chat = chat
         self.history = history
         self.consentStore = consentStore
@@ -47,7 +53,9 @@ final class CoachViewModel {
                              profile: { await MainActor.run { store.profile } },
                              recommendation: recommendation,
                              hasHealthConsent: { [consent = services.consent] in consent.isGranted })
-        return CoachViewModel(chat: chat, history: services.coachHistory, consentStore: services.consent)
+        let texter = services.recommendationText
+        return CoachViewModel(chat: chat, history: services.coachHistory, consentStore: services.consent,
+                              onConsentWithdrawn: { await (texter as? RecommendationTexter)?.clearCache() })
     }
 
     // MARK: lifecycle
@@ -137,9 +145,18 @@ final class CoachViewModel {
 
     // MARK: consent and housekeeping
 
+    /// Withdrawing consent also clears the conversation: earlier answers may quote health summaries, and the whole
+    /// history is sent to the model with every question, so keeping them would pass that data on without consent.
     func setConsent(_ granted: Bool) {
+        let wasGranted = consent.granted
         consentStore.setGranted(granted)
         consent = consentStore.current
+        if wasGranted, !granted {
+            Task {
+                await clearConversation()
+                await onConsentWithdrawn?()
+            }
+        }
     }
 
     func clearConversation() async {
