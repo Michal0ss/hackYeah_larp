@@ -60,8 +60,8 @@ struct CheckInView: View {
                         .foregroundStyle(FormaColor.ink3)
 
                     Button {
-                        store.checkIn = CheckIn(date: Date(), mood: mood, stress: stress, energy: energy,
-                                                note: note.isEmpty ? nil : note)
+                        store.saveCheckIn(CheckIn(date: Date(), mood: mood, stress: stress, energy: energy,
+                                                  note: note.isEmpty ? nil : note))
                         dismiss()
                     } label: {
                         Text("Zapisz")

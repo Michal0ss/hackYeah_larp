@@ -16,11 +16,23 @@ struct AppServices {
     var catalog: ExerciseCatalogProviding = ContentRepository.shared
     var plan: PlanProviding = SampleServices()
     var recovery: RecoveryProviding = SampleServices()
-    var checkIns: CheckInProviding = SampleServices()
-    var technique: TechniqueHistoryProviding = SampleServices()
-    // Rule engine over the sample inputs until the real recovery and check-in stores are plugged in (Wiktor).
-    var recommendation: RecommendationProviding = InsightRecommendationService(
-        recovery: SampleServices(), checkIns: SampleServices(), technique: SampleServices(), catalog: SampleServices())
+    /// In memory until Wiktor's check-in store lands. The app writes through `localCheckIns`.
+    let localCheckIns = InMemoryCheckIns()
+    var checkIns: CheckInProviding
+    /// Results of live sets and analyses (Michał). The app and Bartek write through `localHistory`.
+    let localHistory = LocalTechniqueHistory.shared
+    var technique: TechniqueHistoryProviding
+    // Rule engine (Wiktor) over recovery (sample), the check-ins and the recorded results.
+    var recommendation: RecommendationProviding
     var healthAuthorization: HealthAuthorizing = SampleServices()
-    var planGenerator: PlanGenerating = SampleServices()
+    /// Backend first, local fallback until Maciek's PlanGenerator replaces it.
+    var planGenerator: PlanGenerating
+
+    init() {
+        checkIns = localCheckIns
+        technique = localHistory
+        recommendation = InsightRecommendationService(recovery: SampleServices(), checkIns: localCheckIns,
+                                                      technique: localHistory, catalog: ContentRepository.shared)
+        planGenerator = BackendPlanGenerator(api: api, fallback: SampleServices())
+    }
 }

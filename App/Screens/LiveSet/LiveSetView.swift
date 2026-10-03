@@ -25,6 +25,7 @@ struct LiveSetView: View {
     let onNextSet: () -> Void
     let onClose: () -> Void
 
+    @Environment(AppStore.self) private var store
     @State private var session: LiveSetSession
 
     init(exercise: ExerciseItem, spec: TempoSpec, setIndex: Int, totalSets: Int,
@@ -42,6 +43,7 @@ struct LiveSetView: View {
             if engine.stage == .summary, let summary = engine.summary {
                 SetSummaryView(summary: summary, exerciseName: session.exercise.name, totalSets: totalSets,
                                onNextSet: onNextSet, onClose: onClose)
+                    .onAppear { store.recordSet(summary) }
             } else {
                 live
             }
