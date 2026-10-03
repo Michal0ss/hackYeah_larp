@@ -114,10 +114,14 @@ public struct ChatContext: Codable, Equatable, Sendable {
     public var profile: UserProfile
     /// Sent only with health consent (the server ignores it otherwise).
     public var todayRecommendation: DailyRecommendation?
+    /// Where in the workout the question was asked (screen, set, last set as numbers). Training data only, so it is
+    /// sent regardless of the health consent.
+    public var workout: WorkoutContext?
 
-    public init(profile: UserProfile, todayRecommendation: DailyRecommendation? = nil) {
+    public init(profile: UserProfile, todayRecommendation: DailyRecommendation? = nil, workout: WorkoutContext? = nil) {
         self.profile = profile
         self.todayRecommendation = todayRecommendation
+        self.workout = workout
     }
 }
 
