@@ -19,6 +19,11 @@ public final class CameraPoseSource: NSObject, @unchecked Sendable {
     private var continuation: AsyncStream<PoseFrame>.Continuation?
     private var firstTimestamp: Double?
     private var configured = false
+    /// The camera in use and its input (changed only on `queue`, or before the first frame while configuring).
+    private var position: Position = .back
+    private var input: AVCaptureDeviceInput?
+    /// Called on the main queue after the camera was switched, so the preview can re-apply its rotation.
+    public var onSwitched: (@Sendable () -> Void)?
 
     private static let jointMap: [(VNHumanBodyPoseObservation.JointName, JointName)] = [
         (.nose, .nose), (.neck, .neck),
@@ -39,6 +44,7 @@ public final class CameraPoseSource: NSObject, @unchecked Sendable {
     public func frames(position: Position = .back) async throws -> AsyncStream<PoseFrame> {
         guard await AVCaptureDevice.requestAccess(for: .video) else { throw CameraError.denied }
         if !configured { try configure(position: position) }
+        else if position != self.position { try queue.sync { try swapInput(to: position) } }
         firstTimestamp = nil
         let stream = AsyncStream<PoseFrame>(bufferingPolicy: .bufferingNewest(4)) { continuation in
             self.continuation = continuation
@@ -46,6 +52,16 @@ public final class CameraPoseSource: NSObject, @unchecked Sendable {
         }
         queue.async { [session] in session.startRunning() }
         return stream
+    }
+
+    /// Switches between the back and the front camera while the session runs. The frame stream keeps going, so the
+    /// time of the frames stays continuous. If the other camera cannot be used, the current one stays.
+    public func switchCamera(to position: Position) {
+        queue.async { [weak self] in
+            guard let self, self.configured, position != self.position else { return }
+            do { try self.swapInput(to: position) } catch { return }
+            DispatchQueue.main.async { self.onSwitched?() }
+        }
     }
 
     public func stop() {
@@ -64,6 +80,8 @@ public final class CameraPoseSource: NSObject, @unchecked Sendable {
         session.sessionPreset = .hd1280x720
         guard session.canAddInput(input) else { throw CameraError.unavailable }
         session.addInput(input)
+        self.input = input
+        self.position = position
 
         output.alwaysDiscardsLateVideoFrames = true
         output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
@@ -71,12 +89,35 @@ public final class CameraPoseSource: NSObject, @unchecked Sendable {
         guard session.canAddOutput(output) else { throw CameraError.unavailable }
         session.addOutput(output)
 
-        // Portrait, upright buffers, so Vision coordinates match what the user sees.
-        if let connection = output.connection(with: .video) {
-            if connection.isVideoRotationAngleSupported(90) { connection.videoRotationAngle = 90 }
-            if position == .front, connection.isVideoMirroringSupported { connection.isVideoMirrored = true }
-        }
+        applyConnectionSettings(for: position)
         configured = true
+    }
+
+    /// Replaces the camera input of the session (the output and the running state stay as they are).
+    private func swapInput(to position: Position) throws {
+        let devicePosition: AVCaptureDevice.Position = position == .back ? .back : .front
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: devicePosition),
+              let newInput = try? AVCaptureDeviceInput(device: device) else { throw CameraError.unavailable }
+
+        session.beginConfiguration()
+        defer { session.commitConfiguration() }
+        if let current = input { session.removeInput(current) }
+        guard session.canAddInput(newInput) else {
+            if let current = input, session.canAddInput(current) { session.addInput(current) }  // keep what worked
+            throw CameraError.unavailable
+        }
+        session.addInput(newInput)
+        input = newInput
+        self.position = position
+        applyConnectionSettings(for: position)
+    }
+
+    /// Portrait, upright buffers, so Vision coordinates match what the user sees. The front camera is mirrored like a
+    /// mirror (the preview does the same), so the skeleton lines up with the picture.
+    private func applyConnectionSettings(for position: Position) {
+        guard let connection = output.connection(with: .video) else { return }
+        if connection.isVideoRotationAngleSupported(90) { connection.videoRotationAngle = 90 }
+        if connection.isVideoMirroringSupported { connection.isVideoMirrored = position == .front }
     }
 }
 

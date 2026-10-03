@@ -5,6 +5,8 @@ import AVFoundation
 /// Camera image. `videoGravity` is aspect-fit so the skeleton overlay lines up exactly.
 struct CameraPreview: UIViewRepresentable {
     let session: AVCaptureSession
+    /// Changes when the camera was switched: the new connection of the preview layer needs its rotation again.
+    var revision = 0
 
     final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
@@ -14,6 +16,10 @@ struct CameraPreview: UIViewRepresentable {
         /// is created. Set the portrait rotation whenever it is available (layout runs again when the session starts).
         override func layoutSubviews() {
             super.layoutSubviews()
+            applyRotation()
+        }
+
+        func applyRotation() {
             if let connection = previewLayer.connection, connection.isVideoRotationAngleSupported(90),
                connection.videoRotationAngle != 90 {
                 connection.videoRotationAngle = 90
@@ -28,6 +34,10 @@ struct CameraPreview: UIViewRepresentable {
         return view
     }
 
-    func updateUIView(_ uiView: PreviewView, context: Context) { uiView.setNeedsLayout() }
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        uiView.setNeedsLayout()
+        // A switch finishes on the capture queue a moment after the tap: apply the rotation once it has.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { uiView.applyRotation() }
+    }
 }
 #endif

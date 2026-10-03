@@ -21,6 +21,11 @@ final class LiveSetSession {
     let setIndex: Int
     private(set) var source: Source
     private(set) var cameraError: String?
+    /// Which camera is used. The choice is remembered for the next set (every set is a new session).
+    private(set) var isFrontCamera: Bool
+    /// Bumped when the camera was switched, so the preview refreshes.
+    private(set) var cameraRevision = 0
+    private static let frontCameraKey = "forma.liveSet.frontCamera"
 
     #if os(iOS)
     let camera = CameraPoseSource()
@@ -39,6 +44,7 @@ final class LiveSetSession {
         let source = Source.camera
         #endif
         self.source = source
+        self.isFrontCamera = UserDefaults.standard.bool(forKey: Self.frontCameraKey)
         self.engine = LiveSetEngine(exerciseId: exercise.id, spec: spec, setIndex: setIndex,
                                     voice: BankedCoachVoice(), kind: kind, isSimulated: source == .simulation,
                                     trackerConfig: PhaseTrackerConfig(values: ContentRepository.shared.numbers("tempo", "phaseTracker")),
@@ -46,6 +52,10 @@ final class LiveSetSession {
     }
 
     func start() {
+        #if os(iOS)
+        // The switch finishes on the capture queue; the preview then needs its rotation again.
+        camera.onSwitched = { [weak self] in MainActor.assumeIsolated { self?.cameraRevision += 1 } }
+        #endif
         engine.prepare()
         task?.cancel()
         cameraError = nil
@@ -61,7 +71,7 @@ final class LiveSetSession {
             #if os(iOS)
             task = Task { [engine, camera] in
                 do {
-                    for await frame in try await camera.frames() {
+                    for await frame in try await camera.frames(position: isFrontCamera ? .front : .back) {
                         engine.ingest(frame)
                     }
                 } catch CameraPoseSource.CameraError.denied {
@@ -72,6 +82,21 @@ final class LiveSetSession {
             }
             #endif
         }
+    }
+
+    /// "Obróć kamerę": back <-> front. Possible until the first repetition: the setup then starts over, because the
+    /// calibration belongs to one view. After that a switch would mix two views into one set.
+    var canFlipCamera: Bool { engine.canRestartSetup }
+
+    func flipCamera() {
+        guard canFlipCamera else { return }
+        isFrontCamera.toggle()
+        engine.restartSetup()
+        UserDefaults.standard.set(isFrontCamera, forKey: Self.frontCameraKey)
+        #if os(iOS)
+        if source == .camera { camera.switchCamera(to: isFrontCamera ? .front : .back) }
+        #endif
+        cameraRevision += 1
     }
 
     func stop() {
