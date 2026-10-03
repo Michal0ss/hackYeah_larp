@@ -382,7 +382,15 @@ Historię rozmowy trzymamy lokalnie na telefonie. W demo trener pracuje na danyc
 
 ### 8.1 Klucz do modelu językowego
 
-Klucza API nie wolno commitować ani wkompilować w kod w repo. Na demo trzymamy go w pliku `Secrets.xcconfig` poza repozytorium (wpis w `.gitignore`). W prezentacji mówimy uczciwie, że docelowo wywołania pójdą przez nasz serwer pośredniczący. Jeśli zostanie czas, dodajemy małą funkcję serwerową, która ukrywa klucz.
+**Decyzja: wersja hackathonowa bez własnego backendu.** Aplikacja woła API modelu bezpośrednio z telefonu, a dane (profil, plan, wyniki, rozmowy) trzymamy lokalnie.
+
+- Klucza API nie wolno commitować ani wkompilować w kod w repo. Trzymamy go w pliku `Secrets.xcconfig` poza repozytorium (wpis w `.gitignore`).
+- Na kluczu ustawiamy **limit wydatków**, bo klucz w aplikacji da się wyciągnąć z binarki.
+- Aplikację instalujemy przez Xcode na naszych telefonach (bez TestFlight i bez płatnego konta Apple Developer).
+- Adres wywołań modelu jest **jednym ustawieniem w konfiguracji**, żeby później przełączyć go bez zmian w reszcie kodu.
+- W prezentacji mówimy uczciwie, że docelowo wywołania pójdą przez nasz serwer pośredniczący.
+
+**Po hackathonie (szybkie rozszerzenie):** funkcja na Vercelu (TypeScript), która ukrywa klucz, ogranicza liczbę zapytań i nie loguje rozmów, oraz Supabase (logowanie, baza, synchronizacja), gdy będą potrzebne konta. Dla większej grupy testerów dojdzie TestFlight i płatne konto Apple Developer.
 
 ### 8.2 Organizacja repozytorium (ważne przy różnych wersjach Xcode)
 
@@ -590,7 +598,9 @@ Język slajdów i opisu: polski lub angielski **[do ustalenia]**.
 - Więcej ćwiczeń (martwy ciąg rumuński, pompka, wykrok) i wymagane ujęcia (przód i bok), z biblioteką ok. 40 ćwiczeń, filmami wzorcowymi i grafem zamienników.
 - Plany wielotygodniowe z progresją, kalendarzem, powiadomieniami i adaptacją na podstawie historii treningów, regeneracji i techniki.
 - Trener AI zmieniający plan na życzenie użytkownika (z zatwierdzeniem), pamiętający cele i historię rozmów.
-- Serwer pośredniczący dla modelu językowego (ukrycie klucza, limity, logowanie).
+- Serwer pośredniczący dla modelu językowego (funkcja na Vercelu: ukrycie klucza, limity, brak logowania treści rozmów).
+- Supabase: konta, synchronizacja planów i wyników, opcjonalnie zdalna konfiguracja progów i wag.
+- Dystrybucja do większej grupy testerów przez TestFlight (płatne konto Apple Developer, polityka prywatności).
 - Dokładniejsze punkty ciała (MediaPipe, 33 punkty z piętami i stopami) oraz progi ocen strojone z trenerem lub fizjoterapeutą na nagraniach testowych.
 - Dane z zegarków: Apple Health na start, później Garmin (bezpośrednie API Garmina jest od wiosny 2026 zamknięte dla nowych wniosków, więc dopiero po wznowieniu programu albo przez pośrednika).
 - Analiza na żywo w trakcie serii, tryb trenera (podopieczny wysyła wyniki, nie filmy), Android.
@@ -606,7 +616,7 @@ Język slajdów i opisu: polski lub angielski **[do ustalenia]**.
 - [ ] Czy zostajemy przy przysiadzie jako jedynym analizowanym ćwiczeniu.
 - [ ] Które ćwiczenia wchodzą do katalogu (ok. 12–15) i kto go przygotowuje.
 - [ ] Czy czat trenera ma tylko odpowiadać, czy też proponować zmiany w planie z przyciskiem „Zastosuj” (priorytet 4).
-- [ ] Czy wywołania modelu idą bezpośrednio z aplikacji (klucz w `Secrets.xcconfig`), czy przez serwer pośredniczący. Przy danych zdrowotnych serwer jest bezpieczniejszy, ale kosztuje czas.
+- [x] Wywołania modelu idą bezpośrednio z aplikacji (klucz w `Secrets.xcconfig`, limit wydatków na kluczu). Serwer pośredniczący i Supabase dopiero po hackathonie (sekcja 8.1).
 - [ ] Który model w czacie (Haiku 4.5 czy Sonnet 5) po próbie szybkości i jakości.
 - [ ] Czy w demo trener pracuje na danych przykładowych, na prawdziwych danych z telefonu, czy na obu (przełącznik).
 - [ ] Źródło filmów wzorcowych i danych przykładowych (kto się nagrywa, za zgodą).
