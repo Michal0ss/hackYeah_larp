@@ -26,21 +26,26 @@ public enum FramingAssessor {
     /// a squatting person is naturally lower in the frame than a standing one.
     /// `minBodyHeight` defaults to the live-set value; pass a different one for other call sites
     /// (e.g. Analysis, which checks a recorded clip and may run alongside a live set).
+    /// `minConfidence` is the lowest joint confidence that counts as "seen": 0.3 for the live camera, lower for a
+    /// recorded clip, where a joint that is only half sure is still good enough to judge the framing.
     public static func assess(_ frame: PoseFrame?, kind: MovementKind = .squat, checkSize: Bool = true,
-                              minBodyHeight: Double = FramingAssessor.minBodyHeight) -> FramingReport {
+                              minBodyHeight: Double = FramingAssessor.minBodyHeight,
+                              minConfidence: Double = 0.3) -> FramingReport {
         guard let frame else {
             return FramingReport(ready: false, checks: [
                 QualityCheck(id: "visible", label: "Widzę sylwetkę", passed: false, hint: "Stań przed kamerą, tak żeby było widać całą sylwetkę"),
             ], hint: "Stań przed kamerą, tak żeby było widać całą sylwetkę")
         }
 
-        if kind != .squat { return assessUpperBody(frame, kind: kind, checkSize: checkSize, minBodyHeight: minBodyHeight) }
+        if kind != .squat {
+            return assessUpperBody(frame, kind: kind, checkSize: checkSize, minBodyHeight: minBodyHeight, minConfidence: minConfidence)
+        }
 
-        let nose = frame.joint(.nose)
-        let neck = frame.joint(.neck)
-        let root = frame.joint(.root) ?? frame.joint(.leftHip) ?? frame.joint(.rightHip)
-        let knee = frame.joint(.leftKnee) ?? frame.joint(.rightKnee)
-        let ankles = [frame.joint(.leftAnkle), frame.joint(.rightAnkle)].compactMap { $0 }
+        let nose = frame.joint(.nose, minConfidence: minConfidence)
+        let neck = frame.joint(.neck, minConfidence: minConfidence)
+        let root = frame.joint(.root, minConfidence: minConfidence) ?? frame.joint(.leftHip, minConfidence: minConfidence) ?? frame.joint(.rightHip, minConfidence: minConfidence)
+        let knee = frame.joint(.leftKnee, minConfidence: minConfidence) ?? frame.joint(.rightKnee, minConfidence: minConfidence)
+        let ankles = [frame.joint(.leftAnkle, minConfidence: minConfidence), frame.joint(.rightAnkle, minConfidence: minConfidence)].compactMap { $0 }
 
         var checks: [QualityCheck] = []
 
@@ -71,10 +76,10 @@ public enum FramingAssessor {
         // Side view.
         var sideOK = false
         var sideHint: String? = nil
-        if let l = frame.joint(.leftShoulder), let r = frame.joint(.rightShoulder), let neck, let root {
-            let torso = hypot(neck.x - root.x, neck.y - root.y)
+        if let l = frame.joint(.leftShoulder, minConfidence: minConfidence), let r = frame.joint(.rightShoulder, minConfidence: minConfidence), let neck, let root {
+            let torso = frame.distance(neck, root)
             if torso > 0.02 {
-                sideOK = abs(l.x - r.x) / torso <= maxShoulderRatio
+                sideOK = abs(l.x - r.x) * frame.aspectRatio / torso <= maxShoulderRatio
                 if !sideOK { sideHint = "Ustaw się bokiem do kamery" }
             }
         } else if bodyOK {
@@ -98,12 +103,12 @@ public enum FramingAssessor {
     /// Push-up and pull-up: the whole person must be seen; a push-up is also checked for side view and size
     /// (the body is horizontal, so the size is its width).
     private static func assessUpperBody(_ frame: PoseFrame, kind: MovementKind, checkSize: Bool,
-                                        minBodyHeight: Double) -> FramingReport {
-        let nose = frame.joint(.nose)
-        let neck = frame.joint(.neck)
-        let root = frame.joint(.root) ?? frame.joint(.leftHip) ?? frame.joint(.rightHip)
-        let ankles = [frame.joint(.leftAnkle), frame.joint(.rightAnkle)].compactMap { $0 }
-        let wrist = frame.joint(.leftWrist) ?? frame.joint(.rightWrist)
+                                        minBodyHeight: Double, minConfidence: Double) -> FramingReport {
+        let nose = frame.joint(.nose, minConfidence: minConfidence)
+        let neck = frame.joint(.neck, minConfidence: minConfidence)
+        let root = frame.joint(.root, minConfidence: minConfidence) ?? frame.joint(.leftHip, minConfidence: minConfidence) ?? frame.joint(.rightHip, minConfidence: minConfidence)
+        let ankles = [frame.joint(.leftAnkle, minConfidence: minConfidence), frame.joint(.rightAnkle, minConfidence: minConfidence)].compactMap { $0 }
+        let wrist = frame.joint(.leftWrist, minConfidence: minConfidence) ?? frame.joint(.rightWrist, minConfidence: minConfidence)
 
         var checks: [QualityCheck] = []
         let needFeet = kind == .pushup
@@ -127,10 +132,10 @@ public enum FramingAssessor {
             checks.append(QualityCheck(id: "size", label: "Odpowiednia wielkość w kadrze", passed: sizeOK, hint: sizeHint))
         }
 
-        if kind == .pushup, let l = frame.joint(.leftShoulder), let r = frame.joint(.rightShoulder), let neck, let root {
-            let torso = hypot(neck.x - root.x, neck.y - root.y)
+        if kind == .pushup, let l = frame.joint(.leftShoulder, minConfidence: minConfidence), let r = frame.joint(.rightShoulder, minConfidence: minConfidence), let neck, let root {
+            let torso = frame.distance(neck, root)
             if torso > 0.02 {
-                let sideOK = abs(l.x - r.x) / torso <= maxShoulderRatio
+                let sideOK = abs(l.x - r.x) * frame.aspectRatio / torso <= maxShoulderRatio
                 checks.append(QualityCheck(id: "side_view", label: "Ujęcie z boku", passed: sideOK,
                                            hint: sideOK ? nil : "Ustaw się bokiem do kamery"))
             }

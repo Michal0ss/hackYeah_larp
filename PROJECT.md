@@ -249,7 +249,7 @@ Film (nagrany lub z galerii)
 
 ### 6.1 Wejście
 
-Film z kamery lub z galerii, ujęcie z boku. Klatki czytamy z pliku (`AVAssetReader`), na każdej uruchamiamy detekcję pozy człowieka. Dostajemy współrzędne znormalizowane (0–1) i pewność wykrycia dla stawów: nos, szyja, barki, łokcie, nadgarstki, biodra i środek bioder, kolana, kostki. Nie dostajemy pięt ani palców stóp (ograniczenie 2D i tego narzędzia).
+Film z kamery lub z galerii, ujęcie z boku. Klatki czytamy z pliku (`AVAssetReader`, przerzedzone do ok. 30 kl./s), na każdej uruchamiamy detekcję pozy człowieka i na ekranie pokazujemy klatkę z nałożonym szkieletem (jak w serii na żywo; obraz zostaje w pamięci, film kasujemy po odczycie). Dostajemy współrzędne znormalizowane (0–1) i pewność wykrycia dla stawów: nos, szyja, barki, łokcie, nadgarstki, biodra i środek bioder, kolana, kostki. Nie dostajemy pięt ani palców stóp (ograniczenie 2D i tego narzędzia). Współrzędne są ułamkami szerokości i wysokości obrazu, więc **każdą klatkę zapisujemy z proporcją obrazu (`aspect`) i wszystkie kąty liczymy po jej uwzględnieniu** (`PoseGeometry`); bez tego kąty z filmu w pionie są zniekształcone nawet o kilkanaście stopni. Zakresy kątów, ich źródła i dokładność: [docs/ANALIZA_TECHNIKI.md](docs/ANALIZA_TECHNIKI.md).
 
 ### 6.2 Ocena jakości nagrania (pierwszy krok, nasz wyróżnik)
 
@@ -258,19 +258,19 @@ Nagranie przechodzi dalej tylko wtedy, gdy:
 | Warunek | Wartość startowa |
 |---|---|
 | Cała sylwetka w kadrze (od głowy do kostek) | tak |
-| Kluczowe stawy widoczne z pewnością powyżej progu | w ponad 85% klatek |
-| Postać zajmuje wysokość kadru | co najmniej 50% |
+| Kluczowe stawy widoczne z pewnością powyżej progu | w ponad 70% klatek z ćwiczeniem |
+| Postać zajmuje wysokość kadru | co najmniej 35% |
 | Liczba osób w kadrze | dokładnie 1 |
 | Liczba powtórzeń | co najmniej 3 |
 | Ujęcie zgodne z ćwiczeniem (przysiad: z boku) | tak |
 | Klatki na sekundę | co najmniej 24 (30 preferowane) |
 
-Gdy warunek nie jest spełniony, aplikacja podaje **konkretną wskazówkę**: „Odejdź krok do tyłu, nie widzę stóp”, „Ustaw się bokiem do kamery”, „Zrób co najmniej 3 powtórzenia”. Wartości progowe są startowe i do strojenia.
+Gdy warunek nie jest spełniony, aplikacja podaje **konkretną wskazówkę** i **zmierzone liczby** („Wykryto 1 powtórzenie (wymagane 3)”, „62% klatek w porządku (wymagane 70%)”): „Odejdź krok do tyłu, nie widzę stóp”, „Ustaw się bokiem do kamery”, „Zrób co najmniej 3 powtórzenia”. Kadrowanie sprawdzamy tylko na fragmencie z ćwiczeniem (nie na dojściu do telefonu). Gdy w nagraniu widać co najmniej jedno powtórzenie, można je przeanalizować mimo uwag („Analizuj mimo to”), a wynik jest oznaczony jako orientacyjny. Wartości progowe są startowe i do strojenia.
 
 ### 6.3 Przetwarzanie
 
 1. **Wygładzenie** współrzędnych (np. filtr One Euro albo średnia ruchoma) i odrzucenie klatek o niskiej pewności.
-2. **Podział na powtórzenia** na podstawie ruchu bioder w pionie (szczyty i doliny).
+2. **Podział na powtórzenia** na podstawie ruchu bioder (przysiad) albo barków (pompka, podciąganie) w pionie, w długościach tułowia: szczyty wygładzonego sygnału z całego filmu naraz (`ClipRepDetector`, bez kalibracji jak na żywo), liczone tylko, gdy staw ćwiczenia (kolano, łokieć) naprawdę się zgina.
 3. **Obliczenie kątów** w każdej klatce: kąt kolana, kąt biodra, pochylenie tułowia względem pionu i względem piszczeli.
 4. **Metryki powtórzenia:** głębokość (minimalny kąt kolana i biodro względem kolana), pochylenie tułowia w najniższym punkcie, czas opadania i wstawania, powtarzalność między powtórzeniami.
 

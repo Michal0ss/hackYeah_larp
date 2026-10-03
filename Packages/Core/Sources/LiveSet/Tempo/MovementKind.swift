@@ -79,11 +79,14 @@ public enum MovementKind: String, Codable, CaseIterable, Sendable {
 
     /// Public: Analysis scores push-up/pull-up with the exact same assessor the live set uses, so a
     /// file analysis and a live set never show two different scores for the same exercise.
-    public var defaultAssessor: TechniqueAssessing {
+    public var defaultAssessor: TechniqueAssessing { assessor(reference: AngleReference()) }
+
+    /// The assessor with the angle ranges of `reference` (from `content/config/scoring.json`, section "angles").
+    public func assessor(reference: AngleReference) -> TechniqueAssessing {
         switch self {
-        case .squat: return BasicSquatAssessor()
-        case .pushup: return BasicPushupAssessor()
-        case .pullup: return BasicPullupAssessor()
+        case .squat: return BasicSquatAssessor(reference: reference)
+        case .pushup: return BasicPushupAssessor(reference: reference)
+        case .pullup: return BasicPullupAssessor(reference: reference)
         }
     }
 }

@@ -55,14 +55,14 @@ public struct PoseDiagnostics: Equatable, Sendable {
             .compactMap { $0 }
         if let best = legs.max(by: { $0.quality < $1.quality }) {
             result.side = best.label
-            result.kneeAngle = Geometry.angle(best.h, best.k, best.a)
+            result.kneeAngle = frame.angle(best.h, best.k, best.a)
             result.hipBelowKnee = best.h.y >= best.k.y - BasicSquatAssessor().depthTolerance
         }
 
         func arm(_ s: JointName, _ e: JointName, _ w: JointName) -> (Double, Double)? {
             guard let sh = frame.joint(s, minConfidence: minConfidence), let el = frame.joint(e, minConfidence: minConfidence),
                   let wr = frame.joint(w, minConfidence: minConfidence) else { return nil }
-            return (Geometry.angle(sh, el, wr), min(sh.confidence, el.confidence, wr.confidence))
+            return (frame.angle(sh, el, wr), min(sh.confidence, el.confidence, wr.confidence))
         }
         let arms = [arm(.leftShoulder, .leftElbow, .leftWrist), arm(.rightShoulder, .rightElbow, .rightWrist)].compactMap { $0 }
         result.elbowAngle = arms.max(by: { $0.1 < $1.1 })?.0
@@ -76,14 +76,14 @@ public struct PoseDiagnostics: Equatable, Sendable {
             ?? frame.joint(.rightHip, minConfidence: minConfidence)
         if let hip, let shoulder = frame.joint(.neck, minConfidence: minConfidence),
            let ankle = frame.joint(.leftAnkle, minConfidence: minConfidence) ?? frame.joint(.rightAnkle, minConfidence: minConfidence) {
-            result.bodyLineAngle = Geometry.angle(shoulder, hip, ankle)
+            result.bodyLineAngle = frame.angle(shoulder, hip, ankle)
         }
         if let neck = frame.joint(.neck, minConfidence: minConfidence), let hip {
-            result.torsoLean = Geometry.angleFromVertical(from: hip, to: neck)
+            result.torsoLean = frame.angleFromVertical(from: hip, to: neck)
             if let l = frame.joint(.leftShoulder, minConfidence: minConfidence),
                let r = frame.joint(.rightShoulder, minConfidence: minConfidence) {
-                let torso = hypot(neck.x - hip.x, neck.y - hip.y)
-                if torso > 0.02 { result.shoulderRatio = abs(l.x - r.x) / torso }
+                let torso = frame.distance(neck, hip)
+                if torso > 0.02 { result.shoulderRatio = abs(l.x - r.x) * frame.aspectRatio / torso }
             }
         }
         if let nose = frame.joint(.nose, minConfidence: minConfidence),

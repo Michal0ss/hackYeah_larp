@@ -134,7 +134,9 @@ extension CameraPoseSource: AVCaptureVideoDataOutputSampleBufferDelegate {
 
         // Several people: take the one with the highest total joint confidence.
         let best = (request.results ?? []).max { score($0) < score($1) }
-        continuation.yield(PoseFrame(time: time, joints: best.map(joints(of:)) ?? []))
+        let height = CVPixelBufferGetHeight(buffer)
+        let aspect = height > 0 ? Double(CVPixelBufferGetWidth(buffer)) / Double(height) : nil
+        continuation.yield(PoseFrame(time: time, joints: best.map(joints(of:)) ?? [], aspect: aspect))
     }
 
     private func score(_ observation: VNHumanBodyPoseObservation) -> Float {
