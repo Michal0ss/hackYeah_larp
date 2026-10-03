@@ -57,8 +57,8 @@ struct CoachView: View {
                 if let voice, voice.isAvailable { VoiceMicRow(controller: voice) }
                 CoachInputBar(model: model, focused: $inputFocused)
             }
-            // Text scrolling under the bar must not show through it.
-            .background { Rectangle().fill(.ultraThinMaterial).ignoresSafeArea(edges: .bottom) }
+            // In the Trener tab the floating tab bar sits right under the field: leave air between them.
+            .padding(.bottom, onClose == nil ? FormaSpacing.l : 0)
         }
         .confirmationDialog("Wyczyścić rozmowę z trenerem?", isPresented: $confirmClear, titleVisibility: .visible) {
             Button("Wyczyść rozmowę", role: .destructive) { Task { await model.clearConversation() } }
