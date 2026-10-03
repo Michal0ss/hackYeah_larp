@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     # One request to one model. A chain of models is bounded by the deadlines below.
     ai_timeout_seconds: float = 20.0
     # Hard caps on what a user waits for before we answer from templates instead.
-    plan_deadline_seconds: float = 60.0
+    plan_deadline_seconds: float = 50.0
     text_deadline_seconds: float = 20.0
 
     # --- access

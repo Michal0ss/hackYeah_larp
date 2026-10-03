@@ -61,6 +61,13 @@ final class LocalTechniqueHistory: TechniqueHistoryProviding, @unchecked Sendabl
         persist()
     }
 
+    /// "Usuń moje dane": forgets every recorded set and analysis.
+    func removeAll() {
+        lock.lock(); defer { lock.unlock() }
+        stored = Stored()
+        if let url { try? FileManager.default.removeItem(at: url) }
+    }
+
     private func persist() {
         guard let url, let data = try? JSONEncoder().encode(stored) else { return }
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -70,22 +77,5 @@ final class LocalTechniqueHistory: TechniqueHistoryProviding, @unchecked Sendabl
     static func defaultURL() -> URL? {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
             .appendingPathComponent("Forma/history.json")
-    }
-}
-
-/// Check-ins kept in memory until Wiktor's persistent store (`feat/wiktor-checkin-store`) replaces it.
-final class InMemoryCheckIns: CheckInProviding, @unchecked Sendable {
-    private let lock = NSLock()
-    private var items: [CheckIn] = [SampleData.checkIn]
-
-    func add(_ checkIn: CheckIn) {
-        lock.lock(); defer { lock.unlock() }
-        items.insert(checkIn, at: 0)
-    }
-
-    func checkIns(days: Int) async -> [CheckIn] {
-        lock.lock(); defer { lock.unlock() }
-        let start = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? .distantPast
-        return items.filter { $0.date >= start }.sorted { $0.date > $1.date }
     }
 }

@@ -1,6 +1,7 @@
 import SwiftUI
 import Observation
 import Contracts
+import Insights
 import Onboarding
 
 /// In-memory app state. It starts on sample data (marked as simulated in the UI).
@@ -68,7 +69,83 @@ final class AppStore {
 
     var today: RecoverySnapshot? { recovery.first }
 
+    // MARK: Profile and data
+
+    /// Deletes the health history from the phone. The profile keeps working without the derived exclusions; the
+    /// plan stays as it is until the user rebuilds it.
+    func deleteHealthHistory() {
+        healthHistory = HealthHistory()
+        profile.avoidTags = []
+        profile.easyStart = false
+        try? onboardingStorage.save(OnboardingResult(profile: profile, health: healthHistory, plan: plan,
+                                                     healthAccess: healthAccess ?? .sampleData))
+        try? onboardingStorage.deleteHealthHistory()
+    }
+
+    /// Builds the plan again for the current profile (backend first, local fallback). Returns false on failure.
+    @MainActor
+    func rebuildPlan() async -> Bool {
+        guard let new = try? await services.planGenerator.generatePlan(for: profile) else { return false }
+        plan = new
+        restoredSessionIds = []
+        try? onboardingStorage.save(OnboardingResult(profile: profile, health: healthHistory, plan: plan,
+                                                     healthAccess: healthAccess ?? .sampleData))
+        await refreshRecommendation()
+        return true
+    }
+
+    /// Removes everything the app stored on this phone and starts onboarding again.
+    @MainActor
+    func deleteAllData() async {
+        try? onboardingStorage.clear()
+        _ = try? await services.checkInStore.removeAll()
+        services.localHistory.removeAll()
+        profile = SampleData.profile
+        plan = SampleData.plan
+        healthHistory = HealthHistory()
+        healthAccess = nil
+        checkIn = nil
+        lastTechnique = SampleData.technique
+        restoredSessionIds = []
+        onboardingCompleted = false
+        await refreshRecommendation()
+    }
+
+    // MARK: Session adjustment
+
+    /// Sessions for which the user chose the original plan over today's lighter version.
+    private(set) var restoredSessionIds: Set<UUID> = []
+
+    var todayPlanWeekday: Int {
+        let weekday = Calendar(identifier: .iso8601).component(.weekday, from: Date())
+        return weekday == 1 ? 7 : weekday - 1
+    }
+
+    /// The session the rule engine's decision applies to: today's, or the next one when today is free (the one the
+    /// Today screen shows). Other sessions stay as planned.
+    func adjustment(for session: PlannedSession) -> PlanAdjustment {
+        guard session.id == todaySession?.session.id, !restoredSessionIds.contains(session.id) else {
+            return PlanAdjustment(original: session, session: session, changes: [], isRestDay: false)
+        }
+        return PlanAdjuster(catalog: catalog).adjust(session, for: recommendation, technique: lastTechnique,
+                                                     equipment: profile.equipment)
+    }
+
+    func isRestored(_ session: PlannedSession) -> Bool { restoredSessionIds.contains(session.id) }
+
+    /// "Przywróć oryginał" and back.
+    func toggleOriginal(_ session: PlannedSession) {
+        if restoredSessionIds.contains(session.id) { restoredSessionIds.remove(session.id) }
+        else { restoredSessionIds.insert(session.id) }
+    }
+
     // MARK: Recommendation and results
+
+    /// Today's saved check-in (nil when there is none yet).
+    @MainActor
+    func loadSavedCheckIn() async {
+        checkIn = await services.checkIns.checkIns(days: 1).first
+    }
 
     /// Recomputes today's recommendation with the rule engine from the current inputs.
     @MainActor
@@ -85,8 +162,10 @@ final class AppStore {
     @MainActor
     func saveCheckIn(_ new: CheckIn) {
         checkIn = new
-        services.localCheckIns.add(new)
-        Task { await refreshRecommendation() }
+        Task {
+            _ = try? await services.checkInStore.save(new)
+            await refreshRecommendation()
+        }
     }
 
     /// A finished live set: stored on the phone, feeds the rule engine.

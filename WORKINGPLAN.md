@@ -188,29 +188,29 @@ Aktualizuj swój wiersz w tym samym PR, w którym kończysz zadanie.
 | Szkielet, kontrakty, DesignSystem, Dziś, Check-in | Michał | `main` | gotowe (dane przykładowe) | |
 | Szkielet backendu (FastAPI: config, token, limity, bramka AI z atrapą, `/v1/{catalog,config,plans/generate,coach/chat,texts/recommendation}`, `content/`) | Michał | `main` | gotowe | działa w trybie atrapy (bez klucza); **nie uruchomiony z prawdziwym modelem** (brak klucza), obraz Dockera i CI niesprawdzone; bez testów automatycznych (decyzja: szkielet bez testów) |
 | Klient API w Swifcie (`API`) | Michał | `feat/michal-api-client` | w PR | moduł `API`, `AppServices.api`; sprawdzony jednorazowo na działającym backendzie (zdrowie, katalog z 304, konfiguracja, plan, tekst, czat ze strumieniem i narzędziem, błąd), bez testów automatycznych; nie sprawdzony z prawdziwym modelem i na telefonie |
-| Wdrożenie i CI backendu | Michał | `feat/michal-backend-deploy` | do zrobienia | na razie lokalnie; Vercel + Supabase później, niesprawdzone |
+| Wdrożenie i CI backendu | Michał | `feat/michal-backend-deploy` | szkielet gotowy (`api/index.py`, `vercel.json`, `requirements.txt`, kroki w backend/README.md), niewdrożony | brakuje: konto Vercel, zmienne środowiskowe, test SSE na Vercelu, limity w Supabase, CI | na razie lokalnie; Vercel + Supabase później, niesprawdzone |
 | Treść w aplikacji (kopia i odświeżanie) | Michał | `feat/michal-content-sync` | w PR | `ContentRepository` (moduł Content): kopia w aplikacji, cache na dysku, odświeżanie z ETag przy starcie; katalog w `AppServices.catalog`; progi serii z `tempo.json` w `LiveSetEngine`. Sprawdzone na symulatorze (200, potem 304). **Po zmianie `content/` uruchom `python scripts/sync_content.py`** (`make check` pilnuje). Progi `insights` i `scoring` są dostępne przez `ContentRepository.shared.configData(...)`, ale Wiktor i Bartek jeszcze ich stamtąd nie czytają |
 | Seria na żywo (tempo, głos, podsumowanie) | Michał | `main` | pierwsza wersja | silnik ma testy, kamera niesprawdzona na iPhonie |
-| Onboarding | Michał | `feat/michal-onboarding` | w PR | zależy od PR kontraktowego `contracts/onboarding-profile`; ekran profilu (edycja i usuwanie historii zdrowia) jeszcze nie istnieje |
+| Onboarding | Michał | `feat/michal-onboarding` | w PR | zależy od PR kontraktowego `contracts/onboarding-profile`; ekran Profil (podgląd, usuwanie historii zdrowia i wszystkich danych, ponowne układanie planu) w `feat/michal-profile-screen`; edycji pól profilu jeszcze nie ma |
 | Seria na żywo na telefonie | Michał | `feat/michal-live-set-device` | do zrobienia | |
-| Integracja usług i przepływu | Michał | `feat/michal-integration` | w PR (część 1) | silnik reguł Wiktora zasila ekran Dziś (po starcie i po check-inie), katalog z `ContentRepository`, plan z onboardingu z backendu z lokalnym zapasem, wyniki serii zapisywane lokalnie (`LocalTechniqueHistory`) i liczone przez silnik. Check-in tylko w pamięci do czasu `feat/wiktor-checkin-store`. Zostaje: wyniki analiz Bartka, nawigacja Dziś → Plan → seria, ekran profilu |
+| Integracja usług i przepływu | Michał | `feat/michal-integration` | w PR (część 1) | silnik reguł Wiktora zasila ekran Dziś (po starcie i po check-inie), katalog z `ContentRepository`, plan z onboardingu z backendu z lokalnym zapasem, wyniki serii zapisywane lokalnie (`LocalTechniqueHistory`) i liczone przez silnik. Check-in zapisuje się na telefonie przez `CheckInStore` (Wiktor) i wraca po restarcie. Zostaje: wyniki analiz Bartka, nawigacja Dziś → Plan → seria, ekran profilu |
 | Materiały i zgłoszenie | Michał | `feat/michal-submission` | do zrobienia | |
 | Wydobycie punktów z filmu | Bartek | `feat/bartek-pose-extractor` | do zrobienia | |
 | Jakość nagrania | Bartek | `feat/bartek-quality-gate` | do zrobienia | |
 | Powtórzenia i scoring | Bartek | `feat/bartek-rep-scoring` | do zrobienia | |
 | Ekrany Analiza i Wynik | Bartek | `feat/bartek-analysis-screens` | do zrobienia | |
-| HealthKit | Wiktor | `feat/wiktor-healthkit` | do zrobienia | |
-| Zapis check-inu | Wiktor | `feat/wiktor-checkin-store` | do zrobienia | |
-| Silnik reguł | Wiktor | `feat/wiktor-insight-engine` | w przeglądzie (PR) | `restFromSignals` = 4, do „Odpuść” liczą się tylko sygnały regeneracji. `AppStore` (Michał) musi wołać `services.recommendation` |
+| HealthKit | Wiktor | `feat/wiktor-healthkit` | scalone (#8) | agregacja przetestowana na tablicach próbek, dialog uprawnień sprawdzony na symulatorze; odczyt prawdziwych danych z Apple Health i zegarka do sprawdzenia na iPhonie |
+| Zapis check-inu | Wiktor | `feat/wiktor-checkin-store` | scalone (#6) | `CheckInStore` gotowy; podpięcie ekranu Check-in robi Michał (`AppStore.saveCheckIn` → `CheckInStore.standard`) |
+| Silnik reguł | Wiktor | `feat/wiktor-insight-engine` | scalone (#4, poprawki w #10) | `restFromSignals` = 4, do „Odpuść” liczą się tylko sygnały regeneracji, technika najwyżej „Zmodyfikuj”; liczą się analizy z ostatnich 14 dni |
 | Teksty rekomendacji (klient + backend) | Wiktor | `feat/wiktor-recommendation-text` | do zrobienia | |
-| Korekta sesji i opieka | Wiktor | `feat/wiktor-plan-adjuster-care` | do zrobienia | |
-| Ekrany Postępy i Opieka | Wiktor | `feat/wiktor-progress-care-screens` | do zrobienia | |
+| Korekta sesji i opieka | Wiktor | `feat/wiktor-plan-adjuster-care` | scalone (#14, podpięte w #17) | `PlanAdjuster` zmienia sesję w Dziś i Plan, `CarePathway` zasila ekran Opieka |
+| Ekrany Postępy i Opieka | Wiktor | `feat/wiktor-progress-care-screens` | w przeglądzie (PR) | sprawdzone na symulatorze (wykresy, karta opieki, wyszukiwanie w Mapach z lokalizacją Warszawa, brak zgody); wyszukiwanie na prawdziwym iPhonie i wejścia do Opieki z Dziś i Wyniku (Michał, Bartek) do zrobienia. Historia sesji z prototypu zastąpiona historią serii z trenerem (aplikacja nie zapisuje decyzji dnia), Sylwetka poza zakresem |
 | Katalog i szablony | Maciek | `feat/maciek-catalog-templates` | do zrobienia | |
 | Magazyn planu | Maciek | `feat/maciek-plan-store` | do zrobienia | |
 | Backend z prawdziwym modelem (prompty, narzędzia, jakość planu) | Maciek | `feat/maciek-backend-ai` | gotowe (PR #11) | tylko Gemini, kaskada modeli zapasowych, testy jednostkowe (`make test`); na żywo: plany 6/6, czat 9/9, plan ok. 3 s i 0,002 USD; wymaga klucza z płatnego projektu (darmowy: 20 zapytań na dobę na model) |
 | Generator planu (Swift, wywołuje backend) | Maciek | `feat/maciek-plan-generator` | do zrobienia | |
 | Czat trenera (Swift: SSE, narzędzia, zgoda) | Maciek | `feat/maciek-coach-chat` | do zrobienia | |
-| Ekrany Plan i Trener | Maciek | `feat/maciek-plan-coach-screens` | do zrobienia | |
+| Ekrany Plan i Trener | Maciek | `feat/maciek-plan-coach-screens` | Plan: gotowy (Michał, `feat/michal-plan-screen`: tydzień, szczegóły sesji, start serii); Trener: do zrobienia | |
 
 ## 10. Co oddajemy (HackTribe)
 

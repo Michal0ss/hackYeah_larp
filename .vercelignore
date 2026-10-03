@@ -1,0 +1,9 @@
+App/
+Packages/
+Config/
+Forma.xcodeproj/
+backend/.venv/
+backend/tests/
+**/__pycache__/
+*.md
+!backend/README.md
