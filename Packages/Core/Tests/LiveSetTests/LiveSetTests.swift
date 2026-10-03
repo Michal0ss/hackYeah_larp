@@ -192,6 +192,70 @@ final class SquatAssessorTests: XCTestCase {
         let result = BasicSquatAssessor().assess(bottomFrames: [bottom])
         XCTAssertNotNil(result.findings.first { $0.id == "depth_shallow" })
     }
+
+    func testLooksLikeRep_standingIsRejected() {
+        let frame = PoseFrame(time: 0, joints: [
+            Joint(name: .root, x: 0.5, y: 0.5, confidence: 1),
+            Joint(name: .leftKnee, x: 0.5, y: 0.7, confidence: 1),
+        ])
+        XCTAssertEqual(BasicSquatAssessor().looksLikeRep(at: frame), false)
+    }
+
+    func testLooksLikeRep_hipAtKneeHeightIsAccepted() {
+        let frame = PoseFrame(time: 0, joints: [
+            Joint(name: .root, x: 0.5, y: 0.75, confidence: 1),
+            Joint(name: .leftKnee, x: 0.5, y: 0.7, confidence: 1),
+        ])
+        XCTAssertEqual(BasicSquatAssessor().looksLikeRep(at: frame), true)
+    }
+
+    func testLooksLikeRep_missingJointsIsNil() {
+        XCTAssertNil(BasicSquatAssessor().looksLikeRep(at: PoseFrame(time: 0, joints: [])))
+    }
+}
+
+final class UpperBodyAssessorLooksLikeRepTests: XCTestCase {
+    func testPushup_straightArmIsRejected() {
+        let frame = PoseFrame(time: 0, joints: [
+            Joint(name: .leftShoulder, x: 0.3, y: 0.3, confidence: 1),
+            Joint(name: .leftElbow, x: 0.3, y: 0.5, confidence: 1),
+            Joint(name: .leftWrist, x: 0.3, y: 0.7, confidence: 1),
+        ])
+        XCTAssertEqual(BasicPushupAssessor().looksLikeRep(at: frame), false)
+    }
+
+    func testPushup_bentElbowIsAccepted() {
+        let frame = PoseFrame(time: 0, joints: [
+            Joint(name: .leftShoulder, x: 0.3, y: 0.3, confidence: 1),
+            Joint(name: .leftElbow, x: 0.3, y: 0.5, confidence: 1),
+            Joint(name: .leftWrist, x: 0.5, y: 0.5, confidence: 1),
+        ])
+        XCTAssertEqual(BasicPushupAssessor().looksLikeRep(at: frame), true)
+    }
+
+    func testPushup_missingArmIsNil() {
+        XCTAssertNil(BasicPushupAssessor().looksLikeRep(at: PoseFrame(time: 0, joints: [])))
+    }
+
+    func testPullup_chinBelowBarIsRejected() {
+        let frame = PoseFrame(time: 0, joints: [
+            Joint(name: .nose, x: 0.5, y: 0.6, confidence: 1),
+            Joint(name: .leftWrist, x: 0.4, y: 0.3, confidence: 1),
+        ])
+        XCTAssertEqual(BasicPullupAssessor().looksLikeRep(at: frame), false)
+    }
+
+    func testPullup_chinOverBarIsAccepted() {
+        let frame = PoseFrame(time: 0, joints: [
+            Joint(name: .nose, x: 0.5, y: 0.2, confidence: 1),
+            Joint(name: .leftWrist, x: 0.4, y: 0.4, confidence: 1),
+        ])
+        XCTAssertEqual(BasicPullupAssessor().looksLikeRep(at: frame), true)
+    }
+
+    func testPullup_missingJointsIsNil() {
+        XCTAssertNil(BasicPullupAssessor().looksLikeRep(at: PoseFrame(time: 0, joints: [])))
+    }
 }
 
 @MainActor
@@ -222,6 +286,29 @@ final class LiveSetEngineTests: XCTestCase {
         XCTAssertTrue(said.contains { $0.hasPrefix("Koniec serii") })
         // Corrections still happen (shown on screen as lastCue) but aren't spoken live anymore.
         XCTAssertFalse(said.contains("wolniej w dół"), "spoken: \(said)")
+
+        // Every counted repetition was a good squat, so the live score tracks the final one.
+        XCTAssertEqual(engine.liveTechniqueScore, summary.techniqueScore)
+    }
+
+    /// A movement can swing the depth signal exactly like a real repetition (jumping, the wrong
+    /// exercise, just flailing) without ever matching the exercise's own joint shape. The engine
+    /// must not count it just because `PhaseTracker` saw a full up-and-down.
+    func testRepsThatDoNotMatchTheExerciseShapeAreNotCounted() {
+        struct RejectingAssessor: TechniqueAssessing {
+            func assess(bottomFrames: [PoseFrame]) -> TechniqueAssessment { TechniqueAssessment(score: nil, findings: []) }
+            func looksLikeRep(at frame: PoseFrame) -> Bool? { false }
+        }
+        let voice = RecordingVoice()
+        let engine = LiveSetEngine(exerciseId: "squat", spec: .controlled, voice: voice,
+                                   assessor: RejectingAssessor(), isSimulated: true)
+        for frame in SimulatedSquat().frames() { engine.ingest(frame) }
+
+        XCTAssertEqual(engine.reps.count, 0)
+        XCTAssertNil(engine.liveTechniqueScore)
+        XCTAssertEqual(engine.lastCue, "nie liczę — zła pozycja")
+        // Rejection is shown on screen, never spoken — it would talk over the real phase cues.
+        XCTAssertFalse(voice.spoken.map(\.text).contains("nie liczę — zła pozycja"))
     }
 
     func testBadFramingSpeaksHintAndDoesNotStart() {

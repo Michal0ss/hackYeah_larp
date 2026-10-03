@@ -25,6 +25,9 @@ public final class LiveSetEngine {
     public private(set) var lastCue: String?
     public private(set) var latestFrame: PoseFrame?
     public private(set) var summary: SetSummary?
+    /// Technique score (0...100) from the repetitions counted so far, updated live. Nil until the
+    /// first repetition completes, same meaning as `SetSummary.techniqueScore`.
+    public private(set) var liveTechniqueScore: Int?
 
     // Diagnostics for testing on a real phone (see PoseDiagnostics and the diagnostics panel in the app).
     /// Frames per second the pose stream is delivering (smoothed).
@@ -216,12 +219,25 @@ public final class LiveSetEngine {
                 phaseStartedAt = Date()
                 announcePhase(phase)
             case var .repCompleted(rep):
-                rep = kind.exerciseRep(rep)
-                rep.startedAt -= setStart
-                reps.append(rep)
-                if let best = repBest { bottomFrames.append(best.frame) }
+                let bottomFrame = repBest?.frame
                 repBest = nil
                 currentPhase = nil
+                // The depth signal alone can't tell a squat from a jump or a push-up: a vigorous
+                // movement of any kind, or the wrong exercise, still swings "depth" enough to look
+                // like a repetition. Reject it here using the one shape check that defines this
+                // exercise (knee bend, elbow bend, chin over the bar) — but only when it was
+                // actually checked (`false`, not `nil`): a frame lost to occlusion should not cost
+                // a real repetition.
+                if let bottomFrame, assessor.looksLikeRep(at: bottomFrame) == false {
+                    lastCue = "nie liczę — zła pozycja"
+                    continue
+                }
+                rep = kind.exerciseRep(rep)
+                rep.startedAt -= setStart
+                rep.index = reps.count + 1
+                reps.append(rep)
+                if let bottomFrame { bottomFrames.append(bottomFrame) }
+                liveTechniqueScore = assessor.assess(bottomFrames: bottomFrames).score
                 // Shown on screen (LiveSetView) but not spoken: the only things said live are the
                 // phase cues below, so corrections don't talk over the next "w dół"/"w górę".
                 if let advice = policy.advice(after: rep, spec: spec) {
