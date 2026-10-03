@@ -13,10 +13,15 @@ make install      # venv + pinned dependencies
 make dev          # http://localhost:8000  (docs: /docs)
 ```
 
-Works with no key: without `ANTHROPIC_API_KEY` the AI is an offline mock (plans come from templates, chat
+Works with no key: without a model key the AI is an offline mock (plans come from templates, chat
 returns canned answers and even asks for tools, so the app side can be built offline). To use the real model:
-`export ANTHROPIC_API_KEY=...` (never commit it). To force the mock even when a key is in your shell:
-`FORMA_AI_MODE=mock make dev`.
+`export GEMINI_API_KEY=...` (Google Gemini, the team's choice; never commit it). `ANTHROPIC_API_KEY` still works
+as the alternative provider; with both set, Gemini wins unless `FORMA_AI_MODE=anthropic`. To force the mock even
+when a key is in your shell: `FORMA_AI_MODE=mock make dev`. Models: `FORMA_COACH_MODEL`, `FORMA_PLAN_MODEL`,
+`FORMA_TEXT_MODEL` (defaults per provider in `app/config.py`).
+
+Use a Gemini key from a **paid** (billing-enabled) Google AI project with a budget limit: on the free tier Google
+may use prompts to improve its products, and coach prompts carry health summaries.
 
 From the iPhone use the Mac's address (`http://<mac-ip>:8000`); plain HTTP needs an ATS exception in debug builds.
 
@@ -74,7 +79,8 @@ app/middleware.py      request id, size limit, access log, last-resort 500
 app/errors.py          error envelope
 app/schemas/           wire types (domain.py mirrors Packages/Core/Sources/Contracts)
 app/content/store.py   loads + validates content/, content hashes as versions
-app/ai/gateway.py      the only code that talks to Anthropic, plus the offline MockGateway
+app/ai/gateway.py      gateway interface, Anthropic gateway and the offline MockGateway
+app/ai/gemini.py       Gemini gateway (translates tool_use/tool_result to Gemini function calls)
 app/ai/prompts/*.md    Polish system prompts (edit wording here)
 app/ai/prompts.py      fills prompts with sanitised data
 app/ai/tools.py        coach tool definitions, consent gating
@@ -100,5 +106,5 @@ scripts/export_openapi.py
 ## Deploying
 
 `docker build -f backend/Dockerfile -t forma-backend .` from the repository root (untested here: no Docker on the
-build machine). Needs `FORMA_APP_TOKENS` and `ANTHROPIC_API_KEY` from the host's secrets, listens on `$PORT`.
+build machine). Needs `FORMA_APP_TOKENS` and `GEMINI_API_KEY` (or `ANTHROPIC_API_KEY`) from the host's secrets, listens on `$PORT`.
 In prod the docs and the schema endpoint are off. Rate limits are in memory, so run one instance (or add Redis).

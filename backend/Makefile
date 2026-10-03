@@ -6,7 +6,7 @@ install:  ## create .venv and install pinned dependencies
 	python3 -m venv .venv
 	$(PY) -m pip install -q -e ".[dev]" -c constraints.txt
 
-dev:  ## run with reload on http://localhost:8000 (offline mock AI unless ANTHROPIC_API_KEY is set)
+dev:  ## run with reload on http://localhost:8000 (offline mock AI unless GEMINI_API_KEY or ANTHROPIC_API_KEY is set)
 	$(PY) -m uvicorn app.main:create_app --factory --reload --host 0.0.0.0 --port 8000
 
 lint:
