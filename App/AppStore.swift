@@ -69,6 +69,48 @@ final class AppStore {
 
     var today: RecoverySnapshot? { recovery.first }
 
+    // MARK: Profile and data
+
+    /// Deletes the health history from the phone. The profile keeps working without the derived exclusions; the
+    /// plan stays as it is until the user rebuilds it.
+    func deleteHealthHistory() {
+        healthHistory = HealthHistory()
+        profile.avoidTags = []
+        profile.easyStart = false
+        try? onboardingStorage.save(OnboardingResult(profile: profile, health: healthHistory, plan: plan,
+                                                     healthAccess: healthAccess ?? .sampleData))
+        try? onboardingStorage.deleteHealthHistory()
+    }
+
+    /// Builds the plan again for the current profile (backend first, local fallback). Returns false on failure.
+    @MainActor
+    func rebuildPlan() async -> Bool {
+        guard let new = try? await services.planGenerator.generatePlan(for: profile) else { return false }
+        plan = new
+        restoredSessionIds = []
+        try? onboardingStorage.save(OnboardingResult(profile: profile, health: healthHistory, plan: plan,
+                                                     healthAccess: healthAccess ?? .sampleData))
+        await refreshRecommendation()
+        return true
+    }
+
+    /// Removes everything the app stored on this phone and starts onboarding again.
+    @MainActor
+    func deleteAllData() async {
+        try? onboardingStorage.clear()
+        _ = try? await services.checkInStore.removeAll()
+        services.localHistory.removeAll()
+        profile = SampleData.profile
+        plan = SampleData.plan
+        healthHistory = HealthHistory()
+        healthAccess = nil
+        checkIn = nil
+        lastTechnique = SampleData.technique
+        restoredSessionIds = []
+        onboardingCompleted = false
+        await refreshRecommendation()
+    }
+
     // MARK: Session adjustment
 
     /// Sessions for which the user chose the original plan over today's lighter version.
