@@ -28,4 +28,5 @@ openapi:  ## regenerate openapi.json (the API contract), validates content/ on t
 
 check: lint test  ## what CI runs: lint + tests + content validation + openapi.json up to date
 	$(PY) scripts/export_openapi.py --check
+	$(PY) scripts/check_texts.py  # text safety rules and the recommendation text flow (offline, no key)
 	$(PY) ../scripts/sync_content.py --check  # app copy of content/ is current (run `python scripts/sync_content.py` from the repo root)
