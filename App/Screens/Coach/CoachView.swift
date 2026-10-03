@@ -113,7 +113,9 @@ struct CoachView: View {
     private func conversation(_ model: CoachViewModel) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: FormaSpacing.m) {
+                // A plain VStack: the lazy one estimates the height of long answers, and scrolling to "bottom" then
+                // landed past the content (a blank screen). The history is capped, so building it all is cheap.
+                VStack(alignment: .leading, spacing: FormaSpacing.m) {
                     consentArea(model)
                     if model.messages.isEmpty, !model.isResponding {
                         CoachEmptyState(questions: CoachChat.quickQuestions(for: model.workout)) { model.send($0) }
