@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import AudioToolbox
 
 public enum VoicePriority: Sendable {
     /// The counting ("jeden, dwa, trzy"). Interrupts advice.
@@ -13,6 +14,9 @@ public protocol CoachVoice: AnyObject {
     /// Activates the audio session (ducks other audio, routes to headphones).
     func prepare()
     func speak(_ text: String, priority: VoicePriority)
+    /// A short, distinct sound (not speech) marking the exact moment a set starts being tracked —
+    /// easier to react to on a half-second beat than a spoken word, and unambiguous in any language.
+    func signalSetStart()
     /// Stops speaking and releases the audio session.
     func finish()
     var headphonesConnected: Bool { get }
@@ -22,11 +26,13 @@ public protocol CoachVoice: AnyObject {
 @MainActor
 public final class RecordingVoice: CoachVoice {
     public private(set) var spoken: [(text: String, priority: VoicePriority)] = []
+    public private(set) var signalsSent = 0
     public var headphonesConnected: Bool { true }
 
     public init() {}
     public func prepare() {}
     public func speak(_ text: String, priority: VoicePriority) { spoken.append((text, priority)) }
+    public func signalSetStart() { signalsSent += 1 }
     public func finish() {}
 }
 
@@ -75,6 +81,12 @@ public final class SpeechCoachVoice: NSObject, CoachVoice {
         utterance.postUtteranceDelay = 0
         currentPriority = priority
         synthesizer.speak(utterance)
+    }
+
+    public func signalSetStart() {
+        #if os(iOS)
+        AudioServicesPlaySystemSound(SystemSoundID(1117))
+        #endif
     }
 
     public func finish() {

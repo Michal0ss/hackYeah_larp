@@ -2,42 +2,7 @@
   "voiceId": "REPLACE_WITH_ELEVENLABS_VOICE_ID",
   "modelId": "eleven_multilingual_v2",
   "phrases": {
-    "jeden": [{ "text": "jeden", "file": "count_jeden" }],
-    "dwa": [{ "text": "dwa", "file": "count_dwa" }],
-    "trzy": [{ "text": "trzy", "file": "count_trzy" }],
-    "cztery": [{ "text": "cztery", "file": "count_cztery" }],
-    "pięć": [{ "text": "pięć", "file": "count_piec" }],
-    "sześć": [{ "text": "sześć", "file": "count_szesc" }],
-    "siedem": [{ "text": "siedem", "file": "count_siedem" }],
-    "osiem": [{ "text": "osiem", "file": "count_osiem" }],
-    "w dół, jeden": [{ "text": "w dół, jeden", "file": "label_w_dol_jeden" }],
-    "trzymaj, jeden": [{ "text": "trzymaj, jeden", "file": "label_trzymaj_jeden" }],
-    "w górę, jeden": [{ "text": "w górę, jeden", "file": "label_w_gore_jeden" }],
-    "stop, jeden": [{ "text": "stop, jeden", "file": "label_stop_jeden" }],
-    "głębiej": [
-      { "text": "głębiej", "file": "advice_glebiej_1" },
-      { "text": "jeszcze głębiej", "file": "advice_glebiej_2" },
-      { "text": "dojedź do końca", "file": "advice_glebiej_3" }
-    ],
-    "wolniej w dół": [
-      { "text": "wolniej w dół", "file": "advice_wolniej_1" },
-      { "text": "zwolnij schodzenie", "file": "advice_wolniej_2" },
-      { "text": "kontroluj zejście", "file": "advice_wolniej_3" }
-    ],
-    "spokojniej w górę": [
-      { "text": "spokojniej w górę", "file": "advice_spokojniej_1" },
-      { "text": "bez szarpania", "file": "advice_spokojniej_2" },
-      { "text": "płynnie do góry", "file": "advice_spokojniej_3" }
-    ],
-    "przytrzymaj na dole": [
-      { "text": "przytrzymaj na dole", "file": "advice_przytrzymaj_1" },
-      { "text": "zatrzymaj się na dole", "file": "advice_przytrzymaj_2" },
-      { "text": "pauza na dole", "file": "advice_przytrzymaj_3" }
-    ],
-    "dobrze, tak trzymaj": [
-      { "text": "dobrze, tak trzymaj", "file": "encourage_1" },
-      { "text": "świetnie, tak dalej", "file": "encourage_2" },
-      { "text": "czysta robota", "file": "encourage_3" }
-    ]
+    "w dół": [{ "text": "w dół", "file": "phase_w_dol" }],
+    "w górę": [{ "text": "w górę", "file": "phase_w_gore" }]
   }
 }

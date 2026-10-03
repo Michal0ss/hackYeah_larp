@@ -47,7 +47,6 @@ public final class LiveSetEngine {
     private var signal: SquatSignal
     private var tracker = PhaseTracker()
     private var policy = CoachingPolicy()
-    private var cueTask: Task<Void, Never>?
 
     private var readySince: Double?
     private var unreadySince: Double?
@@ -106,7 +105,6 @@ public final class LiveSetEngine {
     /// repetitions keeps its view, so this does nothing then.
     public func restartSetup() {
         guard canRestartSetup else { return }
-        cueTask?.cancel()
         currentPhase = nil
         phaseStartedAt = nil
         latestDepth = nil
@@ -147,7 +145,6 @@ public final class LiveSetEngine {
     /// End the set (button or long idle). Builds the summary.
     public func finish() {
         guard stage == .active || stage == .calibrating(progress: 0) || stage == .framing else { return }
-        cueTask?.cancel()
         currentPhase = nil
 
         let tempo = TempoScoring.evaluate(reps: reps, spec: spec)
@@ -195,7 +192,7 @@ public final class LiveSetEngine {
             setStart = frame.time
             tracker.reset()
             stage = .active
-            voice.speak("Zaczynaj", priority: .count)
+            voice.signalSetStart()
         } else if case let .calibrating(progress) = signal.stage {
             stage = .calibrating(progress: progress)
         }
@@ -217,18 +214,18 @@ public final class LiveSetEngine {
                 let phase = kind.exercisePhase(tracked)
                 currentPhase = phase
                 phaseStartedAt = Date()
-                scheduleCues(for: phase, isFirstRep: tracker.repCount == 0)
+                announcePhase(phase)
             case var .repCompleted(rep):
                 rep = kind.exerciseRep(rep)
                 rep.startedAt -= setStart
                 reps.append(rep)
                 if let best = repBest { bottomFrames.append(best.frame) }
                 repBest = nil
-                cueTask?.cancel()
                 currentPhase = nil
+                // Shown on screen (LiveSetView) but not spoken: the only things said live are the
+                // phase cues below, so corrections don't talk over the next "w dół"/"w górę".
                 if let advice = policy.advice(after: rep, spec: spec) {
                     lastCue = advice
-                    voice.speak(advice, priority: .advice)
                 }
             case .idleTimeout:
                 if !reps.isEmpty { finish() }
@@ -238,17 +235,13 @@ public final class LiveSetEngine {
 
     // MARK: - Voice
 
-    private func scheduleCues(for phase: RepPhase, isFirstRep: Bool) {
-        cueTask?.cancel()
-        let cues = CuePlanner.cues(for: phase, spec: spec, isFirstRep: isFirstRep)
-        guard !cues.isEmpty else { return }
-        cueTask = Task { [weak self] in
-            let start = ContinuousClock.now
-            for cue in cues {
-                try? await Task.sleep(until: start.advanced(by: .seconds(cue.offset)), clock: .continuous)
-                if Task.isCancelled { return }
-                self?.say(cue.text)
-            }
+    /// The only things said while a rep is in progress: the start of the lifting phase and the
+    /// start of the lowering phase, once each, right as they begin. No per-second counting and no
+    /// announcement for the pauses — a quiet coach is easier to work out to than a constant one.
+    private func announcePhase(_ phase: RepPhase) {
+        switch phase {
+        case .eccentric, .concentric: say(CuePlanner.label(of: phase))
+        case .bottomPause, .topPause: break
         }
     }
 
