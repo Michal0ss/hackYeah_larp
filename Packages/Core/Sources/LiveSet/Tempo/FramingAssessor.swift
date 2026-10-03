@@ -24,7 +24,10 @@ public enum FramingAssessor {
 
     /// `checkSize` should be false while the person is moving through the exercise:
     /// a squatting person is naturally lower in the frame than a standing one.
-    public static func assess(_ frame: PoseFrame?, checkSize: Bool = true) -> FramingReport {
+    /// `minBodyHeight` defaults to the live-set value; pass a different one for other call sites
+    /// (e.g. Analysis, which checks a recorded clip and may run alongside a live set).
+    public static func assess(_ frame: PoseFrame?, checkSize: Bool = true,
+                              minBodyHeight: Double = FramingAssessor.minBodyHeight) -> FramingReport {
         guard let frame else {
             return FramingReport(ready: false, checks: [
                 QualityCheck(id: "visible", label: "Widzę sylwetkę", passed: false, hint: "Stań przed kamerą, tak żeby było widać całą sylwetkę"),

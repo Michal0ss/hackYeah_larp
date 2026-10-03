@@ -45,10 +45,6 @@ public enum QualityGate {
             return QualityReport(passed: false, checks: [check], userHint: check.hint)
         }
 
-        let previousMinBodyHeight = FramingAssessor.minBodyHeight
-        FramingAssessor.minBodyHeight = thresholds.minBodyHeight
-        defer { FramingAssessor.minBodyHeight = previousMinBodyHeight }
-
         var tally: [String: (passed: Int, total: Int, hint: String?)] = [:]
         var overCrowdedFrames = 0
         var signal = SquatSignal()
@@ -60,7 +56,8 @@ public enum QualityGate {
             // Size only means something while the person is close to standing: mid-squat they are
             // naturally lower in the frame (FramingAssessor's own rule for the live set, reused here).
             let nearStanding = (depth ?? 1) < 0.1
-            for check in FramingAssessor.assess(frame, checkSize: nearStanding).checks {
+            let framing = FramingAssessor.assess(frame, checkSize: nearStanding, minBodyHeight: thresholds.minBodyHeight)
+            for check in framing.checks {
                 var entry = tally[check.id] ?? (0, 0, nil)
                 entry.total += 1
                 if check.passed { entry.passed += 1 } else if entry.hint == nil { entry.hint = check.hint }
