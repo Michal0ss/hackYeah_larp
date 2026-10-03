@@ -29,11 +29,15 @@ public struct HealthSamples: Equatable, Sendable {
     public var restingHeartRate: [DatedValue]
     /// HRV (SDNN) in milliseconds.
     public var hrv: [DatedValue]
+    /// How many "in bed" / "awake" sleep samples were left out of `sleep` (for the diagnostic report only).
+    public var inBedCount: Int
 
-    public init(sleep: [SleepInterval] = [], restingHeartRate: [DatedValue] = [], hrv: [DatedValue] = []) {
+    public init(sleep: [SleepInterval] = [], restingHeartRate: [DatedValue] = [], hrv: [DatedValue] = [],
+                inBedCount: Int = 0) {
         self.sleep = sleep
         self.restingHeartRate = restingHeartRate
         self.hrv = hrv
+        self.inBedCount = inBedCount
     }
 }
 

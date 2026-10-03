@@ -47,15 +47,18 @@ public struct HealthKitService: RecoveryProviding, HealthSummaryProviding, Healt
     private let aggregator: RecoveryAggregator
     private let useSampleFallback: Bool
     private let gate: HealthDataGate
+    private let readLog: HealthReadLog
     private let now: @Sendable () -> Date
 
     public init(source: HealthSampleSource = HKHealthSampleSource(), aggregator: RecoveryAggregator = RecoveryAggregator(),
                 useSampleFallback: Bool = true, gate: HealthDataGate = .shared,
+                readLog: HealthReadLog = .shared,
                 now: @escaping @Sendable () -> Date = { Date() }) {
         self.source = source
         self.aggregator = aggregator
         self.useSampleFallback = useSampleFallback
         self.gate = gate
+        self.readLog = readLog
         self.now = now
     }
 
@@ -92,7 +95,14 @@ public struct HealthKitService: RecoveryProviding, HealthSummaryProviding, Healt
         let lookback = aggregator.lookbackDays(for: days)
         guard let start = aggregator.calendar.date(byAdding: .day, value: -lookback,
                                                    to: aggregator.calendar.startOfDay(for: end)) else { return [] }
-        guard let samples = try? await source.samples(from: start, to: end) else { return [] }
+        let samples: HealthSamples
+        do {
+            samples = try await source.samples(from: start, to: end)
+        } catch {
+            readLog.last = HealthReadReport(lookbackDays: lookback, errorDescription: error.localizedDescription)
+            return []
+        }
+        readLog.last = HealthReadReport(samples: samples, lookbackDays: lookback)
         return aggregator.summaries(from: samples, days: days, now: end)
     }
 }

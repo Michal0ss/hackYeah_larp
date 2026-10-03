@@ -133,6 +133,55 @@ final class HealthKitServiceTests: XCTestCase {
         XCTAssertTrue(empty.isEmpty)
     }
 
+    func testReadReportCountsWhatHealthReturned() async {
+        let log = HealthReadLog()
+        let fixedNow = now
+        var samples = realToday()
+        samples.inBedCount = 4
+        let s = HealthKitService(source: FakeSource(samplesResult: .success(samples)), aggregator: aggregator,
+                                 readLog: log, now: { fixedNow })
+        _ = await s.summaries(days: 7)
+        let report = try? XCTUnwrap(log.last)
+        XCTAssertEqual(report?.sleepSamples, 1)
+        XCTAssertEqual(report?.restingHeartRateSamples, 1)
+        XCTAssertEqual(report?.hrvSamples, 1)
+        XCTAssertEqual(report?.inBedSamples, 4)
+        XCTAssertEqual(report?.lookbackDays, 21)
+        XCTAssertEqual(report?.foundNothing, false)
+        XCTAssertEqual(report?.failed, false)
+    }
+
+    func testReadReportSaysHealthWasEmptyOrTheReadFailed() async {
+        let log = HealthReadLog()
+        let fixedNow = now
+        let empty = HealthKitService(source: FakeSource(), aggregator: aggregator, readLog: log, now: { fixedNow })
+        _ = await empty.summaries(days: 7)
+        XCTAssertEqual(log.last?.foundNothing, true)
+        XCTAssertEqual(log.last?.summaryText, "Znaleziono (21 dni): sen 0, tętno spoczynkowe 0, HRV 0.")
+
+        let broken = HealthKitService(source: FakeSource(samplesResult: .failure(Boom())), aggregator: aggregator,
+                                      readLog: log, now: { fixedNow })
+        _ = await broken.summaries(days: 7)
+        XCTAssertEqual(log.last?.failed, true)
+        XCTAssertEqual(log.last?.foundNothing, false)
+        XCTAssertTrue(log.last?.summaryText.hasPrefix("Odczyt nie powiódł się") == true)
+    }
+
+    func testReadReportMentionsInBedOnlySleep() {
+        let report = HealthReadReport(lookbackDays: 21, inBedSamples: 9)
+        XCTAssertTrue(report.foundNothing)
+        XCTAssertEqual(report.summaryText, "Znaleziono (21 dni): sen 0, tętno spoczynkowe 0, HRV 0, tylko „w łóżku” 9.")
+    }
+
+    func testClosedGateLeavesTheReadLogUntouched() async {
+        let log = HealthReadLog()
+        let gate = HealthDataGate()
+        gate.allowsRealData = false
+        let s = HealthKitService(source: FakeSource(), aggregator: aggregator, gate: gate, readLog: log)
+        _ = await s.summaries(days: 3)
+        XCTAssertNil(log.last)
+    }
+
     func testRequestAccessForwardsResultAndHandlesUnavailable() async {
         let granted = await service(FakeSource(accessResult: true)).requestAccess()
         let refused = await service(FakeSource(accessResult: false)).requestAccess()

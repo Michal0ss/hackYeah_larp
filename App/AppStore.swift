@@ -23,6 +23,8 @@ final class AppStore {
     /// while Health has nothing or the user chose sample data. nil until the first read finished.
     private(set) var health: HealthDaySummary?
     private(set) var healthLoaded = false
+    /// What the last Apple Health read found (counts per type, or the error), to explain "no data".
+    private(set) var healthReport: HealthReadReport?
     var checkIn: CheckIn? = SampleData.checkIn
     var lastTechnique: TechniqueResult? = SampleData.technique
     var recommendation: DailyRecommendation = SampleData.recommendation {
@@ -243,6 +245,7 @@ final class AppStore {
         healthAccess = nil
         syncHealthGate()
         health = nil
+        healthReport = nil
         healthLoaded = false
         checkIn = nil
         lastTechnique = SampleData.technique
@@ -286,6 +289,7 @@ final class AppStore {
         await HealthDebugSeeder.runIfRequested()
         #endif
         health = await services.healthKit.summaries(days: 8).first
+        healthReport = HealthReadLog.shared.last
         healthLoaded = true
         await refreshRecommendation()
     }
