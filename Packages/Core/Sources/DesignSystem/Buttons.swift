@@ -18,6 +18,7 @@ public struct FormaPrimaryButtonStyle: ButtonStyle {
                 in: Capsule(style: .continuous))
             .shadow(color: FormaColor.volt.opacity(isEnabled ? 0.45 : 0), radius: 14, y: 8)
             .opacity(isEnabled ? 1 : 0.4)
+            .contentShape(Capsule(style: .continuous))
             .scaleEffect(configuration.isPressed ? 0.95 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
@@ -37,6 +38,7 @@ public struct FormaGlassButtonStyle: ButtonStyle {
             .frame(minHeight: 52)
             .glassCapsule(interactive: true)
             .opacity(isEnabled ? 1 : 0.4)
+            .contentShape(Capsule(style: .continuous))
             .scaleEffect(configuration.isPressed ? 0.95 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
@@ -56,6 +58,7 @@ public struct FormaPressStyle: ButtonStyle {
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .contentShape(Rectangle())
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }

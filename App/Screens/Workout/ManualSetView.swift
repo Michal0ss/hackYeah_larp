@@ -104,7 +104,8 @@ struct ManualSetView: View {
                 SectionLabel(timed ? "Stoper (cel \(planned.repsMin) s)" : "Stoper serii")
                 HStack {
                     NumberText(WorkoutFormat.clock(TimeInterval(elapsed)), size: 56)
-                    Spacer()
+                        .lineLimit(1).minimumScaleFactor(0.6).layoutPriority(1)
+                    Spacer(minLength: FormaSpacing.s)
                     if startedAt == nil, stoppedAt > 0 {
                         Button("Zeruj") { stoppedAt = 0; reachedTarget = false }
                             .formaStyle(.subheadline).foregroundStyle(FormaColor.ink3)
