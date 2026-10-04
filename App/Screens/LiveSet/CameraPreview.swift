@@ -1,58 +1,66 @@
 import SwiftUI
 import AVFoundation
+import LiveSet
 
 #if os(iOS)
-/// Camera image. `videoGravity` is aspect-fit so the skeleton overlay lines up exactly.
+/// The camera picture, aspect-fit so the skeleton overlay lines up exactly. It shows the upright frames that
+/// `CameraPoseSource` hands over (the very pictures Vision analyses), not an `AVCaptureVideoPreviewLayer`: the preview
+/// layer's own rotation came out turned by 90 degrees on the selfie camera and could not be relied on.
 struct CameraPreview: UIViewRepresentable {
-    let session: AVCaptureSession
-    /// Changes when the camera was switched: the new connection of the preview layer needs its rotation again.
-    var revision = 0
+    let camera: CameraPoseSource
 
     final class PreviewView: UIView {
-        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
-        var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+        private let lock = NSLock()
+        private var pending: CGImage?
+        private var scheduled = false
 
-        /// The preview connection only exists once the capture session has its input, which happens after this view
-        /// is created. Set the portrait rotation whenever it is available (layout runs again when the session starts).
-        override func layoutSubviews() {
-            super.layoutSubviews()
-            applyRotation()
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            backgroundColor = .black
+            layer.contentsGravity = .resizeAspect
+            layer.masksToBounds = true
         }
 
-        private var watchdog: Timer?
+        required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 
-        func applyRotation() {
-            if let connection = previewLayer.connection, connection.isVideoRotationAngleSupported(90),
-               connection.videoRotationAngle != 90 {
-                connection.videoRotationAngle = 90
+        /// Called from the camera queue for every frame; only the newest picture is kept for the next screen refresh.
+        func show(_ image: CGImage) {
+            lock.lock()
+            pending = image
+            let alreadyScheduled = scheduled
+            scheduled = true
+            lock.unlock()
+            guard !alreadyScheduled else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.lock.lock()
+                let image = self.pending
+                self.pending = nil
+                self.scheduled = false
+                self.lock.unlock()
+                self.layer.contents = image
             }
         }
-
-        /// The preview connection is replaced whenever the camera input is (the selfie camera, a switch, an
-        /// interruption) and nothing tells the view. While the view is on screen it is checked twice a second, so the
-        /// picture never stays turned by 90 degrees.
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            watchdog?.invalidate()
-            watchdog = nil
-            guard window != nil else { return }
-            watchdog = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in self?.applyRotation() }
-        }
-
-        deinit { watchdog?.invalidate() }
     }
+
+    /// Lets go of the camera when the view goes away, so no pictures are made for nobody.
+    final class Coordinator {
+        let camera: CameraPoseSource
+        init(camera: CameraPoseSource) { self.camera = camera }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(camera: camera) }
 
     func makeUIView(context: Context) -> PreviewView {
         let view = PreviewView()
-        view.previewLayer.session = session
-        view.previewLayer.videoGravity = .resizeAspect
+        camera.onPreviewImage = { [weak view] image in view?.show(image) }
         return view
     }
 
-    func updateUIView(_ uiView: PreviewView, context: Context) {
-        uiView.setNeedsLayout()
-        // A switch finishes on the capture queue a moment after the tap: apply the rotation once it has.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { uiView.applyRotation() }
+    func updateUIView(_ uiView: PreviewView, context: Context) {}
+
+    static func dismantleUIView(_ uiView: PreviewView, coordinator: Coordinator) {
+        coordinator.camera.onPreviewImage = nil
     }
 }
 #endif

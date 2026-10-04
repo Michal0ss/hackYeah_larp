@@ -3,6 +3,7 @@ import Foundation
 import AVFoundation
 import Vision
 import Contracts
+import CoreImage
 
 /// Live camera -> body pose (Apple Vision) -> `PoseFrame` stream. Nothing is recorded or stored:
 /// every video frame is analysed and dropped. Real device only (the simulator has no camera).
@@ -22,8 +23,13 @@ public final class CameraPoseSource: NSObject, @unchecked Sendable {
     /// The camera in use and its input (changed only on `queue`, or before the first frame while configuring).
     private var position: Position = .back
     private var input: AVCaptureDeviceInput?
-    /// Called on the main queue after the camera was switched, so the preview can re-apply its rotation.
+    /// Called on the main queue after the camera was switched.
     public var onSwitched: (@Sendable () -> Void)?
+    /// Every frame as an upright picture (portrait, the selfie camera mirrored like a mirror), on the camera queue.
+    /// The preview shows exactly this, the same picture Vision analyses, so what is drawn and what is measured can
+    /// never be turned against each other.
+    public var onPreviewImage: (@Sendable (CGImage) -> Void)?
+    private let imageContext = CIContext()
 
     private static let jointMap: [(VNHumanBodyPoseObservation.JointName, JointName)] = [
         (.nose, .nose), (.neck, .neck),
@@ -89,7 +95,7 @@ public final class CameraPoseSource: NSObject, @unchecked Sendable {
         guard session.canAddOutput(output) else { throw CameraError.unavailable }
         session.addOutput(output)
 
-        applyConnectionSettings(for: position)
+        applyConnectionSettings()
         configured = true
     }
 
@@ -110,23 +116,36 @@ public final class CameraPoseSource: NSObject, @unchecked Sendable {
         input = newInput
         self.position = position
         session.commitConfiguration()
-        // The new input brought a new connection to the output: portrait and mirroring have to be set on that one.
-        applyConnectionSettings(for: position)
+        // The new input brought a new connection to the output.
+        applyConnectionSettings()
     }
 
-    /// Portrait, upright buffers, so Vision coordinates match what the user sees. The front camera is mirrored like a
-    /// mirror (the preview does the same), so the skeleton lines up with the picture.
-    private func applyConnectionSettings(for position: Position) {
+    /// The output delivers the picture exactly as the sensor made it (no rotation, no mirroring by the connection).
+    /// Turning it upright is done here, from the position of the camera, so it does not depend on what the capture
+    /// connection decided after an input swap (the selfie camera came out turned by 90 degrees that way).
+    private func applyConnectionSettings() {
         guard let connection = output.connection(with: .video) else { return }
-        Self.portrait(connection, mirrored: position == .front)
+        Self.neutral(connection)
     }
 
-    /// Sets upright portrait buffers (and the selfie mirror) on a connection. Safe to call again and again.
-    private static func portrait(_ connection: AVCaptureConnection, mirrored: Bool) {
-        if connection.isVideoRotationAngleSupported(90), connection.videoRotationAngle != 90 { connection.videoRotationAngle = 90 }
+    private static func neutral(_ connection: AVCaptureConnection) {
         if connection.isVideoMirroringSupported {
             if connection.automaticallyAdjustsVideoMirroring { connection.automaticallyAdjustsVideoMirroring = false }
-            if connection.isVideoMirrored != mirrored { connection.isVideoMirrored = mirrored }
+            if connection.isVideoMirrored { connection.isVideoMirrored = false }
+        }
+        if connection.isVideoRotationAngleSupported(0), connection.videoRotationAngle != 0 { connection.videoRotationAngle = 0 }
+    }
+
+    /// How to turn a sensor picture into an upright portrait one. The sensors of an iPhone are landscape: held upright,
+    /// the back camera needs `.right` and the front camera `.leftMirrored` (a selfie is mirrored). A buffer that is
+    /// already portrait only needs the mirror for the front camera.
+    static func orientation(width: Int, height: Int, position: Position) -> CGImagePropertyOrientation {
+        let landscape = width >= height
+        switch (position, landscape) {
+        case (.back, true): return .right
+        case (.front, true): return .leftMirrored
+        case (.back, false): return .up
+        case (.front, false): return .upMirrored
         }
     }
 }
@@ -134,22 +153,25 @@ public final class CameraPoseSource: NSObject, @unchecked Sendable {
 extension CameraPoseSource: AVCaptureVideoDataOutputSampleBufferDelegate {
     public func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let buffer = CMSampleBufferGetImageBuffer(sampleBuffer), let continuation else { return }
-        // A connection that lost its portrait rotation (a switch to the selfie camera, an interruption) is put right
-        // for the next frames; a sideways frame is not analysed (its joints would be rotated by 90 degrees).
-        Self.portrait(connection, mirrored: position == .front)
-        if connection.isVideoRotationAngleSupported(90), CVPixelBufferGetWidth(buffer) > CVPixelBufferGetHeight(buffer) { return }
+        Self.neutral(connection)
+        let width = CVPixelBufferGetWidth(buffer), height = CVPixelBufferGetHeight(buffer)
+        let orientation = Self.orientation(width: width, height: height, position: position)
+        if let onPreviewImage {
+            let upright = CIImage(cvPixelBuffer: buffer).oriented(orientation)
+            if let image = imageContext.createCGImage(upright, from: upright.extent) { onPreviewImage(image) }
+        }
         let stamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
         let first = firstTimestamp ?? stamp
         firstTimestamp = first
 
-        let handler = VNImageRequestHandler(cvPixelBuffer: buffer, orientation: .up, options: [:])
+        let handler = VNImageRequestHandler(cvPixelBuffer: buffer, orientation: orientation, options: [:])
         try? handler.perform([request])
         let time = stamp - first
 
         // Several people: take the one with the highest total joint confidence.
         let best = (request.results ?? []).max { score($0) < score($1) }
-        let height = CVPixelBufferGetHeight(buffer)
-        let aspect = height > 0 ? Double(CVPixelBufferGetWidth(buffer)) / Double(height) : nil
+        // Width over height of the upright picture.
+        let aspect = width > 0 && height > 0 ? Double(min(width, height)) / Double(max(width, height)) : nil
         continuation.yield(PoseFrame(time: time, joints: best.map(joints(of:)) ?? [], aspect: aspect))
     }
 

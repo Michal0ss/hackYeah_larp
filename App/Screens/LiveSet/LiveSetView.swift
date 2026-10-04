@@ -106,7 +106,7 @@ struct LiveSetView: View {
             ZStack {
                 if session.source == .camera {
                     #if os(iOS)
-                    CameraPreview(session: session.camera.session, revision: session.cameraRevision)
+                    CameraPreview(camera: session.camera)
                     #endif
                 } else {
                     AmbientBackground()
