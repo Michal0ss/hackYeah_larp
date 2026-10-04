@@ -7,6 +7,7 @@ import Onboarding
 struct ProfileView: View {
     @Environment(AppStore.self) private var store
     @Environment(AccountStore.self) private var account
+    @Environment(CloudSync.self) private var sync
     @Environment(\.dismiss) private var dismiss
     @State private var showLogin = false
     @State private var confirmDeleteAccount = false
@@ -85,6 +86,7 @@ struct ProfileView: View {
                 if let email = user.email, email != user.displayName {
                     Text(email).formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
                 }
+                syncStatus
                 Text("Wylogowanie nie usuwa danych z tego telefonu.")
                     .formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
                 Button { Task { await account.signOut() } } label: {
@@ -109,6 +111,37 @@ struct ProfileView: View {
                 }
                 .buttonStyle(.formaGlass)
             }
+        }
+    }
+
+    /// What the account keeps, when it was last synced, and a button to do it now.
+    private var syncStatus: some View {
+        VStack(alignment: .leading, spacing: FormaSpacing.s) {
+            Text("W koncie: plan, odpowiedzi z onboardingu (bez zdrowia), historia treningów, wyniki techniki i cel kroków. Na telefonie zostają: wideo, rozmowy z trenerem, dane z Apple Health, check-iny i feedback po treningu.")
+                .formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
+                .fixedSize(horizontal: false, vertical: true)
+            Group {
+                switch sync.state {
+                case .syncing:
+                    Label("Synchronizuję…", systemImage: "arrow.triangle.2.circlepath")
+                case .failed(let message):
+                    Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(FormaColor.moderateText)
+                case .idle:
+                    if let last = sync.lastSyncedAt {
+                        Label("Ostatnia synchronizacja: \(last.formatted(.relative(presentation: .named).locale(Locale(identifier: "pl_PL"))))",
+                              systemImage: "checkmark.icloud")
+                    } else {
+                        Label("Jeszcze nie synchronizowano", systemImage: "icloud")
+                    }
+                }
+            }
+            .formaStyle(.footnote)
+            .foregroundStyle(FormaColor.ink2)
+            Button { Task { await sync.syncNow() } } label: {
+                Label("Synchronizuj teraz", systemImage: "arrow.triangle.2.circlepath").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.formaGlass)
+            .disabled(sync.state == .syncing)
         }
     }
 

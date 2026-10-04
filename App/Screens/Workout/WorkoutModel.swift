@@ -110,6 +110,7 @@ final class WorkoutModel {
         store.services.planStore.recordCompletion(sessionId: session.id, completedSets: run.completedSets,
                                                   plannedSets: run.plannedSets)
         Task { await store.refreshRecommendation() }
+        store.dataChanged()
     }
 
     // MARK: totals for the end screen

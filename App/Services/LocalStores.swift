@@ -61,6 +61,31 @@ final class LocalTechniqueHistory: TechniqueHistoryProviding, @unchecked Sendabl
         persist()
     }
 
+    /// What was recorded on this phone, without the sample result (for the account sync).
+    func recordedResults() -> [TechniqueResult] {
+        lock.lock(); defer { lock.unlock() }
+        return stored.results.filter { !$0.isSimulated }
+    }
+
+    func recordedSets() -> [SetSummary] {
+        lock.lock(); defer { lock.unlock() }
+        return stored.sets.filter { !$0.isSimulated }
+    }
+
+    /// Adds what the account has and this phone does not (by id), newest first. Returns how many were added.
+    @discardableResult
+    func restore(results: [TechniqueResult], sets: [SetSummary]) -> Int {
+        lock.lock(); defer { lock.unlock() }
+        let knownResults = Set(stored.results.map(\.id)), knownSets = Set(stored.sets.map(\.id))
+        let newResults = results.filter { !knownResults.contains($0.id) }
+        let newSets = sets.filter { !knownSets.contains($0.id) }
+        guard !newResults.isEmpty || !newSets.isEmpty else { return 0 }
+        stored.results = Array((stored.results + newResults).sorted { $0.date > $1.date }.prefix(200))
+        stored.sets = Array((stored.sets + newSets).sorted { $0.date > $1.date }.prefix(200))
+        persist()
+        return newResults.count + newSets.count
+    }
+
     /// "Usuń moje dane": forgets every recorded set and analysis.
     func removeAll() {
         lock.lock(); defer { lock.unlock() }
