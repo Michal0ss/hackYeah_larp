@@ -61,6 +61,7 @@ struct PlanView: View {
                                       onRepeat: { repeating = session }) {
                             start($0, in: adjustment.session)
                         }
+                        if adjustment.session.status != .skipped, !adjustment.isRestDay { MuscleMapCard(session: adjustment.session) }
                         Button { addingSession = true } label: {
                             Label("Dodaj własną sesję", systemImage: "plus").frame(maxWidth: .infinity)
                         }
