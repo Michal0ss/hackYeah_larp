@@ -110,7 +110,7 @@ final class AccountStore {
         phase = .signedIn
     }
 
-    /// Deletes the cloud account (through the Forma backend, which holds the rights to do it) and signs out here. What
+    /// Deletes the cloud account (through the hackGYM backend, which holds the rights to do it) and signs out here. What
     /// is on the phone stays. Returns false with `errorMessage` set when it did not work: the account is then still there.
     func deleteAccount(using api: FormaAPI) async -> Bool {
         guard !isDeleting, var session = sessions.load() else { return false }

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "forma-backend"
 version = "0.1.0"
-description = "Forma API: Gemini gateway, plan generation, exercise catalog and remote config (FastAPI)."
+description = "hackGYM API: Gemini gateway, plan generation, exercise catalog and remote config (FastAPI)."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

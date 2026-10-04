@@ -1,3 +1,3 @@
-"""Forma API."""
+"""hackGYM API."""
 
 __version__ = "0.1.0"

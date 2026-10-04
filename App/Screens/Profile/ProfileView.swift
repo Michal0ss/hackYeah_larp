@@ -30,7 +30,7 @@ struct ProfileView: View {
                     liveTestCard
                     healthCard
                     dataCard
-                    Text("hackGym nie jest poradą medyczną. Nie stawiamy diagnoz: wskazujemy sygnały i sugerujemy rozmowę ze specjalistą.")
+                    Text("hackGYM nie jest poradą medyczną. Nie stawiamy diagnoz: wskazujemy sygnały i sugerujemy rozmowę ze specjalistą.")
                         .formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
                 }
                 .padding(.horizontal, FormaSpacing.screen)

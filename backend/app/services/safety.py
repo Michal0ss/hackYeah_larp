@@ -1,6 +1,6 @@
 """Safety rules around text that comes from or goes to the model.
 
-Forma gives training advice, not medical advice (PROJECT.md 3.6): it points out signals and suggests a
+hackGYM gives training advice, not medical advice (PROJECT.md 3.6): it points out signals and suggests a
 consultation, it never diagnoses. These checks are the deterministic part of that promise; the system prompts
 are the other part. Extend the pattern lists when you find a miss, and add a test next to it.
 """

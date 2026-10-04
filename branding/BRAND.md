@@ -1,4 +1,4 @@
-# hackGym: branding (v2)
+# hackGYM: branding (v2)
 
 Podgląd: `brand-board.png`.
 

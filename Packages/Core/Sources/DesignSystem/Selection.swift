@@ -224,7 +224,7 @@ public struct InfoBanner<Content: View>: View {
     }
 }
 
-/// Single-line text input in the Forma style.
+/// Single-line text input in the hackGYM style.
 public struct FormaTextField: View {
     private let title: String
     private let placeholder: String

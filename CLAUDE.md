@@ -1,4 +1,4 @@
-# Forma: instrukcje dla Claude'a (i dla ludzi) pracujących w tym repo
+# hackGYM: instrukcje dla Claude'a (i dla ludzi) pracujących w tym repo
 
 Aplikacja iOS (SwiftUI) na hackathon HackYeah, kategoria Sport & Healthcare: trener, plan treningowy i doradca w jednym, z analizą techniki i trenerem tempa na żywo. Termin oddania: **4.10, 23:00**. Zespół: Michał (Lead), Bartek, Wiktor, Maciek.
 

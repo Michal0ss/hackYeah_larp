@@ -53,7 +53,7 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: hackGym
+        CFBundleDisplayName: hackGYM
         UILaunchScreen:
           UIColorName: LaunchBackground
           UIImageName: LaunchMark

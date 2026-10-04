@@ -74,7 +74,7 @@ struct OnboardingFlow: View {
             .resizable()
             .scaledToFit()
             .frame(height: 32)
-            .accessibilityLabel("hackGym")
+            .accessibilityLabel("hackGYM")
     }
 
     @ViewBuilder

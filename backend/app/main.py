@@ -25,7 +25,7 @@ from app.routers import api_v1, system
 from app.security import Limiter, RateLimiter, SupabaseRateLimiter
 
 DESCRIPTION = """
-Backend of the Forma app. Stateless: no database, no stored videos, no stored health data.
+Backend of the hackGYM app. Stateless: no database, no stored videos, no stored health data.
 
 * `GET /health`: liveness (no auth)
 * `/v1/*`: needs `Authorization: Bearer <app token>` when `FORMA_APP_TOKENS` is set; send a stable random
@@ -85,7 +85,7 @@ def create_app(
 
     is_prod = settings.env == "prod"
     app = FastAPI(
-        title="Forma API",
+        title="hackGYM API",
         version=__version__,
         description=DESCRIPTION,
         lifespan=lifespan,

@@ -27,7 +27,7 @@ public enum FormaTextStyle {
 }
 
 public extension View {
-    /// Applies a Forma text style. `.caption` is uppercase with wide tracking.
+    /// Applies a hackGYM text style. `.caption` is uppercase with wide tracking.
     @ViewBuilder
     func formaStyle(_ style: FormaTextStyle) -> some View {
         if style == .caption {
