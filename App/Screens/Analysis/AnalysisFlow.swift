@@ -13,6 +13,8 @@ import Observation
 final class AnalysisModel {
     enum Step: Equatable {
         case exercise, framing, capture, quality, processing, result
+        /// An exercise without analysis (yet): a panel that says so.
+        case unavailable
     }
 
     private(set) var step: Step = .exercise
@@ -65,7 +67,7 @@ final class AnalysisModel {
     var canGoBack: Bool {
         switch step {
         case .exercise, .processing, .result: return false
-        case .framing, .capture, .quality: return true
+        case .framing, .capture, .quality, .unavailable: return true
         }
     }
 
@@ -74,12 +76,18 @@ final class AnalysisModel {
         step = .framing
     }
 
+    /// An exercise the app cannot analyse yet: shows the panel instead of the recording steps.
+    func chooseUnavailable(_ exercise: ExerciseItem) {
+        selectedExercise = exercise
+        step = .unavailable
+    }
+
     func proceedFromFraming() { step = .capture }
 
     func back() {
         switch step {
         case .exercise, .processing, .result: break
-        case .framing: step = .exercise
+        case .framing, .unavailable: step = .exercise
         case .capture: step = .framing
         case .quality: retryCapture()
         }

@@ -7,9 +7,21 @@ import Plan
 /// names underneath (main ones, then the helping ones).
 struct MuscleMapCard: View {
     @Environment(AppStore.self) private var store
-    let session: PlannedSession
 
-    private var activation: MuscleMap.Activation { MuscleMap.activation(for: session) { store.exercise(id: $0) } }
+    private enum Source { case session(PlannedSession), exercise(ExerciseItem) }
+    private let source: Source
+
+    /// The muscles of a whole session.
+    init(session: PlannedSession) { source = .session(session) }
+    /// The muscles of one exercise.
+    init(exercise: ExerciseItem) { source = .exercise(exercise) }
+
+    private var activation: MuscleMap.Activation {
+        switch source {
+        case .session(let session): return MuscleMap.activation(for: session) { store.exercise(id: $0) }
+        case .exercise(let exercise): return MuscleMap.activation(exerciseId: exercise.id, muscleGroup: exercise.muscleGroup)
+        }
+    }
 
     private func names(_ load: MuscleLoad) -> String {
         Muscle.allCases.filter { activation[$0] == load }.map(\.title).joined(separator: ", ")

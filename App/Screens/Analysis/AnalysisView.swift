@@ -63,6 +63,8 @@ struct AnalysisView: View {
             ProcessingStepView()
         case .result:
             ResultStepView(model: model)
+        case .unavailable:
+            UnavailableStepView(model: model)
         }
     }
 }
