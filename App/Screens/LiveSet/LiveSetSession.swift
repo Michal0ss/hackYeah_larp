@@ -75,7 +75,7 @@ final class LiveSetSession {
         switch source {
         case .simulation:
             task = Task { [engine] in
-                for await frame in SimulatedSquat(kind: kind).stream() {
+                for await frame in SimulatedSquat.following(spec, kind: kind).stream() {
                     engine.ingest(frame)
                 }
                 if engine.stage != .summary { engine.finish() }

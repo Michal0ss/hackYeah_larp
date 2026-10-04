@@ -35,7 +35,7 @@ public enum MovementKind: String, Codable, CaseIterable, Sendable {
     }
 
     /// True when the part of the repetition that moves away from the start is the concentric one.
-    var isReversed: Bool { self == .pullup }
+    public var isReversed: Bool { self == .pullup }
 
     /// Elbow angle in the start position below which a repetition found in a recorded clip does not count: a person who
     /// is still getting onto the bars (or stepping off) bends and straightens the arms without doing a repetition.
