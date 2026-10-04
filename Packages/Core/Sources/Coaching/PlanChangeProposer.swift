@@ -13,11 +13,14 @@ public struct PlanChangeProposer: Sendable {
     private let plan: PlanProviding
     private let catalog: ExerciseCatalogProviding
     private let profile: @Sendable () async -> UserProfile
+    private let now: @Sendable () -> Date
 
-    public init(plan: PlanProviding, catalog: ExerciseCatalogProviding, profile: @escaping @Sendable () async -> UserProfile) {
+    public init(plan: PlanProviding, catalog: ExerciseCatalogProviding, profile: @escaping @Sendable () async -> UserProfile,
+                now: @escaping @Sendable () -> Date = { Date() }) {
         self.plan = plan
         self.catalog = catalog
         self.profile = profile
+        self.now = now
     }
 
     public func propose(_ input: JSONValue) async -> CoachToolOutput {
@@ -27,7 +30,7 @@ public struct PlanChangeProposer: Sendable {
         guard let kind = Self.kind(input["kind"]?.stringValue) else {
             return Self.failure("Nieznany rodzaj zmiany. Dozwolone: swap_exercise, lighter_session, move_session, skip_session, add_exercise, remove_exercise, edit_exercise.")
         }
-        let changer = PlanChanger(catalog: catalog.exercises, profile: await profile())
+        let changer = PlanChanger(catalog: catalog.exercises, profile: await profile(), now: now)
         // A date the model wrote must be a real day (2026-10-14): a garbled one is an error it can fix, not a guess.
         var date: Date?
         if let text = input["date"]?.stringValue {
@@ -90,9 +93,9 @@ public struct PlanChangeProposer: Sendable {
 
     /// The next sessions the model may name: the coming two weeks of a dated plan, the whole pattern otherwise.
     private func upcoming(_ plan: TrainingPlan) -> [PlannedSession] {
-        guard plan.isDated else { return plan.window(from: Date()) }
+        guard plan.isDated else { return plan.window(from: now()) }
         let calendar = TrainingPlan.calendar
-        let start = calendar.startOfDay(for: Date())
+        let start = calendar.startOfDay(for: now())
         guard let end = calendar.date(byAdding: .day, value: 14, to: start) else { return [] }
         return plan.chronological.filter { ($0.date ?? start) >= start && ($0.date ?? end) < end }
     }
