@@ -183,7 +183,7 @@ Nawigacja: pasek zakładek **Dziś · Plan · Analiza · Trener · Postępy**. O
 - **Cel:** zebrać to, co potrzebne do planu, w około dwie minuty. Sześć kroków, każdy z paskiem postępu „Krok N z 6”, plus ekran układania planu.
 - **Kroki:**
   1. **Cel:** siła, sylwetka, kondycja, powrót do ruchu.
-  2. **Kilka pytań o Ciebie:** poziom (początkujący, średni), dni w tygodniu (2–5), czas sesji (30, 45, 60, 75 min).
+  2. **Kilka pytań o Ciebie:** poziom (początkujący, średni), dni w tygodniu (2–5), czas sesji (30, 45, 60, 75, 90 min).
   3. **Sprzęt i „czego unikać”:** wielokrotny wybór (bez sprzętu, hantle, kettlebell, siłownia; „bez sprzętu” wyklucza resztę) oraz wolny tekst, którego nie oceniamy medycznie.
   4. **Historia medyczna (opcjonalna, „Wolę nie podawać”):** kontuzje (kolano, bark, plecy, biodro, łokieć, kostka, z informacją, kiedy ostatnio) oraz choroby i stany (dobrowolnie).
   5. **Przeciwwskazania (opcjonalne, „Odpowiem później”):** sześć standardowych pytań przesiewowych Tak/Nie z wynikiem na żywo: brak sygnałów, „dostosujemy plan”, albo „warto rozważyć konsultację”.

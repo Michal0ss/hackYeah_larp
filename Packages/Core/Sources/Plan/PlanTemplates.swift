@@ -10,7 +10,12 @@ public struct PlanTemplates: Codable, Equatable, Sendable {
         public var title: String
         /// Movement patterns (`squat`, `hinge`, `lunge`, `push`, `pull`, `core`, `cardio`), one exercise each.
         public var slots: [String]
+        /// The slots of a session of `PlanTemplates.longSessionMinutes` or more (more exercises than `slots` holds).
+        public var longSlots: [String]?
     }
+
+    /// From this length of a session on, a blueprint's `longSlots` are used.
+    public static let longSessionMinutes = 90
 
     public struct GoalScheme: Codable, Equatable, Sendable {
         public var sets: Int

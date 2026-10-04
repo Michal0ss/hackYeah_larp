@@ -58,6 +58,15 @@
         "pull",
         "core",
         "cardio"
+      ],
+      "longSlots": [
+        "squat",
+        "push",
+        "hinge",
+        "pull",
+        "lunge",
+        "core",
+        "cardio"
       ]
     },
     "lower": {
@@ -66,6 +75,15 @@
         "squat",
         "hinge",
         "lunge",
+        "core",
+        "cardio"
+      ],
+      "longSlots": [
+        "squat",
+        "hinge",
+        "lunge",
+        "squat",
+        "hinge",
         "core",
         "cardio"
       ]
@@ -78,6 +96,15 @@
         "push",
         "pull",
         "core"
+      ],
+      "longSlots": [
+        "push",
+        "pull",
+        "push",
+        "pull",
+        "push",
+        "pull",
+        "core"
       ]
     }
   },
@@ -85,7 +112,8 @@
     "30": 3,
     "45": 4,
     "60": 5,
-    "75": 6
+    "75": 6,
+    "90": 7
   },
   "goals": {
     "strength": {
