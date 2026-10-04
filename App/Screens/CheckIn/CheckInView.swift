@@ -16,7 +16,7 @@ struct CheckInView: View {
     var body: some View {
         ZStack {
             AmbientBackground()
-            ScrollView {
+            VerticalScrollView {
                 VStack(alignment: .leading, spacing: FormaSpacing.l) {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {

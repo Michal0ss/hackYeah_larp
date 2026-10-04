@@ -23,7 +23,7 @@ struct TodayView: View {
     var body: some View {
         ZStack {
             AmbientBackground()
-            ScrollView {
+            VerticalScrollView {
                 VStack(alignment: .leading, spacing: FormaSpacing.l) {
                     header
                     if let entry = store.todaySession {

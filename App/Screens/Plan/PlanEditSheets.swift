@@ -44,7 +44,7 @@ struct SessionEditSheet: View {
     var body: some View {
         ZStack {
             AmbientBackground()
-            ScrollView {
+            VerticalScrollView {
                 VStack(alignment: .leading, spacing: FormaSpacing.l) {
                     topBar
                     if let session {

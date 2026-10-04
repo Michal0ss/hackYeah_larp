@@ -14,7 +14,7 @@ struct CareView: View {
         NavigationStack {
             ZStack {
                 AmbientBackground()
-                ScrollView {
+                VerticalScrollView {
                     VStack(alignment: .leading, spacing: FormaSpacing.l) {
                         topBar
                         hero

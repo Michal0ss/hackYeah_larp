@@ -18,7 +18,7 @@ struct OnboardingFlow: View {
     var body: some View {
         ZStack {
             AmbientBackground()
-            ScrollView {
+            VerticalScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     topBar
                     if let number = model.step.number, model.step != .goal {
