@@ -1,9 +1,11 @@
 # Forma backend (FastAPI)
 
-One shared backend for the whole team. Stateless: no database, no stored videos, no stored health data. It does
-four things: serves the shared content (`content/`), generates training plans, runs the AI trainer chat and
-phrases the daily recommendation. Everything else (video analysis, rules engine, tempo coach, health data) stays
-on the phone.
+One shared backend for the whole team. Stateless: it keeps no database of its own, no videos and no health data. It
+does five things: serves the shared content (`content/`), generates training plans, runs the AI trainer chat,
+phrases the daily recommendation and deletes an account on request. Everything else (video analysis, rules engine,
+tempo coach, health data) stays on the phone. The only things it asks Supabase for are the shared rate-limit counter
+and the account deletion; a person's history (plan, sets, sessions) goes from the app to Supabase directly, under
+row-level security, and never passes through this server (see PROJECT.md 8.3).
 
 ## Quick start
 
@@ -60,7 +62,7 @@ From the iPhone use the Mac's address (`http://<mac-ip>:8000`); plain HTTP needs
 | `GET /health` | liveness, version, `aiMode`, `contentVersion` (no auth) | Michał |
 | `GET /v1/catalog` | exercise catalog (ETag, 304) | Maciek |
 | `GET /v1/config` | remote config: scoring, insights, tempo (ETag, 304) | Bartek / Wiktor / Michał |
-| `POST /v1/plans/generate` | plan for a profile: model proposes, server validates, template as fallback | Maciek |
+| `POST /v1/plans/generate` | plan for a profile (session length 15 to 120 min, up to 7 exercises for 90 min and more): model proposes, server validates, template as fallback | Maciek |
 | `POST /v1/coach/chat` | AI trainer: SSE stream or JSON, client-executed tools | Maciek |
 | `POST /v1/texts/recommendation` | friendly wording of the daily recommendation, safety-checked | Wiktor |
 | `DELETE /v1/account` | deletes the signed-in person's Supabase account (their own token in `X-Account-Token`; needs `FORMA_SUPABASE_URL` and `FORMA_SUPABASE_SERVICE_KEY`, otherwise 503 `account_unavailable`) | Michał |
@@ -98,8 +100,9 @@ the input (kind, weekdays 1 to 7, catalog ids, a replacement that fits the perso
 movements, a short reason that passes the generated-text checks); the app checks the request against the real plan
 and answers the model with an error it can explain when the change is not possible.
 
-Other tools: `get_training_log` (finished sessions and live-coach sets, numbers only: no consent needed) and
-`propose_plan_change` with `swap_exercise`, `lighter_session`, `move_session`, `skip_session`, `add_exercise`,
+Other tools: `get_current_plan`, `get_technique_history`, `get_training_log` (finished sessions and live-coach sets,
+numbers only: no consent needed), `set_step_goal` (the trainer sets the daily step goal, only when the person asks or
+agrees; the app saves it on the phone) and `propose_plan_change` with `swap_exercise`, `lighter_session`, `move_session`, `skip_session`, `add_exercise`,
 `remove_exercise` and `edit_exercise` (sets, reps or seconds, rest). Exercises always come from the catalog: an exercise
 that is not in it cannot be added, and an added or swapped-in exercise must fit the person (equipment, level, avoided
 movements). Numbers outside the app's limits (`Plan.PlanLimits`) are dropped by the server, never clamped.
@@ -141,9 +144,13 @@ app/ai/tools.py        coach tool definitions, consent gating
 app/ai/knowledge.py    notes for the coach (content/knowledge), BM25 retrieval
 app/services/          plan_builder (templates), plan_validator, plan_service, coach_service,
                        text_service, safety
-app/routers/           one file per area
+app/routers/           one file per area (system, catalog, config, plans, coach, texts, account)
 scripts/export_openapi.py
-../content/            shared content (catalog, plan templates, config): see content/README.md
+supabase/migrations/   SQL for the Supabase project: rate limits, accounts, `user_records` (the account history table)
+evals/                 checks of the real model (`make evals`); AI_REPORT.md describes the AI module
+tests/                 unit tests (no network, no key)
+../content/            shared content (catalog, plan templates, config, knowledge): see content/README.md
+../api/index.py, ../vercel.json   Vercel entry point and settings
 ```
 
 ## Rules
@@ -160,8 +167,11 @@ scripts/export_openapi.py
 
 ## Deploying
 
-**Vercel (deployed 2026-10-03).** Project `forma-api` in the team `michal-team00`, production URL
+**Vercel.** Project `forma-api` in the team `michal-team00`, production URL
 `https://forma-api-three.vercel.app` (region fra1, no Vercel Authentication, so the app token is the only gate).
+The GitHub integration is connected: every merge to `main` deploys to production on its own (check
+`/health` for `aiMode` and `contentVersion`). Vercel's Hobby plan marks deployments of commits by authors outside the
+Vercel team as BLOCKED, so a teammate's PR is merged with a **merge commit** (not a squash) by the team owner.
 Files at the repo root: `api/index.py` (exposes `app`), `vercel.json` (everything rewritten to it, 60 s limit),
 `requirements.txt` (pinned runtime dependencies, keep in sync with `backend/constraints.txt`), `.vercelignore`.
 
@@ -170,12 +180,12 @@ Environment variables of the Vercel project (Settings, or `npx vercel env add NA
 | Name | Needed | What |
 |---|---|---|
 | `FORMA_APP_TOKENS` | yes | the app token(s); the server refuses to start without it. Set. |
-| `GEMINI_API_KEY` | for the real model | key from a **paid** Google project with a budget limit. Not set yet: without it the server answers in mock mode (`/health` shows `aiMode: mock`). |
-| `FORMA_SUPABASE_URL`, `FORMA_SUPABASE_SERVICE_KEY` | for shared rate limits | see "Limity w Supabase" below. Both must be set; without them the in-memory limiter is used (current default, per-instance). |
+| `GEMINI_API_KEY` | for the real model | key from a **paid** Google project with a budget limit. Set: `/health` shows `aiMode: gemini`. Without it the server answers in mock mode (`aiMode: mock`). |
+| `FORMA_SUPABASE_URL`, `FORMA_SUPABASE_SERVICE_KEY` | for shared rate limits and `DELETE /v1/account` | see "Limity w Supabase" below. Both must be set; without them the in-memory limiter is used (per instance) and account deletion answers `503 account_unavailable`. |
 
-Redeploy: `npx vercel deploy --prod --yes --scope michal-team00` from the repo root (the CLI must be logged in:
-`npx vercel login`). Changing an environment variable needs a redeploy. Logs: Vercel dashboard, or the MCP tool
-`get_runtime_logs`.
+Manual redeploy (after changing an environment variable, which needs one): `npx vercel deploy --prod --yes --scope
+michal-team00` from the repo root (the CLI must be logged in: `npx vercel login`). Logs: Vercel dashboard, or the MCP
+tool `get_runtime_logs`.
 
 ### Limity w Supabase
 
@@ -184,7 +194,10 @@ limits per instance, not per device. `SupabaseRateLimiter` fixes this with one s
 Postgres project: a single atomic upsert-and-read SQL function (`public.rate_limit_hit`, fixed 60 s window) so
 two concurrent requests from the same device can't both slip through. Migration:
 `backend/supabase/migrations/20261003171750_rate_limits.sql` (apply with the Supabase MCP tool or
-`supabase db push`). RLS is on with no policies, so only `service_role` can call the function.
+`supabase db push`). RLS is on with no policies, so only `service_role` can call the function. The other migrations
+there (`accounts`, `accounts_tighten_grants`, `user_records`) belong to the account: profiles, plans and the generic
+history table the app syncs to. They are applied to the Supabase project by whoever has access to it (Wiktor); the
+backend does not run them.
 
 Set both `FORMA_SUPABASE_URL` (project URL) and `FORMA_SUPABASE_SERVICE_KEY` (the `service_role` key, never the
 anon key) to enable it; `build_limiter` in `app/main.py` picks `SupabaseRateLimiter` only when both are set and
@@ -202,7 +215,8 @@ Lessons from the first deploy (so nobody repeats them):
 - `.vercelignore` matching is **case-insensitive**: a plain `App/` also removed `backend/app/` and the function
   failed with `No module named 'app'`. Anchor patterns with a leading `/`.
 - `includeFiles` with brace globs did not include the backend; the Python runtime bundles the project by default.
-- The GitHub integration was not connected for this repo, so deploys are made from the CLI, not by pushing.
+- A deployment built from a branch of a teammate shows red (BLOCKED) in the Vercel list: it is a preview of their
+  branch, not a code error. Production is whatever `main` is.
 
 Known gaps: rate limits are in-memory (per instance) until `FORMA_SUPABASE_URL`/`FORMA_SUPABASE_SERVICE_KEY` are
 set (see "Limity w Supabase" above; until then rely on the token and the spending limit on the key), cold

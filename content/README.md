@@ -5,10 +5,11 @@ Jedyne źródło prawdy dla katalogu ćwiczeń, reguł układania planów i zdal
 | Plik | Co zawiera | Właściciel |
 |---|---|---|
 | `catalog.json` | katalog ćwiczeń (`exercises`): `id`, nazwa, sprzęt, poziom, wzorzec ruchu (`pattern`), `movementTags`, zamienniki, domyślne tempo | Maciek |
-| `plan_templates.json` | reguły szablonowego planu: dni tygodnia, plany sesji, schematy serii i powtórzeń wg celu | Maciek |
+| `plan_templates.json` | reguły szablonowego planu: dni tygodnia, plany sesji (`slots`, a od 90 min dłuższy układ `longSlots`), liczba ćwiczeń na sesję wg czasu (`exercisesPerSession`: 30 min to 3, 45 to 4, 60 to 5, 75 to 6, 90 to 7), schematy serii i powtórzeń wg celu | Maciek |
 | `config/scoring.json` | progi i wagi oceny nagrania i techniki | Bartek |
 | `config/insights.json` | progi silnika reguł (rekomendacja dnia, opieka) | Wiktor |
 | `config/tempo.json` | progi serii na żywo (fazy ruchu, tolerancje, korekty) | Michał |
+| `knowledge/` | baza wiedzy trenera (krótkie notatki po polsku, z których czat dobiera fragmenty): [knowledge/README.md](knowledge/README.md) | Maciek |
 
 ## Zasady
 
@@ -16,4 +17,6 @@ Jedyne źródło prawdy dla katalogu ćwiczeń, reguł układania planów i zdal
 - `catalog.json`: każdy `id` jest unikalny, każdy zamiennik istnieje, `pattern` jest jednym z: `squat`, `hinge`, `lunge`, `push`, `pull`, `core`, `cardio`. `movementTags` opisuje wzorce ruchu, które ćwiczenie zawiera (np. `deepLunges`). Użytkownik, który zgłosił problem z danym wzorcem, nie dostaje takich ćwiczeń.
 - Zmiana wartości w `config/*.json` zmienia zachowanie aplikacji bez nowej wersji (po pobraniu konfiguracji). Zmiany progów opisuj w PR, bo wpływają na wynik i rekomendacje.
 - Po zmianie uruchom `python scripts/sync_content.py` z katalogu głównego repo, żeby zaktualizować kopie w aplikacji (`Packages/Core/Sources/Content/Resources/`; `--check` tylko sprawdza, a `make check` w `backend/` to robi). Aplikacja czyta kopię przez `ContentRepository`, a przy starcie pobiera nowszą wersję z serwera.
+- Szablonowy plan buduje ten sam algorytm po dwóch stronach: backend (`backend/app/services/plan_builder.py`) i aplikacja offline (`TemplatePlanBuilder`). Test porównuje je na siatce profili (`Packages/Core/Tests/PlanTests/Fixtures/template_plans.json`). Po zmianie `catalog.json` albo `plan_templates.json` odśwież plik porównawczy: `backend/.venv/bin/python Packages/Core/Tests/PlanTests/Fixtures/generate.py` (z katalogu głównego repo, po `sync_content.py`).
+- Nowy czas sesji lub nowy blueprint wymaga zmiany w obu implementacjach, inaczej test porównawczy się nie zgodzi.
 - Teksty zdrowotne: „sygnał”, nigdy diagnoza (PROJECT.md 3.6).
