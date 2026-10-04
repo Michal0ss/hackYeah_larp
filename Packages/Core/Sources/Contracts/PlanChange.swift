@@ -38,6 +38,9 @@ public struct PlanChangeProposal: Codable, Equatable, Sendable, Identifiable {
     public var replacementExerciseId: String?
     /// `moveSession`: the weekday to move to.
     public var newWeekday: Int?
+    /// `moveSession` in a dated plan: the exact day to move to, fixed when the card is made, so that accepting it
+    /// later (even after midnight) moves the session to the day the user was shown.
+    public var newDate: Date?
     /// `addExercise` / `removeExercise` / `editExercise`: the exercise the change is about (`exerciseId`), and for
     /// `addExercise` / `editExercise` the numbers asked for (nil = the usual for a new exercise, unchanged for an edit).
     public var sets: Int?
@@ -56,7 +59,7 @@ public struct PlanChangeProposal: Codable, Equatable, Sendable, Identifiable {
                 sessionTitle: String, weekday: Int, exerciseId: String? = nil, replacementExerciseId: String? = nil,
                 newWeekday: Int? = nil, summary: String, reason: String? = nil, before: PlannedSession? = nil,
                 after: PlannedSession? = nil, sets: Int? = nil, repsMin: Int? = nil, repsMax: Int? = nil,
-                restSeconds: Int? = nil) {
+                restSeconds: Int? = nil, newDate: Date? = nil) {
         self.id = id
         self.kind = kind
         self.status = status
@@ -66,6 +69,7 @@ public struct PlanChangeProposal: Codable, Equatable, Sendable, Identifiable {
         self.exerciseId = exerciseId
         self.replacementExerciseId = replacementExerciseId
         self.newWeekday = newWeekday
+        self.newDate = newDate
         self.sets = sets
         self.repsMin = repsMin
         self.repsMax = repsMax

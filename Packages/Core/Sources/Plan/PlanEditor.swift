@@ -186,7 +186,7 @@ public struct PlanEditor: Sendable {
     }
 
     /// A day from today to the last day of the plan with no other session.
-    private func requireFreeDay(_ day: Date, excluding id: UUID?, in plan: TrainingPlan) throws {
+    func requireFreeDay(_ day: Date, excluding id: UUID?, in plan: TrainingPlan) throws {
         guard plan.isDated else { throw PlanChangeError.outsidePlan }
         let today = calendar.startOfDay(for: changer.now())
         guard day >= today else { throw PlanChangeError.outsidePlan }

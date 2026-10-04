@@ -13,11 +13,14 @@ public struct PlanChangeProposer: Sendable {
     private let plan: PlanProviding
     private let catalog: ExerciseCatalogProviding
     private let profile: @Sendable () async -> UserProfile
+    private let now: @Sendable () -> Date
 
-    public init(plan: PlanProviding, catalog: ExerciseCatalogProviding, profile: @escaping @Sendable () async -> UserProfile) {
+    public init(plan: PlanProviding, catalog: ExerciseCatalogProviding, profile: @escaping @Sendable () async -> UserProfile,
+                now: @escaping @Sendable () -> Date = { Date() }) {
         self.plan = plan
         self.catalog = catalog
         self.profile = profile
+        self.now = now
     }
 
     public func propose(_ input: JSONValue) async -> CoachToolOutput {
@@ -27,7 +30,23 @@ public struct PlanChangeProposer: Sendable {
         guard let kind = Self.kind(input["kind"]?.stringValue) else {
             return Self.failure("Nieznany rodzaj zmiany. Dozwolone: swap_exercise, lighter_session, move_session, skip_session, add_exercise, remove_exercise, edit_exercise.")
         }
-        let changer = PlanChanger(catalog: catalog.exercises, profile: await profile())
+        let changer = PlanChanger(catalog: catalog.exercises, profile: await profile(), now: now)
+        // A date the model wrote must be a real day (2026-10-14): a garbled one is an error it can fix, not a guess.
+        var date: Date?
+        if let text = input["date"]?.stringValue {
+            guard let parsed = PlanChanger.parseDay(text) else {
+                return Self.failure("Nieprawidłowa data sesji. Użyj formatu RRRR-MM-DD, z daty widocznej w planie.",
+                                    hint: hint(for: .noSuchSession, in: plan))
+            }
+            date = parsed
+        }
+        var newDate: Date?
+        if let text = input["newDate"]?.stringValue {
+            guard let parsed = PlanChanger.parseDay(text) else {
+                return Self.failure("Nieprawidłowa nowa data. Użyj formatu RRRR-MM-DD.", hint: hint(for: .noSuchSession, in: plan))
+            }
+            newDate = parsed
+        }
         do {
             let proposal = try changer.propose(kind: kind, weekday: input["weekday"]?.intValue,
                                                exerciseId: input["exerciseId"]?.stringValue,
@@ -36,7 +55,8 @@ public struct PlanChangeProposer: Sendable {
                                                reason: input["reason"]?.stringValue,
                                                sets: input["sets"]?.intValue, repsMin: input["repsMin"]?.intValue,
                                                repsMax: input["repsMax"]?.intValue,
-                                               restSeconds: input["restSeconds"]?.intValue, in: plan)
+                                               restSeconds: input["restSeconds"]?.intValue, date: date, newDate: newDate,
+                                               in: plan)
             let fields: [String: JSONValue] = [
                 "status": .string("proposed"),
                 "summary": .string(proposal.summary),
@@ -50,22 +70,39 @@ public struct PlanChangeProposer: Sendable {
         }
     }
 
-    /// What the model needs to try again: the days and exercises that exist in the plan.
+    /// What the model needs to try again: the days (with dates) and exercises that exist in the plan.
     private func hint(for error: PlanChangeError, in plan: TrainingPlan) -> [String: JSONValue] {
         switch error {
-        case .noSuchSession, .dayTaken, .sameDay:
-            let sessions = plan.window(from: Date()).map {
-                JSONValue.object(["weekday": .number(Double($0.weekday)), "title": .string($0.title)])
-            }
-            return ["sessionsInPlan": .array(sessions)]
+        case .noSuchSession, .dayTaken, .sameDay, .outsidePlan:
+            return ["sessionsInPlan": .array(upcoming(plan).map {
+                var fields: [String: JSONValue] = ["weekday": .number(Double($0.weekday)), "title": .string($0.title)]
+                if let date = $0.date { fields["date"] = .string(Self.day(date)) }
+                return .object(fields)
+            })]
         case .noSuchExercise:
-            return ["exercisesInPlan": .array(plan.window(from: Date()).map { session in
-                .object(["weekday": .number(Double(session.weekday)),
-                         "exerciseIds": .array(session.exercises.map { .string($0.exerciseId) })])
+            return ["exercisesInPlan": .array(upcoming(plan).map { session in
+                var fields: [String: JSONValue] = ["weekday": .number(Double(session.weekday)),
+                                                   "exerciseIds": .array(session.exercises.map { .string($0.exerciseId) })]
+                if let date = session.date { fields["date"] = .string(Self.day(date)) }
+                return .object(fields)
             })]
         default:
             return [:]
         }
+    }
+
+    /// The next sessions the model may name: the coming two weeks of a dated plan, the whole pattern otherwise.
+    private func upcoming(_ plan: TrainingPlan) -> [PlannedSession] {
+        guard plan.isDated else { return plan.window(from: now()) }
+        let calendar = TrainingPlan.calendar
+        let start = calendar.startOfDay(for: now())
+        guard let end = calendar.date(byAdding: .day, value: 14, to: start) else { return [] }
+        return plan.chronological.filter { ($0.date ?? start) >= start && ($0.date ?? end) < end }
+    }
+
+    private static func day(_ date: Date) -> String {
+        let parts = TrainingPlan.calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
     private static func kind(_ raw: String?) -> PlanChangeKind? {

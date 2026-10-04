@@ -182,6 +182,8 @@ class SessionDigest(CamelModel):
     sends it only with the user's consent, and sends the session as planned (not adjusted) without it."""
 
     weekday: int = Field(ge=1, le=7)
+    # The day as 2026-10-14 (the user's calendar); None for a plan without dates.
+    date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     title: str = Field(max_length=80)
     status: SessionStatus
     adaptation_note: str | None = Field(default=None, max_length=300)
@@ -208,6 +210,8 @@ class TrainingSnapshot(CamelModel):
 
     # ISO weekday of the request (1 = Monday).
     today: int = Field(ge=1, le=7)
+    # Today as 2026-10-14 (the user's calendar): the model has no clock.
+    today_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     plan_source: PlanSource | None = None
     # Today's session, or the next planned one when `next_session_is_today` is false.
     next_session: SessionDigest | None = None

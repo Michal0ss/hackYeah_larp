@@ -6,6 +6,7 @@ the model as data. Never put secrets or raw health samples in a prompt.
 
 import json
 import re
+from datetime import date
 from functools import cache
 from importlib import resources
 
@@ -42,7 +43,10 @@ TAG_LABELS = {
 }
 DECISION_LABELS = {"train": "trenuj", "adapt": "zmodyfikuj trening", "rest": "odpuść"}
 WEEKDAYS = ["poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela"]
-WEEKDAYS_SHORT = ["pn", "wt", "śr", "cz", "pt", "sb", "nd"]
+MONTHS_GENITIVE = [
+    "stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca",
+    "lipca", "sierpnia", "września", "października", "listopada", "grudnia",
+]  # fmt: skip
 STATUS_LABELS = {"planned": "zaplanowana", "done": "wykonana", "adapted": "zmieniona na dziś"}
 SEVERITY_LABELS = {"good": "w porządku", "minor": "drobna uwaga", "major": "ważna uwaga"}
 FRAMING_LABELS = {"good": "dobry", "fair": "średni", "poor": "słaby"}
@@ -192,31 +196,51 @@ def describe_technique(technique: TechniqueDigest, content: ContentStore) -> str
     return text
 
 
+def _day_label(value: str | None) -> str | None:
+    """`2026-10-14` as "14 października 2026"; None when it is missing or not a real day."""
+    if not value:
+        return None
+    try:
+        day = date.fromisoformat(value)
+    except ValueError:
+        return None
+    return f"{day.day} {MONTHS_GENITIVE[day.month - 1]} {day.year}"
+
+
+def _session_when(session: SessionDigest) -> str:
+    """Where a session is: with its date, because "piątek" alone is many days in a plan of eight weeks."""
+    label = _day_label(session.date)
+    day = WEEKDAYS[session.weekday - 1]
+    return f"{day} {label} (data {session.date})" if label and session.date else f"{day} (dzień {session.weekday})"
+
+
 def describe_snapshot(snapshot: TrainingSnapshot, content: ContentStore, health_consent: bool) -> str:
-    lines = [f"- Dziś jest {WEEKDAYS[snapshot.today - 1]}."]
+    today_label = _day_label(snapshot.today_date)
+    if today_label and snapshot.today_date:
+        lines = [f"- Dziś jest {WEEKDAYS[snapshot.today - 1]}, {today_label} (data {snapshot.today_date})."]
+    else:
+        lines = [f"- Dziś jest {WEEKDAYS[snapshot.today - 1]}."]
     if snapshot.plan_source:
         lines.append(f"- Plan tygodnia: {PLAN_SOURCE_LABELS[snapshot.plan_source]}.")
     session = snapshot.next_session
     if session:
-        day = WEEKDAYS[session.weekday - 1]
+        where = _session_when(session)
         when = (
-            f"Dzisiejsza sesja ({day}, dzień {session.weekday})"
+            f"Dzisiejsza sesja ({where})"
             if snapshot.next_session_is_today
-            else f"Dziś nie ma sesji; najbliższa to {day} (dzień {session.weekday})"
+            else f"Dziś nie ma sesji; najbliższa to {where}"
         )
         lines.append(f"- {when}: {_session_line(session, content, health_consent)}")
         if session.adaptation_note and health_consent:
             lines.append(f"  Dlaczego zmieniona: {sanitize_free_text(session.adaptation_note, 300)}")
     elif not snapshot.week:
         lines.append("- Użytkownik nie ma jeszcze planu treningowego.")
-    shown = session.weekday if session else None
-    others = [s for s in sorted(snapshot.week, key=lambda s: s.weekday) if s.weekday != shown]
+    # The session already described above is left out; with dates two sessions never share one.
+    shown = (session.date, session.weekday) if session else None
+    others = [s for s in sorted(snapshot.week, key=lambda s: (s.date or "", s.weekday)) if (s.date, s.weekday) != shown]
     if others:
-        lines.append("- Pozostałe sesje w tygodniu:")
-        lines += [
-            f"  {WEEKDAYS_SHORT[s.weekday - 1]} (dzień {s.weekday}): {_session_line(s, content, health_consent)}"
-            for s in others
-        ]
+        lines.append("- Pozostałe sesje w tym tygodniu:")
+        lines += [f"  {_session_when(s)}: {_session_line(s, content, health_consent)}" for s in others]
     if snapshot.last_technique:
         technique = describe_technique(snapshot.last_technique, content)
         if technique:

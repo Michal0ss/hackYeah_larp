@@ -75,8 +75,9 @@ public struct PlanChanger: Sendable {
     public var calendar: Calendar
     public var now: @Sendable () -> Date
 
-    /// The model talks in weekdays ("środa"): they are read as the next such day within a week from `now()`, which is
-    /// the one day that can mean (a dated plan has many Wednesdays). A session is found, changed and moved by its date.
+    /// The model names a session by its date (`2026-10-14`), which is exact. When it gives only a weekday ("środa"),
+    /// that is read as the next such day within a week from `now()`: a dated plan has many Wednesdays. A session is
+    /// found, changed and moved by its date.
     public init(catalog: [ExerciseItem], profile: UserProfile, calendar: Calendar = TrainingPlan.calendar,
                 now: @escaping @Sendable () -> Date = { Date() }) {
         self.catalog = catalog
@@ -87,15 +88,37 @@ public struct PlanChanger: Sendable {
 
     // MARK: propose
 
-    /// A pending proposal for what the model asked, or the reason it cannot be done.
+    /// `2026-10-14` as a day in the plan's calendar. Nil for anything else.
+    public static func parseDay(_ text: String, calendar: Calendar = TrainingPlan.calendar) -> Date? {
+        let parts = text.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3, text.count == 10,
+              let date = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2])),
+              calendar.component(.day, from: date) == parts[2] else { return nil }
+        return date
+    }
+
+    /// A pending proposal for what the model asked, or the reason it cannot be done. The session is named by `date`
+    /// (exact) or, failing that, by `weekday` (the next such day).
     public func propose(kind: PlanChangeKind, weekday: Int?, exerciseId: String?, replacementExerciseId: String?,
                         newWeekday: Int?, reason: String?, sets: Int? = nil, repsMin: Int? = nil, repsMax: Int? = nil,
-                        restSeconds: Int? = nil, in plan: TrainingPlan) throws -> PlanChangeProposal {
-        guard let weekday else { throw PlanChangeError.missingField("dzień sesji") }
-        guard let session = plan.window(from: now(), calendar: calendar).first(where: { $0.weekday == weekday }) else {
-            throw PlanChangeError.noSuchSession
+                        restSeconds: Int? = nil, date: Date? = nil, newDate: Date? = nil,
+                        in plan: TrainingPlan) throws -> PlanChangeProposal {
+        let session: PlannedSession
+        if let date, plan.isDated {
+            let day = calendar.startOfDay(for: date)
+            guard day >= calendar.startOfDay(for: now()) else { throw PlanChangeError.outsidePlan }
+            guard let found = plan.session(on: day, calendar: calendar) else { throw PlanChangeError.noSuchSession }
+            session = found
+        } else if let weekday = weekday ?? date.map({ TrainingPlan.isoWeekday(of: $0, calendar: calendar) }) {
+            guard let found = plan.window(from: now(), calendar: calendar).first(where: { $0.weekday == weekday }) else {
+                throw PlanChangeError.noSuchSession
+            }
+            session = found
+        } else {
+            throw PlanChangeError.missingField("dzień sesji")
         }
         guard session.status != .done else { throw PlanChangeError.sessionDone }
+        let weekday = session.weekday
 
         var proposal = PlanChangeProposal(kind: kind, sessionId: session.id, sessionTitle: session.title, weekday: weekday,
                                           summary: "", reason: Self.cleanReason(reason))
@@ -108,8 +131,19 @@ public struct PlanChanger: Sendable {
         case .lighterSession:
             break
         case .moveSession:
-            guard let newWeekday else { throw PlanChangeError.missingField("nowy dzień") }
-            proposal.newWeekday = newWeekday
+            if plan.isDated {
+                // Fix the exact day now: the card must move the session to the day it showed, whenever it is accepted.
+                guard newDate != nil || newWeekday != nil else { throw PlanChangeError.missingField("nowy dzień") }
+                guard let target = newDate.map({ calendar.startOfDay(for: $0) }) ?? newWeekday.flatMap({ dayInWindow(weekday: $0) })
+                else { throw PlanChangeError.noSuchSession }
+                proposal.newDate = target
+                proposal.newWeekday = TrainingPlan.isoWeekday(of: target, calendar: calendar)
+            } else {
+                guard let target = newWeekday ?? newDate.map({ TrainingPlan.isoWeekday(of: $0, calendar: calendar) }) else {
+                    throw PlanChangeError.missingField("nowy dzień")
+                }
+                proposal.newWeekday = target
+            }
         case .skipSession:
             break
         case .addExercise:
@@ -307,6 +341,12 @@ public struct PlanChanger: Sendable {
         return ", " + date.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "pl_PL")))
     }
 
+    /// " (14 paź)" for a date, nothing without one. Used in the move summary, where both days are named.
+    static func dateNote(_ date: Date?) -> String {
+        guard let date else { return "" }
+        return " (" + date.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "pl_PL"))) + ")"
+    }
+
     private func lighter(_ session: PlannedSession, _ day: String) throws -> (PlannedSession, String) {
         var changed = session
         var lightened = 0
@@ -321,16 +361,27 @@ public struct PlanChanger: Sendable {
 
     private func move(_ proposal: PlanChangeProposal, _ session: PlannedSession, _ plan: TrainingPlan) throws -> (PlannedSession, String) {
         guard let target = proposal.newWeekday, (1...7).contains(target) else { throw PlanChangeError.missingField("nowy dzień") }
+        var changed = session
+        if plan.isDated {
+            // The day fixed when the card was made; the weekday alone only for a card from before dates were stored.
+            guard let targetDate = proposal.newDate.map({ calendar.startOfDay(for: $0) }) ?? dayInWindow(weekday: target) else {
+                throw PlanChangeError.noSuchSession
+            }
+            if let current = session.date, calendar.isDate(current, inSameDayAs: targetDate) { throw PlanChangeError.sameDay }
+            // Not in the past, not after the end of the plan, and no other session on that day.
+            try editor.requireFreeDay(targetDate, excluding: session.id, in: plan)
+            changed.weekday = TrainingPlan.isoWeekday(of: targetDate, calendar: calendar)
+            changed.date = targetDate
+            let summary = "Przenieś sesję „\(session.title)” z \(Self.dayFrom(session.weekday))\(Self.dateNote(session.date)) "
+                + "na \(Self.dayTo(changed.weekday))\(Self.dateNote(targetDate))"
+            return (changed, summary)
+        }
         guard target != session.weekday else { throw PlanChangeError.sameDay }
-        // The day it moves to: that weekday in the week from now (the date of a dated plan), or just the weekday.
-        let targetDate = plan.isDated ? dayInWindow(weekday: target) : nil
-        if plan.isDated, targetDate == nil { throw PlanChangeError.noSuchSession }
-        guard !plan.sessions.contains(where: { $0.id != session.id && sameDay($0, weekday: target, date: targetDate) }) else {
+        guard !plan.sessions.contains(where: { $0.id != session.id && sameDay($0, weekday: target, date: nil) }) else {
             throw PlanChangeError.dayTaken
         }
-        var changed = session
         changed.weekday = target
-        changed.date = targetDate
+        changed.date = nil
         let summary = "Przenieś sesję „\(session.title)” z \(Self.dayFrom(session.weekday)) na \(Self.dayTo(target))"
         return (changed, summary)
     }

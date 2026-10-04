@@ -39,7 +39,8 @@ public struct CoachSnapshotBuilder: CoachSnapshotProviding {
             // The seven days from today: each weekday once, whatever the length of the plan.
             week: (currentPlan?.window(from: now(), calendar: calendar) ?? [])
                 .map { digest($0, healthConsent: healthConsent) },
-            lastTechnique: latest.map(techniqueDigest)
+            lastTechnique: latest.map(techniqueDigest),
+            todayDate: Self.dayString(now(), calendar: calendar)
         )
     }
 
@@ -47,7 +48,14 @@ public struct CoachSnapshotBuilder: CoachSnapshotProviding {
         SessionDigest(weekday: session.weekday, title: session.title,
                       status: healthConsent || session.status != .adapted ? session.status : .planned,
                       adaptationNote: healthConsent ? session.adaptationNote : nil,
-                      exercises: session.exercises.map(ExerciseDigest.init))
+                      exercises: session.exercises.map(ExerciseDigest.init),
+                      date: session.date.map { Self.dayString($0, calendar: calendar) })
+    }
+
+    /// `2026-10-14`.
+    static func dayString(_ date: Date, calendar: Calendar) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
     private func techniqueDigest(_ result: TechniqueResult) -> TechniqueDigest {

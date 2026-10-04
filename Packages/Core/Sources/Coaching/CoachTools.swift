@@ -190,8 +190,14 @@ public struct CoachTools: CoachToolRunning {
         }
         let isoWeekday = calendar.component(.weekday, from: now())
         let today = isoWeekday == 1 ? 7 : isoWeekday - 1
-        // The seven days from today: each weekday once, whatever the length of the plan.
-        let sessions: [JSONValue] = plan.window(from: now(), calendar: calendar).map { session in
+        // The next two weeks of a dated plan (a person asks about "next Friday"), a pattern as it is. Each session has
+        // its date: the model names a session by it, not by a weekday that repeats.
+        let start = calendar.startOfDay(for: now())
+        let horizon = calendar.date(byAdding: .day, value: 14, to: start) ?? start
+        let shown = plan.isDated
+            ? plan.chronological.filter { ($0.date ?? start) >= start && ($0.date ?? horizon) < horizon }
+            : plan.window(from: now(), calendar: calendar)
+        let sessions: [JSONValue] = shown.map { session in
             var fields: [String: JSONValue] = [
                 "weekday": .number(Double(session.weekday)),
                 "dayName": .string(Self.weekdayNames[(session.weekday - 1) % 7]),
@@ -204,7 +210,10 @@ public struct CoachTools: CoachToolRunning {
             if healthConsent, let note = session.adaptationNote { fields["adaptationNote"] = .string(note) }
             return .object(fields)
         }
-        return CoachToolOutput(content: Self.json(["source": .string(plan.source.rawValue), "sessions": .array(sessions)]),
+        return CoachToolOutput(content: Self.json(["source": .string(plan.source.rawValue),
+                                                   "todayDate": .string(Self.dayFormatter.string(from: now())),
+                                                   "todayDayName": .string(Self.weekdayNames[(today - 1) % 7]),
+                                                   "sessions": .array(sessions)]),
                                sourceLabel: "plan treningowy")
     }
 
