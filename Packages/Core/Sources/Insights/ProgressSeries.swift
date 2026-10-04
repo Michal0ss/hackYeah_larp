@@ -72,13 +72,18 @@ public enum LoadMetric: String, CaseIterable, Sendable {
 
 /// The chart on "Postępy" for training load: weight or repetitions over time, for one exercise at a time.
 public enum LoadSeries {
-    /// Exercises that have the metric on at least one day, the one with the most days first (ties by id).
-    public static func exerciseIds(in sets: [LoggedLoad], metric: LoadMetric, calendar: Calendar = .current) -> [String] {
+    /// The exercises to offer: first those of the plan, in plan order, then any other exercise that has logged sets
+    /// (done earlier, before the plan changed), the most logged days first. An exercise of the plan with nothing logged
+    /// yet is still offered, so its chart can say what is missing instead of the exercise being absent.
+    public static func exerciseIds(in sets: [LoggedLoad], planned: [String], calendar: Calendar = .current) -> [String] {
+        var seen = Set<String>()
+        let fromPlan = planned.filter { seen.insert($0).inserted }
         var days: [String: Set<Date>] = [:]
-        for set in sets where metric.value(of: set) != nil {
+        for set in sets where !seen.contains(set.exerciseId) {
             days[set.exerciseId, default: []].insert(calendar.startOfDay(for: set.date))
         }
-        return days.sorted { $0.value.count != $1.value.count ? $0.value.count > $1.value.count : $0.key < $1.key }.map(\.key)
+        let others = days.sorted { $0.value.count != $1.value.count ? $0.value.count > $1.value.count : $0.key < $1.key }
+        return fromPlan + others.map(\.key)
     }
 
     /// Oldest first, one point per day: the best set of that day (a warm-up before the working weight must not look

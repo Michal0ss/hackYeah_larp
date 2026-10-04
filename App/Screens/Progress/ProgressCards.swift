@@ -308,16 +308,19 @@ private struct ActivityGrid: View {
 
 // MARK: Load
 
-/// Weight or repetitions over time for one exercise, picked by the person. Real data only: it shows what was
-/// logged in the workouts, and says what is missing otherwise.
+/// Weight or repetitions over time for one exercise. Two menus, like the technique chart: the exercise (everything in
+/// the plan, plus anything else that was logged) and what to follow. Real data only: an exercise with nothing logged
+/// yet says what is missing.
 struct LoadCard: View {
     @Environment(AppStore.self) private var store
     let sets: [LoggedLoad]
 
-    @State private var metric: LoadMetric = .weight
+    @State private var chosenMetric = LoadMetric.weight.rawValue
     @State private var chosenExercise = ""
 
-    private var exercises: [String] { LoadSeries.exerciseIds(in: sets, metric: metric) }
+    private var metric: LoadMetric { LoadMetric(rawValue: chosenMetric) ?? .weight }
+    private var plannedIds: [String] { store.plan.sessions.flatMap(\.exercises).map(\.exerciseId) }
+    private var exercises: [String] { LoadSeries.exerciseIds(in: sets, planned: plannedIds) }
     private var exerciseId: String? { exercises.contains(chosenExercise) ? chosenExercise : exercises.first }
 
     private func name(_ id: String) -> String { store.exercise(id: id)?.name ?? "Ćwiczenie" }
@@ -328,16 +331,16 @@ struct LoadCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.m) {
-            SectionLabel("Ciężar i powtórzenia")
-            Picker("Co pokazać", selection: $metric) {
-                Text("Ciężar").tag(LoadMetric.weight)
-                Text("Powtórzenia").tag(LoadMetric.reps)
-            }
-            .pickerStyle(.segmented)
+            SectionLabel(metric == .weight ? "Ciężar w czasie" : "Powtórzenia w czasie")
             if let exerciseId {
                 let points = LoadSeries.points(sets, exerciseId: exerciseId, metric: metric)
-                ChoiceMenu(options: exercises.map { (id: $0, name: name($0)) },
-                           selection: Binding(get: { exerciseId }, set: { chosenExercise = $0 }))
+                HStack(spacing: FormaSpacing.s) {
+                    ChoiceMenu(options: exercises.map { (id: $0, name: name($0)) },
+                               selection: Binding(get: { exerciseId }, set: { chosenExercise = $0 }))
+                    ChoiceMenu(options: [(id: LoadMetric.weight.rawValue, name: "Ciężar"),
+                                         (id: LoadMetric.reps.rawValue, name: "Powtórzenia")],
+                               selection: $chosenMetric)
+                }
                 if let first = points.first, let last = points.last {
                     HStack(alignment: .firstTextBaseline, spacing: FormaSpacing.m) {
                         NumberText(format(last.value), size: 36, color: FormaColor.voltText)
@@ -353,10 +356,15 @@ struct LoadCard: View {
                                           : "Pierwszy zapis. Kolejne treningi narysują wykres.")
                         .formaStyle(.footnote)
                         .foregroundStyle(FormaColor.ink3)
+                } else {
+                    Text(metric == .weight ? "Brak zapisanego ciężaru dla tego ćwiczenia. Wpisz go po serii (Edytuj wynik) albo po treningu."
+                                           : "Brak zapisanych powtórzeń dla tego ćwiczenia. Pojawią się po pierwszej serii.")
+                        .formaStyle(.subheadline)
+                        .foregroundStyle(FormaColor.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
-                Text(metric == .weight ? "Wpisz ciężar po serii (Edytuj wynik) albo po treningu, a pojawi się tu wykres."
-                                       : "Po pierwszych zapisanych seriach pojawi się tu wykres powtórzeń.")
+                Text("Plan nie ma jeszcze ćwiczeń. Gdy je dostaniesz i zrobisz serie, pojawi się tu wykres ciężaru i powtórzeń.")
                     .formaStyle(.subheadline)
                     .foregroundStyle(FormaColor.ink2)
                     .fixedSize(horizontal: false, vertical: true)
