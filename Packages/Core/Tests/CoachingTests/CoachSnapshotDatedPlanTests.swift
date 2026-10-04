@@ -29,4 +29,16 @@ final class CoachSnapshotDatedPlanTests: XCTestCase {
         XCTAssertEqual(snapshot.nextSession?.weekday, 3)
         XCTAssertTrue(snapshot.nextSessionIsToday)
     }
+
+    func testEverySessionAndTodayCarryTheirDate() async {
+        let now = calendar.date(from: DateComponents(year: 2026, month: 10, day: 14, hour: 12))!
+        let plan = PlanScheduler.schedule(SampleData.plan, startingOn: now, weeks: 4, calendar: calendar)
+        let store = PlanStore(fileURL: nil, calendar: calendar, now: { now })
+        store.save(plan)
+        let builder = CoachSnapshotBuilder(plan: store, technique: Technique(), calendar: calendar, now: { now })
+        let snapshot = await builder.snapshot(healthConsent: true)
+        XCTAssertEqual(snapshot.todayDate, "2026-10-14")
+        XCTAssertEqual(snapshot.week.map(\.date), ["2026-10-14", "2026-10-16", "2026-10-19"])
+        XCTAssertEqual(snapshot.nextSession?.date, "2026-10-14")
+    }
 }

@@ -10,7 +10,9 @@ Tools only read, with one exception that still never writes: `propose_plan_chang
 proposed change, and the plan changes only when the user taps "Zastosuj" on it.
 """
 
+import re
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 from app.content.store import ContentStore
@@ -56,8 +58,10 @@ TOOLS: dict[str, CoachTool] = {
         CoachTool(
             name="get_current_plan",
             description=(
-                "Returns the user's current weekly training plan: each session with weekday, exercises, sets, "
-                "reps and whether it is done. Use it to answer questions about what to train and when."
+                "Returns the user's training plan for the next two weeks: today's date and each session with its "
+                "date (YYYY-MM-DD), weekday, exercises, sets, reps and whether it is done. Use it to answer "
+                "questions about what to train and when, and to find the date of a session before proposing a "
+                "change to it."
             ),
             input_schema=_NO_INPUT,
         ),
@@ -176,15 +180,20 @@ TOOLS: dict[str, CoachTool] = {
                 "user a card, and the plan changes only if the user taps the button. Use it only when the user "
                 "asks for a change or agrees to your suggestion, never as a reaction to pain or an injury. "
                 "kinds: swap_exercise (replace exerciseId with replacementExerciseId in the session planned on "
-                "weekday), lighter_session (one set less in every exercise that has more than two sets, in the "
-                "session on weekday), move_session (move the session from weekday to newWeekday, which must be a "
-                "day without a session), skip_session (leave the session on weekday out; it stays in the plan as "
-                "skipped and the user can put it back), add_exercise (add exerciseId to the session on weekday, at "
-                "the end; optionally sets, repsMin, repsMax and restSeconds, otherwise the usual numbers of that "
-                "session; reps are seconds for exercises counted in time), remove_exercise (take exerciseId out of "
-                "the session; it keeps at least one exercise), edit_exercise (change sets, repsMin, repsMax or "
-                "restSeconds of exerciseId in the session; only the numbers you send change). weekday and "
-                "newWeekday: 1 = Monday ... 7 = Sunday; weekday means the next such day within a week from today. "
+                "date), lighter_session (one set less in every exercise that has more than two sets, in the "
+                "session on date), move_session (move the session from date to newDate, which must be a day "
+                "without a session, today or later, inside the plan), skip_session (leave the session on date "
+                "out; it stays in the plan as skipped and the user can put it back), add_exercise (add "
+                "exerciseId to the session on date, at the end; optionally sets, repsMin, repsMax and "
+                "restSeconds, otherwise the usual numbers of that session; reps are seconds for exercises "
+                "counted in time), remove_exercise (take exerciseId out of the session; it keeps at least one "
+                "exercise), edit_exercise (change sets, repsMin, repsMax or restSeconds of exerciseId in the "
+                "session; only the numbers you send change). ALWAYS name the session by its date "
+                "(YYYY-MM-DD) taken from the plan; a weekday alone is many days in a plan of several weeks. "
+                'Work out dates from today\'s date in the plan ("w piątek" = the first Friday from today, '
+                '"w przyszłym tygodniu" = the following week). weekday and newWeekday (1 = Monday ... '
+                "7 = Sunday) are only a fallback when you have no date: they mean the next such day within a "
+                "week from today. "
                 "Use exercise ids from the catalog only: an exercise that is not in the catalog cannot be added. A "
                 "replacement or an added exercise must come from the list of exercises that fit this person. "
                 "Afterwards tell the user in one or two sentences what you propose and why, and that they can "
@@ -194,7 +203,14 @@ TOOLS: dict[str, CoachTool] = {
                 "type": "object",
                 "properties": {
                     "kind": {"type": "string", "enum": list(PLAN_CHANGE_KINDS)},
-                    "weekday": {"type": "integer", "description": "Weekday of the session to change, 1 to 7."},
+                    "date": {
+                        "type": "string",
+                        "description": "Date of the session to change, YYYY-MM-DD, from the plan. Always send it.",
+                    },
+                    "weekday": {
+                        "type": "integer",
+                        "description": "Fallback when there is no date: weekday of the session, 1 to 7.",
+                    },
                     "exerciseId": {
                         "type": "string",
                         "description": (
@@ -203,14 +219,18 @@ TOOLS: dict[str, CoachTool] = {
                         ),
                     },
                     "replacementExerciseId": {"type": "string", "description": "swap_exercise: the new exercise."},
-                    "newWeekday": {"type": "integer", "description": "move_session: the new weekday, 1 to 7."},
+                    "newDate": {"type": "string", "description": "move_session: the new day, YYYY-MM-DD."},
+                    "newWeekday": {
+                        "type": "integer",
+                        "description": "move_session fallback when there is no newDate: the new weekday, 1 to 7.",
+                    },
                     "sets": {"type": "integer", "description": "add_exercise / edit_exercise: sets, 1 to 8."},
                     "repsMin": {"type": "integer", "description": "add/edit_exercise: lowest reps (or seconds)."},
                     "repsMax": {"type": "integer", "description": "add/edit_exercise: highest reps (or seconds)."},
                     "restSeconds": {"type": "integer", "description": "add_exercise / edit_exercise: rest, 0 to 600."},
                     "reason": {"type": "string", "description": "One short sentence in Polish: why."},
                 },
-                "required": ["kind", "weekday"],
+                "required": ["kind", "date"],
             },
         ),
     )
@@ -239,6 +259,20 @@ def _weekday(value: Any) -> int | None:
     return int(value) if 1 <= int(value) <= 7 else None
 
 
+_DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _day(value: Any) -> str | None:
+    """A real calendar day written as YYYY-MM-DD, or None."""
+    if not isinstance(value, str) or not _DAY_RE.match(value):
+        return None
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return None
+    return value
+
+
 def _whole_number(value: Any) -> int | None:
     if isinstance(value, bool) or not isinstance(value, int | float) or int(value) != value:
         return None
@@ -252,6 +286,10 @@ def _normalise_plan_change(raw: dict[str, Any], content: ContentStore, profile: 
     kind = raw.get("kind")
     if kind in PLAN_CHANGE_KINDS:
         cleaned["kind"] = kind
+    if (day := _day(raw.get("date"))) is not None:
+        cleaned["date"] = day
+    if (new_day := _day(raw.get("newDate"))) is not None and kind == "move_session":
+        cleaned["newDate"] = new_day
     if (weekday := _weekday(raw.get("weekday"))) is not None:
         cleaned["weekday"] = weekday
     if (new_weekday := _weekday(raw.get("newWeekday"))) is not None and kind == "move_session":

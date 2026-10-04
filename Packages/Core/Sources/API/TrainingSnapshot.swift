@@ -35,6 +35,8 @@ public struct ExerciseDigest: Codable, Equatable, Sendable {
 public struct SessionDigest: Codable, Equatable, Sendable {
     /// 1 = Monday ... 7 = Sunday.
     public var weekday: Int
+    /// The day of the session as `2026-10-14` (the user's calendar). Nil for a plan without dates.
+    public var date: String?
     public var title: String
     public var status: SessionStatus
     /// Why the session was changed. Built from health signals, so only with consent.
@@ -42,8 +44,9 @@ public struct SessionDigest: Codable, Equatable, Sendable {
     public var exercises: [ExerciseDigest]
 
     public init(weekday: Int, title: String, status: SessionStatus, adaptationNote: String? = nil,
-                exercises: [ExerciseDigest]) {
+                exercises: [ExerciseDigest], date: String? = nil) {
         self.weekday = weekday
+        self.date = date
         self.title = title
         self.status = status
         self.adaptationNote = adaptationNote
@@ -76,6 +79,8 @@ public struct TechniqueDigest: Codable, Equatable, Sendable {
 public struct TrainingSnapshot: Codable, Equatable, Sendable {
     /// ISO weekday of the request (1 = Monday).
     public var today: Int
+    /// Today as `2026-10-14` (the user's calendar): the model has no clock, and dates in the plan need it.
+    public var todayDate: String?
     public var planSource: PlanSource?
     /// Today's session, or the next planned one when `nextSessionIsToday` is false.
     public var nextSession: SessionDigest?
@@ -84,8 +89,10 @@ public struct TrainingSnapshot: Codable, Equatable, Sendable {
     public var lastTechnique: TechniqueDigest?
 
     public init(today: Int, planSource: PlanSource? = nil, nextSession: SessionDigest? = nil,
-                nextSessionIsToday: Bool = true, week: [SessionDigest] = [], lastTechnique: TechniqueDigest? = nil) {
+                nextSessionIsToday: Bool = true, week: [SessionDigest] = [], lastTechnique: TechniqueDigest? = nil,
+                todayDate: String? = nil) {
         self.today = today
+        self.todayDate = todayDate
         self.planSource = planSource
         self.nextSession = nextSession
         self.nextSessionIsToday = nextSessionIsToday
