@@ -214,6 +214,7 @@ private struct ActivityGrid: View {
     let days: [ActivityDay]
     private static let cell: CGFloat = 13
     private static let gap: CGFloat = 3
+    private static let weekdays = ["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"]
 
     private var weeks: [[ActivityDay]] {
         stride(from: 0, to: days.count, by: 7).map { Array(days[$0..<min($0 + 7, days.count)]) }
@@ -222,14 +223,28 @@ private struct ActivityGrid: View {
     private var maxCount: Int { days.compactMap(\.setCount).max() ?? 0 }
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: Self.gap) {
-                ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
-                    VStack(spacing: Self.gap) {
-                        ForEach(week) { day in square(day) }
+        HStack(alignment: .top, spacing: 6) {
+            // Rows are Monday...Sunday; every other label is shown so they fit the small squares, like GitHub.
+            VStack(alignment: .trailing, spacing: Self.gap) {
+                ForEach(Array(Self.weekdays.enumerated()), id: \.offset) { index, name in
+                    Text(index % 2 == 0 ? name : "")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(FormaColor.ink3)
+                        .frame(height: Self.cell)
+                }
+            }
+            .accessibilityHidden(true)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: Self.gap) {
+                    ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
+                        VStack(spacing: Self.gap) {
+                            ForEach(week) { day in square(day) }
+                        }
                     }
                 }
             }
+            // The newest weeks are on the right: start scrolled there.
+            .defaultScrollAnchor(.trailing)
         }
         .accessibilityLabel("Dni treningowe w ostatnich \(weeks.count) tygodniach")
         .accessibilityValue("\(days.filter { ($0.setCount ?? 0) > 0 }.count) dni z treningiem")
