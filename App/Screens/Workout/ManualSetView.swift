@@ -2,6 +2,7 @@ import SwiftUI
 import Contracts
 import DesignSystem
 import Plan
+import LiveSet
 #if os(iOS)
 import UIKit
 #endif
@@ -24,6 +25,8 @@ struct ManualSetView: View {
     @State private var stoppedAt = 0
     /// The target of a timed exercise was reached (one vibration).
     @State private var reachedTarget = false
+    /// Says "zaczynaj" when a timed (static) exercise starts. Made on first use.
+    @State private var voice: SpeechCoachVoice?
 
     init(model: WorkoutModel, planned: PlannedExercise, exercise: ExerciseItem, onAskCoach: @escaping () -> Void,
          onExplain: @escaping () -> Void, onClose: @escaping () -> Void) {
@@ -81,6 +84,7 @@ struct ManualSetView: View {
             // The weight of the last time is offered, not assumed: it is saved only when the toggle is on.
             if weight == nil, let last = model.lastWeight(exercise.id) { weight = last }
         }
+        .onDisappear { voice?.finish() }
     }
 
     private var topBar: some View {
@@ -95,15 +99,24 @@ struct ManualSetView: View {
         }
     }
 
-    /// A stopwatch for every set typed in. For an exercise counted in time, "Stop" puts the seconds in the result (it can
-    /// still be changed) and the phone vibrates once when the planned time is reached.
+    /// A static exercise (a plank) has no tempo to follow: the coach just says the one command.
+    private func startTimedSet() {
+        let speaker = voice ?? SpeechCoachVoice()
+        voice = speaker
+        speaker.prepare()
+        speaker.speak("zaczynaj", priority: .count)
+    }
+
+    /// A stopwatch for every set typed in. A static exercise (counted in time, like a plank) has no tempo: the coach says
+    /// "zaczynaj" once and the clock counts down to the planned time, the phone vibrates when it reaches zero and the
+    /// time held after that is counted as extra. "Stop" puts the seconds held in the result (it can still be changed).
     private var stopwatch: some View {
         TimelineView(.periodic(from: .now, by: 0.2)) { context in
             let elapsed = startedAt.map { max(0, Int(context.date.timeIntervalSince($0))) } ?? stoppedAt
             VStack(alignment: .leading, spacing: FormaSpacing.m) {
-                SectionLabel(timed ? "Stoper (cel \(planned.repsMin) s)" : "Stoper serii")
+                SectionLabel(timed ? "Odliczanie (cel \(planned.repsMin) s)" : "Stoper serii")
                 HStack {
-                    NumberText(WorkoutFormat.clock(TimeInterval(elapsed)), size: 56)
+                    NumberText(clockText(elapsed: elapsed), size: 56)
                         .lineLimit(1).minimumScaleFactor(0.6).layoutPriority(1)
                     Spacer(minLength: FormaSpacing.s)
                     if startedAt == nil, stoppedAt > 0 {
@@ -115,10 +128,12 @@ struct ManualSetView: View {
                             stoppedAt = max(1, Int(Date().timeIntervalSince(started)))
                             if timed { value = stoppedAt }
                             startedAt = nil
+                            voice?.finish()
                         } else {
                             if stoppedAt > 0 { stoppedAt = 0 }
                             reachedTarget = false
                             startedAt = Date()
+                            if timed { startTimedSet() }
                         }
                     } label: {
                         Text(startedAt == nil ? "Start" : "Stop").frame(minWidth: 72)
@@ -136,6 +151,17 @@ struct ManualSetView: View {
                 }
             }
         }
+    }
+
+    /// What the clock shows: the time left for a static exercise that is running ("+0:05" once past the target), the
+    /// target before it starts, otherwise the time that has passed.
+    private func clockText(elapsed: Int) -> String {
+        guard timed else { return WorkoutFormat.clock(TimeInterval(elapsed)) }
+        if startedAt != nil {
+            let left = planned.repsMin - elapsed
+            return left >= 0 ? WorkoutFormat.clock(TimeInterval(left)) : "+" + WorkoutFormat.clock(TimeInterval(-left))
+        }
+        return WorkoutFormat.clock(TimeInterval(stoppedAt > 0 ? stoppedAt : planned.repsMin))
     }
 }
 
