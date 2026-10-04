@@ -70,19 +70,11 @@ struct OnboardingFlow: View {
     }
 
     private var logo: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "bolt.fill")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(FormaColor.onVolt)
-                .frame(width: 40, height: 40)
-                .background(LinearGradient(colors: [Color(hex: 0xDDFF70), FormaColor.volt], startPoint: .top, endPoint: .bottom),
-                            in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            Text("Forma")
-                .font(.formaNumber(26))
-                .foregroundStyle(FormaColor.ink)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Forma")
+        Image("BrandLogo")
+            .resizable()
+            .scaledToFit()
+            .frame(height: 32)
+            .accessibilityLabel("hackGym")
     }
 
     @ViewBuilder
