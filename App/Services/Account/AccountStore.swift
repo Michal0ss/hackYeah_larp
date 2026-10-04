@@ -1,3 +1,4 @@
+import API
 import Foundation
 import Observation
 
@@ -21,6 +22,8 @@ final class AccountStore {
     private(set) var user: AccountUser?
     /// A sign-in is in progress. Separate from `phase` so the sign-in screen stays up while Google is open.
     private(set) var isSigningIn = false
+    /// An account deletion is in progress.
+    private(set) var isDeleting = false
     /// Shown under the button when sign-in failed. nil after a cancel (not an error).
     private(set) var errorMessage: String?
 
@@ -105,6 +108,41 @@ final class AccountStore {
         }
         user = session.user
         phase = .signedIn
+    }
+
+    /// Deletes the cloud account (through the Forma backend, which holds the rights to do it) and signs out here. What
+    /// is on the phone stays. Returns false with `errorMessage` set when it did not work: the account is then still there.
+    func deleteAccount(using api: FormaAPI) async -> Bool {
+        guard !isDeleting, var session = sessions.load() else { return false }
+        isDeleting = true
+        defer { isDeleting = false }
+        errorMessage = nil
+        do {
+            if session.needsRefresh() {
+                session = try await client.refresh(session)
+                sessions.save(session)
+            }
+            try await api.deleteAccount(accountToken: session.accessToken)
+        } catch let error as APIError {
+            errorMessage = Self.deleteMessage(for: error)
+            return false
+        } catch {
+            errorMessage = "Nie udało się usunąć konta. Sprawdź internet i spróbuj ponownie."
+            return false
+        }
+        // The session now belongs to a user that no longer exists: drop it without calling the sign-out endpoint.
+        sessions.clear()
+        user = nil
+        phase = .skipped
+        return true
+    }
+
+    static func deleteMessage(for error: APIError) -> String {
+        switch error.code {
+        case "invalid_account_token": return "Sesja wygasła. Zaloguj się ponownie i spróbuj jeszcze raz."
+        case "account_unavailable": return "Usuwanie konta nie jest teraz dostępne. Spróbuj ponownie za chwilę."
+        default: return error.userMessage
+        }
     }
 
     func signOut() async {

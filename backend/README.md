@@ -63,6 +63,7 @@ From the iPhone use the Mac's address (`http://<mac-ip>:8000`); plain HTTP needs
 | `POST /v1/plans/generate` | plan for a profile: model proposes, server validates, template as fallback | Maciek |
 | `POST /v1/coach/chat` | AI trainer: SSE stream or JSON, client-executed tools | Maciek |
 | `POST /v1/texts/recommendation` | friendly wording of the daily recommendation, safety-checked | Wiktor |
+| `DELETE /v1/account` | deletes the signed-in person's Supabase account (their own token in `X-Account-Token`; needs `FORMA_SUPABASE_URL` and `FORMA_SUPABASE_SERVICE_KEY`, otherwise 503 `account_unavailable`) | Michał |
 
 The contract is `openapi.json` (generated, committed). Change an endpoint or a schema, run `make openapi`,
 commit both. JSON is camelCase like the Swift `Codable` types; dates are ISO 8601 UTC without fractions

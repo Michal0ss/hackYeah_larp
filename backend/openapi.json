@@ -1588,6 +1588,89 @@
         ]
       }
     },
+    "/v1/account": {
+      "delete": {
+        "description": "Needs the app token (`Authorization`) and the person's own access token in `X-Account-Token`. The person is identified by that token, never by the request body. Removes the Supabase user; the profile and the plan stored for it are deleted with it. Data on the phone is not touched. 503 `account_unavailable` when the server has no account service configured.",
+        "operationId": "deleteAccount",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-account-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Account-Token"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "App token missing, or the account token is not accepted."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid request."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Rate limit exceeded (see Retry-After)."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The account service could not be reached or refused."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Accounts are not configured on this server."
+          }
+        },
+        "summary": "Delete the signed-in person's cloud account and its data",
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/v1/catalog": {
       "get": {
         "operationId": "getCatalog",

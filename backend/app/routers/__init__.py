@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.routers import catalog, coach, config, plans, system, texts
+from app.routers import account, catalog, coach, config, plans, system, texts
 from app.schemas.api import ErrorEnvelope
 
 # Documented on every /v1 route so clients can generate the error type.
@@ -11,7 +11,7 @@ ERROR_RESPONSES: dict[int | str, dict] = {
 }
 
 api_v1 = APIRouter(prefix="/v1", responses=ERROR_RESPONSES)
-for module in (catalog, config, plans, coach, texts):
+for module in (catalog, config, plans, coach, texts, account):
     api_v1.include_router(module.router)
 
 __all__ = ["api_v1", "system"]

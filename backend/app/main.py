@@ -108,8 +108,15 @@ def create_app(
         app.add_middleware(
             CORSMiddleware,
             allow_origins=settings.cors_origins,
-            allow_methods=["GET", "POST"],
-            allow_headers=["Authorization", "Content-Type", "X-Device-Id", "X-Request-Id", "If-None-Match"],
+            allow_methods=["GET", "POST", "DELETE"],
+            allow_headers=[
+                "Authorization",
+                "Content-Type",
+                "X-Device-Id",
+                "X-Request-Id",
+                "X-Account-Token",
+                "If-None-Match",
+            ],
             expose_headers=["X-Request-Id", "ETag", "Retry-After"],
         )
     # Added last = outermost: the request id and the size limit apply to everything, including CORS preflights.

@@ -469,6 +469,17 @@ Szkielet (`backend/`, opis uruchomienia w [backend/README.md](backend/README.md)
 | `POST /v1/plans/generate` | plan dla profilu: model → walidacja → plan | plan z szablonu + ostrzeżenie |
 | `POST /v1/coach/chat` | czat trenera: strumień SSE, narzędzia wykonywane przez aplikację, bramka zgody | zdarzenie `error` / HTTP 503, aplikacja pozwala ponowić |
 | `POST /v1/texts/recommendation` | sformułowanie rekomendacji dnia, kontrola bezpieczeństwa | tekst z szablonu + ostrzeżenie |
+| `DELETE /v1/account` | usunięcie konta w chmurze (Supabase Auth, wymaga uprawnień serwera): osoba jest rozpoznawana po własnym tokenie w `X-Account-Token`, nigdy po treści żądania; wiersze `profiles` i `training_plans` znikają kaskadowo | 502 `account_unavailable` (konto zostaje), 503 gdy serwer nie ma skonfigurowanego Supabase |
+
+**Co gdzie trzymamy (decyzja 4.10):**
+
+| Gdzie | Co | Dlaczego |
+|---|---|---|
+| **Backend (Vercel, bezstanowy)** | klucz do modelu, wywołania modelu, walidacja planów i tekstów, bramka zgody, katalog i progi z `content/`, usuwanie konta | klucz i uprawnienia `service_role` nie mogą być w aplikacji; nic nie zapisuje ani nie loguje treści |
+| **Supabase (Postgres)** | wspólne limity zapytań (`rate_limits`, tylko metadane); konta: `profiles` (imię, nazwisko, odpowiedzi z onboardingu **bez zdrowia**, zgoda i wersja polityki) i `training_plans` (plan bez `notices`); RLS na `auth.uid()` | rzeczy, których bezstanowy backend nie utrzyma i które mają pójść za osobą na inny telefon |
+| **Telefon** | wideo i poza, wyniki techniki, historia zdrowia, HealthKit, check-iny, feedback po treningu (wysiłek, ból), dziennik serii i ciężarów, historia rozmów, silnik reguł | zasady prywatności: dane zdrowotne i wideo nie opuszczają telefonu |
+
+Do chmury **nie** idą: wideo, treść rozmów, historia zdrowia, dane z Apple Health, ból i wysiłek (feedback), oraz pola, które zdradzają stan zdrowia mimo braku diagnozy (`avoid`, `avoidTags`, `easyStart`, `notices`; CHECK w bazie je odrzuca). Synchronizacja planu i odpowiedzi z onboardingu między telefonami jest **zaplanowana, jeszcze nie zrobiona** (tabele i RLS są; brakuje klienta w aplikacji i decyzji, co z dostępem do Zdrowia po przywróceniu na nowym telefonie).
 
 **Zostaje na telefonie:** analiza wideo i Vision, ocena jakości nagrania, scoring techniki, seria na żywo (tempo i głos), silnik reguł i decyzja dnia, HealthKit, check-in, plan i profil, historia zdrowia, historia rozmów, wykonanie narzędzi.
 
