@@ -152,6 +152,9 @@ def numbers_in(text: str) -> set[str]:
     return {match.replace(",", ".") for match in _NUMBER_RE.findall(text)}
 
 
+_POLISH_LETTERS_RE = re.compile("[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]")
+
+
 def check_generated_text(
     *texts: str,
     max_total: int = 600,
@@ -175,6 +178,8 @@ def check_generated_text(
             problems.append(f"unsafe_phrase:{category}")
     if _EMOJI_RE.search(joined):
         problems.append("unsafe_phrase:emoji")
+    if len(joined) >= 80 and not _POLISH_LETTERS_RE.search(joined):
+        problems.append("missing_diacritics")
     if source is not None and numbers_in(joined) - numbers_in(source):
         problems.append("invented_number")
     if decision in _CONTRADICTION_RE and _CONTRADICTION_RE[decision].search(folded):
