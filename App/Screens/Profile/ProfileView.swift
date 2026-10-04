@@ -9,6 +9,7 @@ struct ProfileView: View {
     @Environment(AccountStore.self) private var account
     @Environment(\.dismiss) private var dismiss
     @State private var showLogin = false
+    @State private var confirmDeleteAccount = false
     @State private var confirmHealth = false
     @State private var confirmAll = false
     @State private var rebuilding = false
@@ -36,6 +37,12 @@ struct ProfileView: View {
             .scrollIndicators(.hidden)
         }
         .sheet(isPresented: $showLogin) { LoginView(showsClose: true) }
+        .confirmationDialog("Usunąć konto?", isPresented: $confirmDeleteAccount, titleVisibility: .visible) {
+            Button("Usuń konto z chmury", role: .destructive) { Task { _ = await account.deleteAccount(using: store.services.api) } }
+            Button("Anuluj", role: .cancel) {}
+        } message: {
+            Text("Zostanie usunięte konto, imię i nazwisko oraz plan zapisane w chmurze. Dane na tym telefonie zostają, a aplikacja działa dalej bez konta.")
+        }
         .fullScreenCover(item: $liveLaunch) { launch in
             LiveSetFlow(exercise: launch.exercise, spec: launch.spec, totalSets: launch.sets) { liveLaunch = nil }
         }
@@ -84,6 +91,16 @@ struct ProfileView: View {
                     Label("Wyloguj", systemImage: "rectangle.portrait.and.arrow.right").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.formaGlass)
+                Button(role: .destructive) { confirmDeleteAccount = true } label: {
+                    Label(account.isDeleting ? "Usuwam konto…" : "Usuń konto", systemImage: "trash").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.formaGlass)
+                .disabled(account.isDeleting)
+                if let message = account.errorMessage {
+                    Label(message, systemImage: "exclamationmark.triangle.fill")
+                        .formaStyle(.footnote).foregroundStyle(FormaColor.emberText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             } else {
                 Text("Nie jesteś zalogowany. Konto pozwoli przenieść plan na inny telefon.")
                     .formaStyle(.body).foregroundStyle(FormaColor.ink2)

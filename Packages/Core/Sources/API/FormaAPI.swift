@@ -39,6 +39,18 @@ public struct FormaAPI: Sendable {
         return try await post("v1/texts/recommendation", body: Body(recommendation: recommendation), timeout: 25)
     }
 
+    /// Deletes the signed-in person's cloud account and what is stored for it (profile and plan). `accountToken` is
+    /// the person's own access token; the server identifies them by it. Data on the phone is not touched. Throws
+    /// `APIError`: code `invalid_account_token` (sign in again), `account_unavailable` (try later or not configured).
+    public func deleteAccount(accountToken: String) async throws {
+        var request = try makeRequest("v1/account", method: "DELETE", timeout: 20)
+        request.setValue(accountToken, forHTTPHeaderField: "X-Account-Token")
+        let (data, head) = try await perform(request)
+        guard head.statusCode == 204 || head.statusCode == 200 else {
+            throw Self.serverError(status: head.statusCode, body: data, head: head)
+        }
+    }
+
     /// One JSON answer (no streaming).
     public func chat(_ request: ChatRequest) async throws -> ChatResponse {
         var request = request

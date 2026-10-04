@@ -69,6 +69,7 @@ class Settings(BaseSettings):
     rate_limit_chat_per_minute: int = 20
     rate_limit_plans_per_minute: int = 6
     rate_limit_texts_per_minute: int = 20
+    rate_limit_account_per_minute: int = 5
     rate_limit_default_per_minute: int = 120
     max_request_bytes: int = 256 * 1024
     max_chat_messages: int = 40
