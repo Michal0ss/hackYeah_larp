@@ -42,7 +42,9 @@ public enum FormaColor {
     public static let ember = Color(hex: 0xFF6A1F)
     /// Muscles worked on the body figure (red), and the white body they are drawn on.
     public static let muscle = Color(hex: 0xE5262F)
-    public static let bodyFill = Color(hex: 0xF4F6F9)
+    public static let muscleDeep = Color(hex: 0xA8141C)
+    public static let bodyFill = Color(hex: 0xF7F8FA)
+    public static let bodyShade = Color(hex: 0xD9DFE7)
     public static let bodyLine = Color(hex: 0xB9C2CF)
     public static let go = Color(hex: 0xC8FF2E)
     public static let moderate = Color(hex: 0xFFBE3D)
