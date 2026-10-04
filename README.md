@@ -51,14 +51,6 @@ Wspólny backend jest wdrożony na Vercelu z prawdziwym modelem (Gemini): `https
 
 Na symulatorze wystarczy `Cmd+R`. Kamera, HealthKit z prawdziwymi danymi i podpis wymagają prawdziwego iPhone'a (`Local.xcconfig` z `DEVELOPMENT_TEAM`). Logowanie Google i synchronizacja konta wymagają konfiguracji Supabase (`Config/Secrets.xcconfig`); bez niej aplikacja działa na samym telefonie.
 
-## Stan projektu (4.10)
-
-Zamrożenie funkcji i oddanie: **4.10, zgłoszenie z zapasem przed 23:00.** Aktualny stan zadań i uwag: [WORKINGPLAN.md](WORKINGPLAN.md), sekcja 9.
-
-W `main` działa wszystko z tabeli wyżej oraz: seria na żywo i analiza z filmu dla czterech ćwiczeń (przysiad, pompka, podciąganie, dipy) z kątami liczonymi z poprawką proporcji obrazu, plan od AI z kontrolą po stronie serwera i planem z szablonu jako zapasem, czat z narzędziami (w tym ustawianiem celu kroków), głos trenera tempa (systemowy), historia treningów w koncie, usuwanie konta, wspólne limity zapytań w Supabase.
-
-Czego **nikt jeszcze nie sprawdził na prawdziwym iPhonie**: kamera, seria na żywo i analiza na prawdziwych nagraniach (logika jest sprawdzona na syntetycznych pozach i na trzech nagraniach dipów), HealthKit z danymi z zegarka, synchronizacja konta na dwóch telefonach z prawdziwym kontem Google, przyciski i wczytywanie filmu w Analizie po ostatnim refaktorze, głos w słuchawkach. Migracja `user_records` w Supabase musi być zastosowana przez osobę z dostępem do projektu (Wiktor), inaczej synchronizacja historii nie zapisze nic.
-
 ## Struktura
 
 ```
