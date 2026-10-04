@@ -331,7 +331,20 @@ struct LoadCard: View {
 
     private var metric: LoadMetric { LoadMetric(rawValue: chosenMetric) ?? .weight }
     private var plannedIds: [String] { store.plan.sessions.flatMap(\.exercises).map(\.exerciseId) }
-    private var exercises: [String] { LoadSeries.exerciseIds(in: sets, planned: plannedIds) }
+    /// Plan exercises where the number makes sense: ones with equipment (or a weight someone already typed in) for the
+    /// weight; everything not counted in seconds for repetitions. Bodyweight and timed exercises (a plank) have no weight.
+    private var exercises: [String] {
+        LoadSeries.exerciseIds(planned: plannedIds) { id in
+            guard let exercise = store.exercise(id: id) else { return false }
+            switch metric {
+            case .weight:
+                return (exercise.equipment != .none && exercise.timed != true)
+                    || sets.contains { $0.exerciseId == id && $0.weightKg != nil }
+            case .reps:
+                return exercise.timed != true
+            }
+        }
+    }
     private var exerciseId: String? { exercises.contains(chosenExercise) ? chosenExercise : exercises.first }
 
     private func name(_ id: String) -> String { store.exercise(id: id)?.name ?? "Ćwiczenie" }

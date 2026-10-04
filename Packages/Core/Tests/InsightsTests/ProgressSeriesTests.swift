@@ -70,20 +70,17 @@ final class ProgressSeriesTests: XCTestCase {
         XCTAssertEqual(points.map(\.value), [10, 12])
     }
 
-    func testPlanExercisesComeFirstInPlanOrderEvenWithNothingLogged() {
-        let sets = [load("squat", ago: 0, kg: 40)]
-        let ids = LoadSeries.exerciseIds(in: sets, planned: ["row", "squat", "press", "row"], calendar: calendar)
-        XCTAssertEqual(ids, ["row", "squat", "press"])
+    func testOnlyPlanExercisesAreOfferedInPlanOrderEvenWithNothingLogged() {
+        XCTAssertEqual(LoadSeries.exerciseIds(planned: ["row", "squat", "press", "row"]), ["row", "squat", "press"])
     }
 
-    func testExercisesDoneOutsideThePlanFollowTheMostLoggedFirst() {
-        let sets = [load("deadlift", ago: 0, kg: 80)] + (0..<3).map { load("lunge", ago: $0, kg: 20) } + [load("squat", ago: 0, kg: 40)]
-        let ids = LoadSeries.exerciseIds(in: sets, planned: ["squat"], calendar: calendar)
-        XCTAssertEqual(ids, ["squat", "lunge", "deadlift"])
+    func testExercisesThatDoNotFitTheMetricAreLeftOut() {
+        let ids = LoadSeries.exerciseIds(planned: ["squat", "plank", "row"]) { $0 != "plank" }
+        XCTAssertEqual(ids, ["squat", "row"])
     }
 
     func testNoSetsMeansNoPoints() {
         XCTAssertTrue(LoadSeries.points([], exerciseId: "squat", metric: .weight).isEmpty)
-        XCTAssertTrue(LoadSeries.exerciseIds(in: [], planned: []).isEmpty)
+        XCTAssertTrue(LoadSeries.exerciseIds(planned: []).isEmpty)
     }
 }
