@@ -112,13 +112,10 @@ struct TechniqueCard: View {
     let onAnalyse: () -> Void
 
     @State private var chosenExercise = ""
-    @State private var chosenComponent = ""
 
     private var plannedIds: [String] { store.plan.sessions.flatMap(\.exercises).map(\.exerciseId) }
     private var exercises: [String] { TechniqueSeries.exerciseIds(in: results, planned: plannedIds) }
     private var exerciseId: String? { exercises.contains(chosenExercise) ? chosenExercise : exercises.first }
-    private var components: [String] { exerciseId.map { TechniqueSeries.components(in: results, exerciseId: $0) } ?? [] }
-    private var component: String? { components.contains(chosenComponent) ? chosenComponent : nil }
 
     private func name(_ id: String) -> String { store.exercise(id: id)?.name ?? "Ćwiczenie" }
 
@@ -130,13 +127,9 @@ struct TechniqueCard: View {
                 if simulated { SimulatedBadge() }
             }
             if let exerciseId {
-                let points = TechniqueSeries.points(results, exerciseId: exerciseId, component: component)
-                HStack(spacing: FormaSpacing.s) {
-                    ChoiceMenu(options: exercises.map { (id: $0, name: name($0)) },
-                               selection: Binding(get: { exerciseId }, set: { chosenExercise = $0 }))
-                    ChoiceMenu(options: [(id: "", name: "Wynik ogólny")] + components.map { (id: $0, name: Self.partName($0)) },
-                               selection: Binding(get: { component ?? "" }, set: { chosenComponent = $0 }))
-                }
+                let points = TechniqueSeries.points(results, exerciseId: exerciseId)
+                ChoiceMenu(options: exercises.map { (id: $0, name: name($0)) },
+                           selection: Binding(get: { exerciseId }, set: { chosenExercise = $0 }))
                 if let first = points.first, let last = points.last {
                     HStack(alignment: .firstTextBaseline, spacing: FormaSpacing.m) {
                         NumberText("\(Int(last.value))", size: 52, unit: "/100", color: FormaColor.voltText)
@@ -147,8 +140,7 @@ struct TechniqueCard: View {
                     TechniqueChart(points: points)
                         .frame(height: 150)
                 } else {
-                    Text(component == nil ? "Brak analizy techniki tego ćwiczenia. Nagraj je w zakładce Analiza, a pojawi się tu wykres."
-                                          : "Brak tej składowej w analizach tego ćwiczenia.")
+                    Text("Brak analizy techniki tego ćwiczenia. Nagraj je w zakładce Analiza, a pojawi się tu wykres.")
                         .formaStyle(.subheadline)
                         .foregroundStyle(FormaColor.ink2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -157,8 +149,7 @@ struct TechniqueCard: View {
                     }
                     .buttonStyle(.formaGlass)
                 }
-                if component == nil,
-                   let summary = ProgressReport.techniqueProgress(results.filter { $0.exerciseId == exerciseId })?.summary {
+                if let summary = ProgressReport.techniqueProgress(results.filter { $0.exerciseId == exerciseId })?.summary {
                     Text(summary)
                         .formaStyle(.subheadline)
                         .foregroundStyle(FormaColor.ink2)
@@ -177,11 +168,6 @@ struct TechniqueCard: View {
         .padding(FormaSpacing.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
-    }
-
-    private static func partName(_ key: String) -> String {
-        let name = ProgressReport.componentNames[key] ?? key
-        return name.prefix(1).uppercased() + name.dropFirst()
     }
 }
 

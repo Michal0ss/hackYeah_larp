@@ -12,12 +12,9 @@ public struct SeriesPoint: Equatable, Sendable, Identifiable {
     }
 }
 
-/// The chart on "Postępy" for technique: the person picks the exercise and what to follow (the overall score or
-/// one of its parts). Pure and deterministic, so the choices can be tested without a screen.
+/// The chart on "Postępy" for technique: the person picks the exercise, the chart follows the overall score.
+/// Pure and deterministic, so the choices can be tested without a screen.
 public enum TechniqueSeries {
-    /// Parts of the score, in the order they are offered. Only those present in the results are shown.
-    public static let componentOrder = ["depth", "torso", "repeatability", "tempo"]
-
     /// The exercises to offer: those of the plan in plan order (also ones never analysed, so the chart can say so),
     /// then any other analysed exercise, the most analysed first (ties by id).
     public static func exerciseIds(in results: [TechniqueResult], planned: [String] = []) -> [String] {
@@ -28,21 +25,11 @@ public enum TechniqueSeries {
         return fromPlan + others
     }
 
-    /// Score parts that at least one analysis of the exercise has, in `componentOrder`.
-    public static func components(in results: [TechniqueResult], exerciseId: String) -> [String] {
-        let present = Set(results.filter { $0.exerciseId == exerciseId }.flatMap { $0.componentScores.keys })
-        return componentOrder.filter(present.contains)
-    }
-
-    /// Oldest first, one point per analysis. `component == nil` is the overall score. An analysis that lacks the
-    /// asked part is left out rather than drawn as zero.
-    public static func points(_ results: [TechniqueResult], exerciseId: String, component: String? = nil) -> [SeriesPoint] {
+    /// Oldest first, one point per analysis: its overall score.
+    public static func points(_ results: [TechniqueResult], exerciseId: String) -> [SeriesPoint] {
         results.filter { $0.exerciseId == exerciseId }
             .sorted { $0.date < $1.date }
-            .compactMap { result in
-                let value: Int? = component == nil ? result.score : result.componentScores[component ?? ""]
-                return value.map { SeriesPoint(date: result.date, value: Double($0)) }
-            }
+            .map { SeriesPoint(date: $0.date, value: Double($0.score)) }
     }
 }
 

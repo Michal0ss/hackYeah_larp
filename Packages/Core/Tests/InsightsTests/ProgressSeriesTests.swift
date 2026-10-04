@@ -34,24 +34,6 @@ final class ProgressSeriesTests: XCTestCase {
         XCTAssertEqual(points.map(\.value), [58, 72])
     }
 
-    func testAComponentIsFollowedInsteadOfTheOverallScore() {
-        let results = [result("squat", ago: 5, score: 60, parts: ["depth": 40, "torso": 80]),
-                       result("squat", ago: 0, score: 70, parts: ["depth": 55, "torso": 82])]
-        XCTAssertEqual(TechniqueSeries.points(results, exerciseId: "squat", component: "depth").map(\.value), [40, 55])
-    }
-
-    func testAnAnalysisWithoutTheAskedPartIsLeftOutNotDrawnAsZero() {
-        let results = [result("squat", ago: 5, score: 60), result("squat", ago: 0, score: 70, parts: ["tempo": 66])]
-        XCTAssertEqual(TechniqueSeries.points(results, exerciseId: "squat", component: "tempo").map(\.value), [66])
-    }
-
-    func testComponentsAreOnlyThoseThePickedExerciseHasInTheOfferedOrder() {
-        let results = [result("squat", ago: 1, score: 70, parts: ["tempo": 60, "depth": 80]),
-                       result("pushup", ago: 1, score: 70, parts: ["torso": 50])]
-        XCTAssertEqual(TechniqueSeries.components(in: results, exerciseId: "squat"), ["depth", "tempo"])
-        XCTAssertEqual(TechniqueSeries.components(in: results, exerciseId: "pushup"), ["torso"])
-    }
-
     // MARK: Load
 
     private func load(_ id: String = "squat", ago: Int, kg: Double? = nil, reps: Int? = nil, hour: Int = 9) -> LoggedLoad {
