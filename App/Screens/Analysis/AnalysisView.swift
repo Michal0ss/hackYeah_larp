@@ -10,7 +10,7 @@ struct AnalysisView: View {
     var body: some View {
         ZStack {
             AmbientBackground()
-            ScrollView {
+            VerticalScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     topBar
                     stepContent

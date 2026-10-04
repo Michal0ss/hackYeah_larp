@@ -42,7 +42,7 @@ struct ManualSetView: View {
     private var run: WorkoutRun { model.run }
 
     var body: some View {
-        ScrollView {
+        VerticalScrollView {
             VStack(alignment: .leading, spacing: FormaSpacing.l) {
                 topBar
                 VStack(alignment: .leading, spacing: FormaSpacing.s) {

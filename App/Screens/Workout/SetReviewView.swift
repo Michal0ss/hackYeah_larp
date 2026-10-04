@@ -20,7 +20,7 @@ struct SetReviewView: View {
     private var run: WorkoutRun { model.run }
 
     var body: some View {
-        ScrollView {
+        VerticalScrollView {
             VStack(alignment: .leading, spacing: FormaSpacing.l) {
                 topBar
                 if let set = run.lastSet, let planned = planned(for: set) {

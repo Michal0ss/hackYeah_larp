@@ -12,7 +12,7 @@ struct PhysioResultsView: View {
     var body: some View {
         ZStack {
             AmbientBackground()
-            ScrollView {
+            VerticalScrollView {
                 VStack(alignment: .leading, spacing: FormaSpacing.l) {
                     VStack(alignment: .leading, spacing: FormaSpacing.s) {
                         SectionLabel("Opieka")

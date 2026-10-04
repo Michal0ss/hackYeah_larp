@@ -46,7 +46,7 @@ struct PlanView: View {
     var body: some View {
         ZStack {
             AmbientBackground()
-            ScrollView {
+            VerticalScrollView {
                 VStack(alignment: .leading, spacing: FormaSpacing.l) {
                     header
                     if store.planHasEnded { endedCard }

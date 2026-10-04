@@ -106,7 +106,7 @@ private struct WorkoutOverviewView: View {
     let onClose: () -> Void
 
     var body: some View {
-        ScrollView {
+        VerticalScrollView {
             VStack(alignment: .leading, spacing: FormaSpacing.l) {
                 HStack {
                     SectionLabel("Trening")
@@ -186,7 +186,7 @@ private struct WorkoutFinishedView: View {
     @State private var draft = SessionFeedbackDraft()
 
     var body: some View {
-        ScrollView {
+        VerticalScrollView {
             VStack(alignment: .leading, spacing: FormaSpacing.l) {
                 SectionLabel("Koniec treningu")
                 Text(model.session.title).formaStyle(.largeTitle).foregroundStyle(FormaColor.ink)
