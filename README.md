@@ -1,6 +1,6 @@
 # hackGYM (HackYeah, Sport & Healthcare)
 
-Aplikacja na iPhone'a: trener, plan treningowy i doradca w jednym. Ocenia technikę ćwiczenia z filmu i na żywo (na telefonie), łączy ją z regeneracją i samopoczuciem w rekomendację dnia, układa plan i prowadzi trening z planu, ma czat i rozmowę głosową z trenerem AI.
+Aplikacja na iPhone'a: trener, plan treningowy i doradca w jednym. Na żywo ocenia technikę ćwiczenia z filmu i łączy ją z regeneracją i samopoczuciem w rekomendację dnia, układa plan i prowadzi trening z planu, ma czat i rozmowę głosową z trenerem AI.
 
 - Opis produktu i zasady: [PROJECT.md](PROJECT.md)
 - Kto co robi, gałęzie i zadania: [WORKINGPLAN.md](WORKINGPLAN.md)
@@ -24,7 +24,7 @@ Cele:
 ## Główne funkcje
 
 - **Plan i trening**: tydzień z sesjami, ręczna edycja (serie, powtórzenia, przerwy, zamiana ćwiczenia, własna sesja, „Cofnij”), ekran po serii, minutnik odpoczynku, wpis ręczny, karta „Jak poszło?” po sesji.
-- **Seria na żywo z kamerą**: kadrowanie, kalibracja, komenda „zaczynaj”, potem **dźwięki w stałym rytmie tempa z planu** (niższy = faza w dół, wyższy = faza w górę, pauzy bez dźwięku), liczenie powtórzeń i ocena techniki. Ćwiczenia statyczne (plank) mają tylko „zaczynaj” i odliczanie czasu.
+- **Seria na żywo z kamerą**: kadrowanie, kalibracja, komenda „zaczynaj”, potem **dźwięki w stałym rytmie tempa z planu** (niższy = faza w dół, wyższy = faza w górę, pauzy bez dźwięku), liczenie powtórzeń i ocena techniki. Ćwiczenia statyczne (np. plank) mają tylko „zaczynaj” i odliczanie czasu.
 - **Analiza z filmu**: ocena jakości nagrania z konkretną wskazówką („odejdź krok do tyłu”), liczba powtórzeń, wynik techniki 0–100 z uwagami i wykres kąta (przysiad, pompka, podciąganie, dipy).
 - **Trener AI**: czat, który zna plan i wyniki, z narzędziami (ustawia cel kroków, proponuje zmiany planu jako karty „Zastosuj / Odrzuć / Cofnij”, sugeruje konsultację) oraz opcjonalna rozmowa głosowa (domyślnie wyłączona).
 - **Dziś**: najbliższa sesja, rekomendacja dnia z silnika reguł, regeneracja z Apple Health, cel kroków, check-in.
@@ -85,14 +85,6 @@ Wspólny backend jest wdrożony na Vercelu z prawdziwym modelem (Gemini): `https
 
 Na symulatorze wystarczy `Cmd+R`. Kamera, HealthKit z prawdziwymi danymi i podpis wymagają prawdziwego iPhone'a (`Local.xcconfig` z `DEVELOPMENT_TEAM`). Logowanie Google i synchronizacja konta wymagają konfiguracji Supabase (`Config/Secrets.xcconfig`); bez niej aplikacja działa na samym telefonie.
 
-## Stan projektu (4.10)
-
-Zamrożenie funkcji i oddanie: **4.10, zgłoszenie z zapasem przed 23:00.** Aktualny stan zadań i uwag: [WORKINGPLAN.md](WORKINGPLAN.md), sekcja 9.
-
-W `main` działa wszystko z tabeli wyżej oraz: seria na żywo i analiza z filmu dla czterech ćwiczeń (przysiad, pompka, podciąganie, dipy) z kątami liczonymi z poprawką proporcji obrazu, plan od AI z kontrolą po stronie serwera i planem z szablonu jako zapasem, czat z narzędziami (w tym ustawianiem celu kroków), komenda „zaczynaj” i dźwięki w rytmie tempa z planu (głos systemowy), historia treningów w koncie, usuwanie konta, wspólne limity zapytań w Supabase.
-
-Czego **nikt jeszcze nie sprawdził na prawdziwym iPhonie**: kamera, seria na żywo i analiza na prawdziwych nagraniach (logika jest sprawdzona na syntetycznych pozach i na trzech nagraniach dipów), HealthKit z danymi z zegarka, synchronizacja konta na dwóch telefonach z prawdziwym kontem Google, przyciski i wczytywanie filmu w Analizie po ostatnim refaktorze, głos w słuchawkach. Migracja `user_records` w Supabase musi być zastosowana przez osobę z dostępem do projektu (Wiktor), inaczej synchronizacja historii nie zapisze nic.
-
 ## Najważniejsze decyzje architektoniczne
 
 1. **Wrażliwe dane zostają na telefonie.** Punkty ciała liczy Apple Vision na urządzeniu, wideo i klatki nie są wysyłane ani zapisywane. Do sieci idą liczby, podsumowania i tekst wpisany przez użytkownika, a dane zdrowotne tylko po zgodzie. Baza w chmurze **odrzuca** (CHECK) klucze mogące nieść zdrowie, rozmowy albo pozy, więc nawet błąd w kliencie ich tam nie wyśle.
@@ -130,7 +122,7 @@ Config/               ustawienia budowania (Local i Secrets są poza repo)
 project.yml           opis projektu dla XcodeGen
 ```
 
-Aplikacja nazywa się **hackGYM**. Nazwy techniczne zostają „Forma”: projekt i schemat Xcode (`Forma.xcodeproj`), typy w kodzie (`FormaColor`, `FormaAPI`), zmienne `FORMA_*`, folder danych na telefonie (`Application Support/Forma`), adres `forma-api-three.vercel.app` i bundle id. Zmiana któregokolwiek z nich wymagałaby migracji danych albo ponownej konfiguracji wszystkich osób.
+Aplikacja nazywa się **hackGYM**. Projekt i schemat Xcode (`Forma.xcodeproj`), typy w kodzie (`FormaColor`, `FormaAPI`), zmienne `FORMA_*`, folder danych na telefonie (`Application Support/Forma`), adres `forma-api-three.vercel.app` i bundle id. Zmiana któregokolwiek z nich wymagałaby migracji danych albo ponownej konfiguracji wszystkich osób.
 
 Nowe pliki dodajemy do `Packages/Core` (albo do `App/`), a nie do `.xcodeproj`. Właściciele modułów: [CLAUDE.md](CLAUDE.md).
 
