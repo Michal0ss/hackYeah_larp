@@ -30,6 +30,12 @@ class ContentError(Exception):
 class Blueprint(CamelModel):
     title: str = Field(max_length=40)
     slots: list[Pattern] = Field(min_length=1)
+    # The slots of a session of 90 minutes or more (see LONG_SESSION_MINUTES). Without it the normal slots are used.
+    long_slots: list[Pattern] | None = None
+
+
+# From this length of a session on, a blueprint's `long_slots` are used (more exercises than the normal slots hold).
+LONG_SESSION_MINUTES = 90
 
 
 class GoalScheme(CamelModel):
@@ -183,7 +189,7 @@ class ContentStore:
         # Every slot must be fillable for the most restricted user (beginner, no equipment), otherwise a
         # template plan could come out with holes.
         for name, blueprint in templates.blueprints.items():
-            for pattern in blueprint.slots:
+            for pattern in [*blueprint.slots, *(blueprint.long_slots or [])]:
                 if not any(e.pattern == pattern and e.level == "beginner" and e.equipment == "none" for e in exercises):
                     problems.append(
                         f"catalog.json: no beginner exercise without equipment for pattern '{pattern}' "

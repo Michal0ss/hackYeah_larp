@@ -35,7 +35,8 @@ public struct TemplatePlanBuilder: Sendable {
             let occurrence = seenKinds[kind, default: 0]
             seenKinds[kind] = occurrence + 1
 
-            let slots = blueprint.slots.filter { !scheme.dropSlots.contains($0) }.prefix(perSession)
+            let base = profile.sessionMinutes >= PlanTemplates.longSessionMinutes ? (blueprint.longSlots ?? blueprint.slots) : blueprint.slots
+            let slots = base.filter { !scheme.dropSlots.contains($0) }.prefix(perSession)
             var picked: [ExerciseItem] = []
             var used: Set<String> = []
             for slot in slots {

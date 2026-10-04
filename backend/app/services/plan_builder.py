@@ -8,7 +8,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from app.content.store import ContentStore, GoalScheme
+from app.content.store import LONG_SESSION_MINUTES, ContentStore, GoalScheme
 from app.schemas.domain import (
     EQUIPMENT_RANK,
     LEVEL_RANK,
@@ -71,7 +71,12 @@ def build_template_plan(
         seen_kinds[kind] = occurrence + 1
         blueprint = templates.blueprints[kind]
 
-        slots = [slot for slot in blueprint.slots if slot not in scheme.drop_slots][:per_session]
+        base_slots = (
+            blueprint.long_slots
+            if profile.session_minutes >= LONG_SESSION_MINUTES and blueprint.long_slots
+            else blueprint.slots
+        )
+        slots = [slot for slot in base_slots if slot not in scheme.drop_slots][:per_session]
         picked: list[ExerciseItem] = []
         used: set[str] = set()
         for slot in slots:

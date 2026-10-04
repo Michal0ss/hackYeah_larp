@@ -107,7 +107,7 @@ final class TemplatePlanParityTests: XCTestCase {
         let templates = try bundledTemplates()
         XCTAssertEqual(Set(templates.goals.keys), Set(TrainingGoal.allCases.map(\.rawValue)))
         XCTAssertEqual(templates.exercisesPerSession(forMinutes: 10), templates.exercisesPerSession(forMinutes: 30))
-        XCTAssertEqual(templates.exercisesPerSession(forMinutes: 200), templates.exercisesPerSession(forMinutes: 75))
+        XCTAssertEqual(templates.exercisesPerSession(forMinutes: 200), templates.exercisesPerSession(forMinutes: 90))
         XCTAssertNil(PlanTemplates.decode(Data("nonsense".utf8)))
     }
 }

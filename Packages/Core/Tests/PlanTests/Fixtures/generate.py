@@ -22,7 +22,7 @@ content = ContentStore.load(ROOT / "content")
 TAG_SETS = [
     [], [], ["deepSquats"], [], ["jumps", "deepLunges"], [], ["overheadPress", "loadedPushups", "barbellDeadlift"], [],
 ]
-MINUTES = [30, 45, 60, 75]
+MINUTES = [30, 45, 60, 75, 90]
 
 profiles = []
 grid = product(["strength", "physique", "fitness", "returnToMovement"], ["beginner", "intermediate"], [2, 3, 4, 5],
@@ -30,7 +30,7 @@ grid = product(["strength", "physique", "fitness", "returnToMovement"], ["beginn
 for index, (goal, level, days, equipment) in enumerate(grid):
     profiles.append(
         {
-            "goal": goal, "level": level, "daysPerWeek": days, "sessionMinutes": MINUTES[index % 4], "equipment": equipment,
+            "goal": goal, "level": level, "daysPerWeek": days, "sessionMinutes": MINUTES[index % len(MINUTES)], "equipment": equipment,
             "avoid": "kolano" if index % 5 == 0 else "", "avoidTags": TAG_SETS[index % len(TAG_SETS)],
             "easyStart": index % 7 == 0,
         }

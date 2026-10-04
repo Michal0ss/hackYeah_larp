@@ -4,7 +4,7 @@ import Contracts
 /// Everything the user chooses during onboarding, before it becomes a `UserProfile`.
 public struct OnboardingDraft: Equatable, Sendable {
     public static let dayOptions = [2, 3, 4, 5]
-    public static let minuteOptions = [30, 45, 60, 75]
+    public static let minuteOptions = [30, 45, 60, 75, 90]
 
     public var goal: TrainingGoal = .strength
     public var level: TrainingLevel = .intermediate
