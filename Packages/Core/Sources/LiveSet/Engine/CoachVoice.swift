@@ -1,6 +1,6 @@
 import Foundation
 import AVFoundation
-import AudioToolbox
+import Contracts
 
 public enum VoicePriority: Sendable {
     /// The counting ("jeden, dwa, trzy"). Interrupts advice.
@@ -14,9 +14,9 @@ public protocol CoachVoice: AnyObject {
     /// Activates the audio session (ducks other audio, routes to headphones).
     func prepare()
     func speak(_ text: String, priority: VoicePriority)
-    /// A short, distinct sound (not speech) marking the exact moment a set starts being tracked —
-    /// easier to react to on a half-second beat than a spoken word, and unambiguous in any language.
-    func signalSetStart()
+    /// A short beep (not speech) marking the start of a phase: a lower one for lowering, a higher one for lifting.
+    /// Easier to follow on a beat than a spoken word. Other phases are silent.
+    func playPhaseBeep(_ phase: RepPhase)
     /// Stops speaking and releases the audio session.
     func finish()
     var headphonesConnected: Bool { get }
@@ -26,13 +26,13 @@ public protocol CoachVoice: AnyObject {
 @MainActor
 public final class RecordingVoice: CoachVoice {
     public private(set) var spoken: [(text: String, priority: VoicePriority)] = []
-    public private(set) var signalsSent = 0
+    public private(set) var beeps: [RepPhase] = []
     public var headphonesConnected: Bool { true }
 
     public init() {}
     public func prepare() {}
     public func speak(_ text: String, priority: VoicePriority) { spoken.append((text, priority)) }
-    public func signalSetStart() { signalsSent += 1 }
+    public func playPhaseBeep(_ phase: RepPhase) { beeps.append(phase) }
     public func finish() {}
 }
 
@@ -42,6 +42,7 @@ public final class SpeechCoachVoice: NSObject, CoachVoice {
     private let synthesizer = AVSpeechSynthesizer()
     private let voice = AVSpeechSynthesisVoice(language: "pl-PL")
     private var currentPriority: VoicePriority?
+    private var beepPlayers: [RepPhase: AVAudioPlayer] = [:]
 
     public override init() {
         super.init()
@@ -83,10 +84,44 @@ public final class SpeechCoachVoice: NSObject, CoachVoice {
         synthesizer.speak(utterance)
     }
 
-    public func signalSetStart() {
-        #if os(iOS)
-        AudioServicesPlaySystemSound(SystemSoundID(1117))
-        #endif
+    public func playPhaseBeep(_ phase: RepPhase) {
+        let frequency: Double
+        switch phase {
+        case .eccentric: frequency = 520
+        case .concentric: frequency = 880
+        case .bottomPause, .topPause: return
+        }
+        if beepPlayers[phase] == nil {
+            let player = try? AVAudioPlayer(data: Self.beepWave(frequency: frequency))
+            player?.prepareToPlay()
+            beepPlayers[phase] = player
+        }
+        guard let player = beepPlayers[phase] else { return }
+        player.currentTime = 0
+        player.play()
+    }
+
+    /// A short sine beep with a soft attack and release, as 16-bit mono WAV data.
+    static func beepWave(frequency: Double, duration: Double = 0.18, sampleRate: Double = 44_100) -> Data {
+        let count = Int(duration * sampleRate)
+        var samples = [Int16]()
+        samples.reserveCapacity(count)
+        for i in 0..<count {
+            let t = Double(i) / sampleRate
+            let envelope = min(1, t / 0.01, (duration - t) / 0.04)
+            samples.append(Int16(sin(2 * .pi * frequency * t) * envelope * 0.8 * Double(Int16.max)))
+        }
+        func le<T: FixedWidthInteger>(_ value: T) -> [UInt8] { withUnsafeBytes(of: value.littleEndian) { Array($0) } }
+        let dataSize = UInt32(count * 2)
+        var wave = Data("RIFF".utf8)
+        wave.append(contentsOf: le(36 + dataSize))
+        wave.append(Data("WAVEfmt ".utf8))
+        wave.append(contentsOf: le(UInt32(16)) + le(UInt16(1)) + le(UInt16(1)) + le(UInt32(sampleRate)))
+        wave.append(contentsOf: le(UInt32(sampleRate) * 2) + le(UInt16(2)) + le(UInt16(16)))
+        wave.append(Data("data".utf8))
+        wave.append(contentsOf: le(dataSize))
+        for sample in samples { wave.append(contentsOf: le(sample)) }
+        return wave
     }
 
     public func finish() {

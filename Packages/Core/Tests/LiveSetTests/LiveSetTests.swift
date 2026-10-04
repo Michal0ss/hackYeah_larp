@@ -233,12 +233,11 @@ final class LiveSetEngineTests: XCTestCase {
         XCTAssertNotNil(summary.techniqueScore)
         XCTAssertTrue(summary.tempoFindings.contains { $0.id == "tempo_ecc_fast" || $0.id == "tempo_ecc_ok" })
 
-        // The set start is a sound signal, not a spoken word.
-        XCTAssertEqual(voice.signalsSent, 1)
-
+        // The set starts with a command; after it only the metronome beeps (not tied to the frames), no phase words.
         let said = voice.spoken.map(\.text)
-        XCTAssertTrue(said.contains("w dół"), "spoken: \(said)")
-        XCTAssertTrue(said.contains("w górę"), "spoken: \(said)")
+        XCTAssertEqual(said.filter { $0 == "zaczynaj" }.count, 1, "spoken: \(said)")
+        XCTAssertFalse(said.contains("w dół"), "spoken: \(said)")
+        XCTAssertFalse(said.contains("w górę"), "spoken: \(said)")
         XCTAssertTrue(said.contains { $0.hasPrefix("Koniec serii") })
         // Corrections still happen (shown on screen as lastCue) but aren't spoken live anymore.
         XCTAssertFalse(said.contains("wolniej w dół"), "spoken: \(said)")
@@ -276,5 +275,36 @@ final class LiveSetEngineTests: XCTestCase {
         }
         XCTAssertEqual(engine.stage, .framing)
         XCTAssertTrue(voice.spoken.contains { $0.text == "Odejdź krok do tyłu, nie widzę stóp" })
+    }
+}
+
+final class TempoMetronomeTests: XCTestCase {
+    func testBeepsFollowThePlanTempo() {
+        // 3 s down, 1 s pause, 2 s up: one repetition lasts 6 s.
+        let metronome = TempoMetronome(spec: .controlled, leadIn: 2)
+        XCTAssertEqual(metronome.cycleDuration, 6)
+        XCTAssertEqual(metronome.beat(at: 0), .init(phase: .eccentric, offset: 2))
+        XCTAssertEqual(metronome.beat(at: 1), .init(phase: .concentric, offset: 6))
+        XCTAssertEqual(metronome.beat(at: 2), .init(phase: .eccentric, offset: 8))
+        XCTAssertEqual(metronome.beat(at: 3), .init(phase: .concentric, offset: 12))
+    }
+
+    func testTopPauseLengthensTheCycle() {
+        let metronome = TempoMetronome(spec: TempoSpec(eccentric: 2, bottomPause: 0, concentric: 1, topPause: 1), leadIn: 0)
+        XCTAssertEqual(metronome.cycleDuration, 4)
+        XCTAssertEqual(metronome.beat(at: 1), .init(phase: .concentric, offset: 2))
+        XCTAssertEqual(metronome.beat(at: 2), .init(phase: .eccentric, offset: 4))
+    }
+
+    func testPullUpStartsWithTheLiftingPhase() {
+        let metronome = TempoMetronome(spec: .controlled, reversed: true, leadIn: 0)
+        XCTAssertEqual(metronome.beat(at: 0), .init(phase: .concentric, offset: 0))
+        // 2 s pull, 1 s pause at the top, then the 3 s lowering.
+        XCTAssertEqual(metronome.beat(at: 1), .init(phase: .eccentric, offset: 3))
+    }
+
+    func testEmptySpecHasNoBeats() {
+        let metronome = TempoMetronome(spec: TempoSpec(eccentric: 0, bottomPause: 0, concentric: 0, topPause: 0))
+        XCTAssertNil(metronome.beat(at: 0))
     }
 }
