@@ -101,6 +101,7 @@ public final class SpeechCoachVoice: NSObject, CoachVoice {
         }
         if beepPlayers[phase] == nil {
             let player = try? AVAudioPlayer(data: Self.beepWave(frequency: frequency))
+            player?.volume = 1
             player?.prepareToPlay()
             beepPlayers[phase] = player
         }
@@ -108,14 +109,17 @@ public final class SpeechCoachVoice: NSObject, CoachVoice {
     }
 
     /// A short sine beep with a soft attack and release, as 16-bit mono WAV data.
-    static func beepWave(frequency: Double, duration: Double = 0.18, sampleRate: Double = 44_100) -> Data {
+    static func beepWave(frequency: Double, duration: Double = 0.22, sampleRate: Double = 44_100) -> Data {
         let count = Int(duration * sampleRate)
         var samples = [Int16]()
         samples.reserveCapacity(count)
         for i in 0..<count {
             let t = Double(i) / sampleRate
-            let envelope = min(1, t / 0.01, (duration - t) / 0.04)
-            samples.append(Int16(sin(2 * .pi * frequency * t) * envelope * 0.8 * Double(Int16.max)))
+            let envelope = min(1, t / 0.008, (duration - t) / 0.04)
+            // Overtones and a soft clip make the beep carry much louder than a plain sine at the same peak level.
+            let phase = 2 * .pi * frequency * t
+            let tone = sin(phase) + 0.5 * sin(2 * phase) + 0.3 * sin(3 * phase)
+            samples.append(Int16(tanh(2.5 * tone) * envelope * 0.98 * Double(Int16.max)))
         }
         func le<T: FixedWidthInteger>(_ value: T) -> [UInt8] { withUnsafeBytes(of: value.littleEndian) { Array($0) } }
         let dataSize = UInt32(count * 2)
