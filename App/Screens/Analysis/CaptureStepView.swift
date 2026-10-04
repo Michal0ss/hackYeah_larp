@@ -25,9 +25,13 @@ struct CaptureStepView: View {
     let model: AnalysisModel
 
     @State private var showingCamera = false
+    @State private var showingGallery = false
     @State private var photosItem: PhotosPickerItem?
     @State private var isImportingFromGallery = false
     @State private var importError: String?
+
+    /// Asked once: `UIImagePickerController.isSourceTypeAvailable` is slow and the body runs on every redraw.
+    private let cameraAvailable = MovieCapturePicker.isAvailable
 
     var body: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.l) {
@@ -39,14 +43,16 @@ struct CaptureStepView: View {
                 .foregroundStyle(FormaColor.ink2)
 
             VStack(spacing: FormaSpacing.m) {
-                if MovieCapturePicker.isAvailable {
+                if cameraAvailable {
                     Button {
+                        guard !isImportingFromGallery else { return }
                         showingCamera = true
                     } label: {
                         Label("Nagraj teraz", systemImage: "video.fill")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.formaPrimary)
+                    .disabled(isImportingFromGallery)
                 } else {
                     Text("Nagrywanie kamerą działa tylko na fizycznym iPhonie — w symulatorze wybierz film z galerii.")
                         .formaStyle(.footnote)
@@ -55,7 +61,10 @@ struct CaptureStepView: View {
                         .glassCard()
                 }
 
-                PhotosPicker(selection: $photosItem, matching: .videos) {
+                // A plain button that opens the picker: the whole pill is tappable, unlike a styled `PhotosPicker` label.
+                Button {
+                    showingGallery = true
+                } label: {
                     Label("Wybierz z galerii", systemImage: "photo.on.rectangle")
                         .frame(maxWidth: .infinity)
                 }
@@ -66,7 +75,7 @@ struct CaptureStepView: View {
             if isImportingFromGallery {
                 HStack(spacing: FormaSpacing.s) {
                     ProgressView()
-                    Text("Wczytywanie filmu…").formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
+                    Text("Wczytywanie filmu z galerii…").formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
                 }
             }
             if let importError {
@@ -80,6 +89,9 @@ struct CaptureStepView: View {
             }
             .ignoresSafeArea()
         }
+        // `.current`: take the file as it is stored; the default may re-encode the clip first, which takes a long time.
+        .photosPicker(isPresented: $showingGallery, selection: $photosItem, matching: .videos,
+                      preferredItemEncoding: .current)
         .onChange(of: photosItem) { _, newValue in
             guard let newValue else { return }
             Task { await importFromGallery(newValue) }

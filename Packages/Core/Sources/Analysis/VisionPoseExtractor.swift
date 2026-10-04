@@ -44,6 +44,13 @@ public enum VisionPoseExtractor {
     /// of an exercise are slow and Vision would otherwise need minutes for a short clip.
     public static var maxAnalysedFps = 30.0
 
+    /// The longer side of the frames given to Vision, in pixels. A 4K clip is scaled down while it is decoded: Vision
+    /// works on a small copy anyway, and converting full-size frames is most of the wait.
+    public static var maxFrameSide = 1280
+
+    /// Progress is reported at most this often (per second), so the screen is not redrawn on every frame.
+    public static var maxProgressHz = 12.0
+
     /// Width in pixels of the stills sent to `progress`.
     public static var previewWidth: CGFloat = 360
 
@@ -69,10 +76,14 @@ public enum VisionPoseExtractor {
         let orientation = cgOrientation(for: transform)
 
         let reader = try AVAssetReader(asset: asset)
-        let output = AVAssetReaderTrackOutput(
-            track: track,
-            outputSettings: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
-        )
+        var settings: [String: Any] = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+        // `naturalSize` is the stored picture (before the rotation), so scaling it keeps the proportions of the frames.
+        if let natural = try? await track.load(.naturalSize), max(natural.width, natural.height) > CGFloat(maxFrameSide) {
+            let scale = CGFloat(maxFrameSide) / max(natural.width, natural.height)
+            settings[kCVPixelBufferWidthKey as String] = Int((natural.width * scale).rounded())
+            settings[kCVPixelBufferHeightKey as String] = Int((natural.height * scale).rounded())
+        }
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: settings)
         output.alwaysCopiesSampleData = false
         guard reader.canAdd(output) else { throw ExtractionError.readerFailedToStart }
         reader.add(output)
@@ -84,6 +95,8 @@ public enum VisionPoseExtractor {
         var lastAnalysed = -Double.infinity
         let minGap = 0.9 / max(1, maxAnalysedFps)
         let portrait = [.left, .right, .leftMirrored, .rightMirrored].contains(orientation)
+        let progressGap = 1 / max(1, maxProgressHz)
+        var lastProgress = -Double.infinity
 
         while let sampleBuffer = output.copyNextSampleBuffer() {
             if Task.isCancelled {
@@ -110,10 +123,11 @@ public enum VisionPoseExtractor {
                                   peopleDetected: results.count, aspect: aspect)
             frames.append(frame)
 
-            if let progress {
-                let image = frames.count % 2 == 0 ? previewImage(of: buffer, orientation: orientation) : nil
+            if let progress, stamp - lastProgress >= progressGap {
+                lastProgress = stamp
                 progress(ClipExtractionProgress(fraction: duration > 0 ? min(1, (stamp - first) / duration) : 0,
-                                                frame: frame, image: image, framesDone: frames.count))
+                                                frame: frame, image: previewImage(of: buffer, orientation: orientation),
+                                                framesDone: frames.count))
             }
         }
 
