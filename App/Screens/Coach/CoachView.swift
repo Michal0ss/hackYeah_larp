@@ -54,7 +54,7 @@ struct CoachView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
-                if let voice, voice.isAvailable { VoiceMicRow(controller: voice) }
+                if let voice, voice.isAvailable, voice.voiceChatEnabled { VoiceMicRow(controller: voice) }
                 CoachInputBar(model: model, focused: $inputFocused)
             }
             // In the Trener tab the floating tab bar sits right under the field: leave air between them.
@@ -95,7 +95,10 @@ struct CoachView: View {
                 Button("Wyczyść rozmowę", systemImage: "trash", role: .destructive) { confirmClear = true }
                     .disabled(model.messages.isEmpty)
                 if let voice, voice.isAvailable {
-                    Toggle("Czytaj odpowiedzi", systemImage: "speaker.wave.2", isOn: Bindable(voice).readRepliesAloud)
+                    Toggle("Czat głosowy", systemImage: "mic", isOn: Bindable(voice).voiceChatEnabled)
+                    if voice.voiceChatEnabled {
+                        Toggle("Czytaj odpowiedzi", systemImage: "speaker.wave.2", isOn: Bindable(voice).readRepliesAloud)
+                    }
                 }
             } label: {
                 Image(systemName: "ellipsis")
