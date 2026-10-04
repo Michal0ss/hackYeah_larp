@@ -19,12 +19,27 @@ struct CameraPreview: UIViewRepresentable {
             applyRotation()
         }
 
+        private var watchdog: Timer?
+
         func applyRotation() {
             if let connection = previewLayer.connection, connection.isVideoRotationAngleSupported(90),
                connection.videoRotationAngle != 90 {
                 connection.videoRotationAngle = 90
             }
         }
+
+        /// The preview connection is replaced whenever the camera input is (the selfie camera, a switch, an
+        /// interruption) and nothing tells the view. While the view is on screen it is checked twice a second, so the
+        /// picture never stays turned by 90 degrees.
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            watchdog?.invalidate()
+            watchdog = nil
+            guard window != nil else { return }
+            watchdog = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in self?.applyRotation() }
+        }
+
+        deinit { watchdog?.invalidate() }
     }
 
     func makeUIView(context: Context) -> PreviewView {
