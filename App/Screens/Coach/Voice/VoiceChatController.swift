@@ -30,6 +30,16 @@ final class VoiceChatController {
 
     private static let silenceDelay = Duration.milliseconds(1200)
     private static let readAloudDefaultsKey = "coachVoice.readRepliesAloud"
+    private static let enabledDefaultsKey = "coachVoice.enabled"
+
+    /// "Czat głosowy" — the mic button and the reading of replies. Off until the person turns it on in the menu, so a
+    /// typed conversation stays silent by default. Persisted; a stored property so `Bindable` can track it.
+    var voiceChatEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(voiceChatEnabled, forKey: Self.enabledDefaultsKey)
+            if !voiceChatEnabled { endSession() }
+        }
+    }
 
     /// "Czytaj odpowiedzi" — persisted so it survives leaving and reopening the Trener tab. A
     /// stored property (not computed) so `@Observable`/`Bindable` can actually track it in the UI.
@@ -47,6 +57,7 @@ final class VoiceChatController {
         self.recognizer = recognizer ?? SpeechRecognizer()
         self.reader = reader
         self.readRepliesAloud = (UserDefaults.standard.object(forKey: Self.readAloudDefaultsKey) as? Bool) ?? true
+        self.voiceChatEnabled = UserDefaults.standard.bool(forKey: Self.enabledDefaultsKey)
         reader.setOnIdle { [weak self] in self?.handleReaderIdle() }
         observeViewModel()
     }
@@ -137,13 +148,13 @@ final class VoiceChatController {
 
     private func handleViewModelChange() {
         if viewModel.isResponding {
-            guard readRepliesAloud else { return }
+            guard voiceChatEnabled, readRepliesAloud else { return }
             for sentence in sentenceStream.newSentences(in: viewModel.streamingText) { speak(sentence) }
         } else {
             // The reply is finished and the view model has already cleared `streamingText`, so the last sentence (it
             // ends the text with nothing after it, which is why `newSentences` held it back) comes from the finished
             // message. Without this the last sentence of every answer would stay unspoken.
-            if readRepliesAloud, let last = viewModel.messages.last, last.role == .coach,
+            if voiceChatEnabled, readRepliesAloud, let last = viewModel.messages.last, last.role == .coach,
                let rest = sentenceStream.remainder(in: last.text) {
                 speak(rest)
             }
