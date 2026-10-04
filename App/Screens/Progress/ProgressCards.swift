@@ -208,12 +208,11 @@ struct ActivityCard: View {
     }
 }
 
-/// Weeks as columns, weekdays (Mon...Sun) as rows, darker = more sets that day. Scrolls horizontally so
-/// older weeks are reachable without shrinking the squares.
+/// Weeks as columns, weekdays (Mon...Sun) as rows, darker = more sets that day. Always the latest 12 weeks.
 private struct ActivityGrid: View {
     let days: [ActivityDay]
-    private static let cell: CGFloat = 13
-    private static let gap: CGFloat = 3
+    private static let cell: CGFloat = 16
+    private static let gap: CGFloat = 4
     private static let weekdays = ["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"]
 
     private var weeks: [[ActivityDay]] {
@@ -234,12 +233,11 @@ private struct ActivityGrid: View {
                 }
             }
             .accessibilityHidden(true)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: Self.gap) {
-                    ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
-                        VStack(spacing: Self.gap) {
-                            ForEach(week) { day in square(day) }
-                        }
+            // A fixed number of the latest weeks, sized to fit the card: nothing to scroll.
+            HStack(alignment: .top, spacing: Self.gap) {
+                ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
+                    VStack(spacing: Self.gap) {
+                        ForEach(week) { day in square(day) }
                     }
                 }
             }
