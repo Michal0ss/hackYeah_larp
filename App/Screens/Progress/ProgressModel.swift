@@ -42,9 +42,7 @@ final class ProgressModel {
         let storedCheckIns = await services.checkIns.checkIns(days: 14)
         let storedResults = await services.technique.results(limit: 50)
         recentSets = await services.technique.setSummaries(limit: 4)
-        let weightedSets = services.trainingLog.sets.compactMap { set in
-            set.weightKg.map { WeightedSet(exerciseId: set.exerciseId, date: set.date, weightKg: $0) }
-        }
+        let activitySets = services.trainingLog.sets.map { LoggedActivity(exerciseId: $0.exerciseId, date: $0.date) }
 
         let demo = snapshots.isEmpty || snapshots.contains(where: \.isSimulated)
         let realResults = storedResults.filter { !$0.isSimulated }
@@ -64,7 +62,7 @@ final class ProgressModel {
         recoverySimulated = snapshots.contains(where: \.isSimulated)
 
         report = ProgressReport.make(results: results, snapshots: snapshots, checkIns: checkIns,
-                                     weightedSets: weightedSets, now: now)
+                                     activitySets: activitySets, now: now)
         care = CarePathway().assess(snapshots: snapshots, checkIns: checkIns, techniqueResults: results, now: now)
         careSimulated = techniqueSimulated || moodSimulated || recoverySimulated
         loaded = true

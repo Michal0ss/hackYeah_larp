@@ -17,7 +17,7 @@ struct EmptyProgressCard: View {
             Text("Jeszcze nic do pokazania")
                 .formaStyle(.title2)
                 .foregroundStyle(FormaColor.ink)
-            Text("Po pierwszej analizie przysiadu i kilku check-inach zobaczysz tu wynik techniki, regenerację i nastrój w czasie. Ciężar z treningów pojawi się tu, gdy go zapiszesz.")
+            Text("Po pierwszej analizie przysiadu i kilku check-inach zobaczysz tu wynik techniki, regenerację i nastrój w czasie. Treningi pojawią się tu jako kalendarz aktywności.")
                 .formaStyle(.body)
                 .foregroundStyle(FormaColor.ink2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -172,31 +172,35 @@ private struct TechniqueChart: View {
     }
 }
 
-// MARK: Strength
+// MARK: Activity
 
-/// Weight over time for the exercise with the most days logged. Real data only: nothing simulated, like the
-/// recent-sets card — it shows nothing until the user has actually logged a weight at least once.
-struct StrengthCard: View {
+/// A GitHub-style calendar of training days ("kwadraciki") plus a short analysis of the last week. Real
+/// data only, like the recent-sets card: an all-empty grid just means nothing has been logged yet.
+struct ActivityCard: View {
     @Environment(AppStore.self) private var store
-    let progress: StrengthProgress
+    let activity: ActivityLog
 
     var body: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.m) {
-            SectionLabel("Ciężar · \(store.exercise(id: progress.exerciseId)?.name ?? "Ćwiczenie")")
-            HStack(alignment: .firstTextBaseline, spacing: FormaSpacing.m) {
-                NumberText(WorkoutFormat.weight(progress.latest), size: 36, color: FormaColor.voltText)
-                if progress.points.count > 1 {
-                    WeightDeltaChip(delta: progress.deltaFromStart)
+            HStack {
+                SectionLabel("Aktywność")
+                Spacer()
+                if activity.currentStreakDays > 0 {
+                    Label("\(activity.currentStreakDays) dni z rzędu", systemImage: "flame.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(FormaColor.emberText)
                 }
             }
-            if progress.points.count > 1 {
-                StrengthChart(points: progress.points)
-                    .frame(height: 150)
-            }
-            Text(progress.summary)
+            ActivityGrid(days: activity.days)
+            Text(activity.summary)
                 .formaStyle(.subheadline)
                 .foregroundStyle(FormaColor.ink2)
                 .fixedSize(horizontal: false, vertical: true)
+            if let topExerciseId = activity.topExerciseId {
+                Text("Najczęściej: \(store.exercise(id: topExerciseId)?.name ?? "ćwiczenie")")
+                    .formaStyle(.footnote)
+                    .foregroundStyle(FormaColor.ink3)
+            }
         }
         .padding(FormaSpacing.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -204,57 +208,46 @@ struct StrengthCard: View {
     }
 }
 
-/// "+2,5 kg od startu". Same idea as `DeltaChip`, for a `Double` weight instead of an `Int` score.
-private struct WeightDeltaChip: View {
-    let delta: Double
+/// Weeks as columns, weekdays (Mon...Sun) as rows, darker = more sets that day. Scrolls horizontally so
+/// older weeks are reachable without shrinking the squares.
+private struct ActivityGrid: View {
+    let days: [ActivityDay]
+    private static let cell: CGFloat = 13
+    private static let gap: CGFloat = 3
 
-    var body: some View {
-        let up = delta > 0.01, down = delta < -0.01
-        let color = up ? FormaColor.goText : down ? FormaColor.moderateText : FormaColor.ink2
-        let amount = WorkoutFormat.weight(abs(delta))
-        HStack(spacing: 4) {
-            Image(systemName: up ? "arrow.up.right" : down ? "arrow.down.right" : "equal")
-                .font(.system(size: 12, weight: .bold))
-            Text(up ? "+\(amount) od startu" : down ? "−\(amount) od startu" : "bez zmian")
-                .font(.system(size: 13, weight: .bold))
-        }
-        .foregroundStyle(color)
-        .padding(.horizontal, 10)
-        .frame(height: 28)
-        .background(color.opacity(0.14), in: Capsule())
-        .overlay { Capsule().strokeBorder(color.opacity(0.35), lineWidth: 1) }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-private struct StrengthChart: View {
-    let points: [WeightPoint]
-
-    private var range: ClosedRange<Double> {
-        let values = points.map(\.weightKg)
-        let lower = max(0, (values.min() ?? 0) - 5)
-        let upper = (values.max() ?? 0) + 5
-        return lower...upper
+    private var weeks: [[ActivityDay]] {
+        stride(from: 0, to: days.count, by: 7).map { Array(days[$0..<min($0 + 7, days.count)]) }
     }
 
+    private var maxCount: Int { days.compactMap(\.setCount).max() ?? 0 }
+
     var body: some View {
-        Chart(points) { p in
-            LineMark(x: .value("Data", p.date), y: .value("Ciężar", p.weightKg))
-                .interpolationMethod(.monotone)
-                .foregroundStyle(FormaColor.volt)
-                .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
-            PointMark(x: .value("Data", p.date), y: .value("Ciężar", p.weightKg))
-                .foregroundStyle(FormaColor.volt)
-                .symbolSize(p.id == points.last?.id ? 90 : 36)
-        }
-        .chartYScale(domain: range)
-        .chartXAxis {
-            AxisMarks(values: .automatic(desiredCount: 4)) { _ in
-                AxisValueLabel(format: .dateTime.day().month(.abbreviated)).foregroundStyle(FormaColor.ink3)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: Self.gap) {
+                ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
+                    VStack(spacing: Self.gap) {
+                        ForEach(week) { day in square(day) }
+                    }
+                }
             }
         }
-        .accessibilityLabel("Ciężar w czasie")
-        .accessibilityValue(points.map { WorkoutFormat.weight($0.weightKg) }.joined(separator: ", "))
+        .accessibilityLabel("Dni treningowe w ostatnich \(weeks.count) tygodniach")
+        .accessibilityValue("\(days.filter { ($0.setCount ?? 0) > 0 }.count) dni z treningiem")
+    }
+
+    @ViewBuilder
+    private func square(_ day: ActivityDay) -> some View {
+        RoundedRectangle(cornerRadius: 3, style: .continuous)
+            .fill(color(for: day.setCount))
+            .frame(width: Self.cell, height: Self.cell)
+            .opacity(day.setCount == nil ? 0 : 1)
+    }
+
+    private func color(for setCount: Int?) -> Color {
+        guard let setCount, setCount > 0 else { return FormaColor.well }
+        guard maxCount > 0 else { return FormaColor.well }
+        let level = min(1, Double(setCount) / Double(maxCount))
+        return FormaColor.volt.opacity(0.25 + 0.75 * level)
     }
 }
 
