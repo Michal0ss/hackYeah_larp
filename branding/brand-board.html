@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><title>hackGym</title>
+<style>
+@font-face { font-family:"InterV"; src:url("fonts/Inter-Variable.ttf"); font-weight:100 900; }
+:root{ --ink:#0B0F14; --ink2:#121B28; --ice:#F4F7FB; --volt:#C8FF2E; --mute:rgba(244,247,251,.55); --line:rgba(255,255,255,.10); }
+*{box-sizing:border-box;margin:0}
+body{width:1600px;color:var(--ice);font-family:"InterV",-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{padding:80px;background:radial-gradient(900px 600px at 0% 0%,rgba(48,110,255,.32),transparent 70%),radial-gradient(900px 700px at 100% 100%,rgba(255,106,31,.22),transparent 70%),linear-gradient(var(--ink),var(--ink2))}
+.eyebrow{font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);margin-bottom:28px}
+section{margin-top:110px} section:first-child{margin-top:0}
+.hero{display:flex;align-items:center;justify-content:space-between}
+.hero .big{height:560px}
+.hero .lock{width:760px}
+.row{display:flex;gap:36px;align-items:flex-end}
+.ic{border-radius:22.37%;display:block;box-shadow:0 12px 44px rgba(0,0,0,.5)}
+.cap{font-size:13px;color:var(--mute);margin-top:14px;text-align:center}
+.phone{flex:0 0 470px;width:470px;height:470px;border-radius:60px 60px 0 0;border:10px solid #1b222c;border-bottom:none;background:linear-gradient(160deg,#16335e,#0d1522 55%,#3a2218);padding:84px 30px 0;position:relative;overflow:hidden}
+.phone::before{content:"";position:absolute;top:20px;left:50%;width:110px;height:32px;margin-left:-55px;border-radius:20px;background:#000}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:26px 18px}
+.app{text-align:center;font-size:11px;color:rgba(255,255,255,.9)}
+.app i,.app img{display:block;width:68px;height:68px;border-radius:22.37%;margin:0 auto 6px}
+.app img{box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.lockups{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.lk{border-radius:28px;height:230px;display:flex;align-items:center;justify-content:center}
+.lk img{width:76%}
+.sw{display:grid;grid-template-columns:repeat(6,1fr);gap:18px}
+.sw div{border-radius:22px;height:150px;padding:18px;display:flex;align-items:flex-end;font-size:13px;font-weight:600}
+.three{display:flex;gap:56px;align-items:flex-start}
+.three div{width:300px}
+.three img{width:100%;border-radius:28px;display:block}
+.three b{display:block;margin-top:16px;font-size:18px}
+</style></head><body><div class="wrap">
+
+<section><div class="hero">
+  <img class="big" src="mark/hackgym-mark.svg">
+    <div class="row" style="flex-direction:column;align-items:flex-start;gap:30px">
+    <img style="width:700px" src="logo/hackgym-logo-horizontal-dark.svg">
+  </div>
+</div></section>
+
+<section><div class="eyebrow">Ikona</div>
+<div class="row" style="align-items:flex-end;gap:56px">
+  <div class="phone"><div class="grid">
+    <div class="app"><i style="background:#3a7bd5"></i>Poczta</div><div class="app"><i style="background:#e8e8ea"></i>Kalendarz</div><div class="app"><i style="background:#34c759"></i>Wiadomości</div><div class="app"><i style="background:#5e5ce6"></i>Zdjęcia</div>
+    <div class="app"><i style="background:#ff9f0a"></i>Zegar</div><div class="app"><img src="app-icon/AppIcon-1024.png">hackGym</div><div class="app"><i style="background:#ff375f"></i>Muzyka</div><div class="app"><i style="background:#64d2ff"></i>Pogoda</div>
+  </div></div>
+  <div class="row">
+    <div><img class="ic" src="app-icon/AppIcon-1024.png" width="200"><div class="cap">Domyślna</div></div>
+    <div><img class="ic" src="app-icon/AppIcon-dark-1024.png" width="200"><div class="cap">Ciemna</div></div>
+    <div><img class="ic" src="app-icon/AppIcon-tinted-1024.png" width="200"><div class="cap">Barwiona</div></div>
+    <div><img class="ic" src="app-icon/AppIcon-volt-1024.png" width="200"><div class="cap">Volt</div></div>
+    <div style="margin-left:20px;display:flex;gap:18px;align-items:flex-end"><div><img class="ic" src="app-icon/AppIcon-1024.png" width="60"><div class="cap">60</div></div><div><img class="ic" src="app-icon/AppIcon-1024.png" width="40"><div class="cap">40</div></div><div><img class="ic" src="app-icon/AppIcon-1024.png" width="29"><div class="cap">29</div></div></div>
+  </div>
+</div></section>
+
+<section><div class="eyebrow">Logo</div>
+<div class="lockups">
+  <div class="lk" style="background:linear-gradient(var(--ink),var(--ink2));border:1px solid var(--line)"><img src="logo/hackgym-logo-horizontal-dark.svg"></div>
+  <div class="lk" style="background:#F4F7FB"><img src="logo/hackgym-logo-horizontal-light.svg"></div>
+  <div class="lk" style="background:linear-gradient(#DDFF63,#BDF51E)"><img src="logo/hackgym-logo-horizontal-black.svg"></div>
+</div></section>
+
+<section><div class="eyebrow">Kolory</div>
+<div class="sw">
+  <div style="background:#C8FF2E;color:#0B0F14">#C8FF2E</div>
+  <div style="background:#0B0F14;border:1px solid var(--line)">#0B0F14</div>
+  <div style="background:#121B28;border:1px solid var(--line)">#121B28</div>
+  <div style="background:#F4F7FB;color:#0B0F14">#F4F7FB</div>
+  <div style="background:#306EFF">#306EFF</div>
+  <div style="background:#FF6A1F">#FF6A1F</div>
+</div></section>
+
+</div></body></html>
