@@ -69,6 +69,7 @@ public final class LiveSetEngine {
     private var signal: SquatSignal
     private var tracker = PhaseTracker()
     private var policy = CoachingPolicy()
+    private let beepLeadIn: Double
     private var metronomeTask: Task<Void, Never>?
 
     private var readySince: Double?
@@ -88,7 +89,8 @@ public final class LiveSetEngine {
     public init(exerciseId: String, spec: TempoSpec, setIndex: Int = 1, voice: CoachVoice,
                 kind: MovementKind = .squat, assessor: TechniqueAssessing? = nil, isSimulated: Bool = false,
                 trackerConfig: PhaseTrackerConfig = PhaseTrackerConfig(), cooldownReps: Int? = nil,
-                reference: AngleReference = AngleReference(), minBend: Double = 20) {
+                reference: AngleReference = AngleReference(), minBend: Double = 20, beepLeadIn: Double = 2) {
+        self.beepLeadIn = beepLeadIn
         self.minBend = minBend
         self.targetBand = kind.targetBand(reference)
         self.exerciseId = exerciseId
@@ -313,7 +315,7 @@ public final class LiveSetEngine {
     /// The command "zaczynaj", then beeps on the plan's tempo (`TempoMetronome`): fixed, independent of what the
     /// person does. Nothing else is said while the set runs; corrections are only shown on screen.
     private func startMetronome() {
-        let metronome = TempoMetronome(spec: spec, reversed: kind.isReversed)
+        let metronome = TempoMetronome(spec: spec, reversed: kind.isReversed, leadIn: beepLeadIn)
         say("zaczynaj")
         let origin = ContinuousClock.now
         metronomeTask?.cancel()
