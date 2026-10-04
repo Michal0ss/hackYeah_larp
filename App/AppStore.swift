@@ -48,6 +48,9 @@ final class AppStore {
     /// True when the onboarding result could not be written to disk (the app keeps working in memory).
     private(set) var onboardingSaveFailed = false
     @ObservationIgnored private let onboardingStorage: OnboardingStoring
+    /// Set by the app: tells the account sync that something was deleted here, or that something new is worth sending.
+    @ObservationIgnored var onCloudDelete: ((CloudDeletion) -> Void)?
+    @ObservationIgnored var onDataChanged: (() -> Void)?
 
     init(onboardingStorage: OnboardingStoring = FileOnboardingStorage.default) {
         self.onboardingStorage = onboardingStorage
@@ -230,6 +233,9 @@ final class AppStore {
     /// scratch. The technique history of live sets (Postępy) is kept.
     @MainActor
     func resetWorkout(sessionId: UUID) {
+        let sets = services.trainingLog.sets(forSession: sessionId).map(\.id)
+        let completionId = services.planStore.completions.first { $0.sessionId == sessionId }?.id
+        onCloudDelete?(.session(sets: sets, completionId: completionId))
         services.planStore.removeCompletion(sessionId: sessionId)
         services.trainingLog.removeSets(forSession: sessionId)
         services.sessionFeedbackStore.remove(forSession: sessionId)
@@ -248,6 +254,7 @@ final class AppStore {
     /// Removes everything the app stored on this phone and starts onboarding again.
     @MainActor
     func deleteAllData() async {
+        onCloudDelete?(.everything)
         try? onboardingStorage.clear()
         services.planStore.clear()
         services.trainingLog.clear()
@@ -381,6 +388,18 @@ final class AppStore {
     func recordSet(_ summary: SetSummary) {
         if let result = services.localHistory.record(summary) { lastTechnique = result }
         Task { await refreshRecommendation() }
+        dataChanged()
+    }
+
+    /// Something worth keeping in the account changed (a set, a finished workout, an analysis): the sync sends it soon.
+    func dataChanged() { onDataChanged?() }
+
+    /// Starts on what the account has (plan and answers) instead of onboarding, on a phone the person signed in on.
+    /// Health access is asked for right away, because the onboarding step that normally does it is skipped.
+    func restoreFromAccount(_ setup: AccountSetup) {
+        completeOnboarding(OnboardingResult(profile: setup.profile, health: HealthHistory(), plan: setup.plan,
+                                            healthAccess: .granted))
+        Task { _ = await services.healthKit.requestAccess() }
     }
 
     func exercise(id: String) -> ExerciseItem? {

@@ -116,6 +116,22 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
         return persist()
     }
 
+    /// Adds sessions that were finished on another phone (the account restores them). A session that is already marked
+    /// done here keeps the entry it has. Returns how many were added.
+    @discardableResult
+    public func restore(completions restored: [SessionCompletion]) -> Int {
+        lock.lock(); defer { lock.unlock() }
+        let known = Set(stored.completions.map(\.sessionId))
+        let added = restored.filter { !known.contains($0.sessionId) }
+        guard !added.isEmpty else { return 0 }
+        stored.completions = (stored.completions + added).sorted { $0.date > $1.date }
+        if stored.completions.count > Self.maxCompletions {
+            stored.completions.removeLast(stored.completions.count - Self.maxCompletions)
+        }
+        persist()
+        return added.count
+    }
+
     /// Takes back "done" for a session (the user marked it by mistake).
     @discardableResult
     public func removeCompletion(sessionId: UUID) -> Bool {

@@ -244,6 +244,7 @@ struct ResultStepView: View {
     private func save(_ result: TechniqueResult) {
         store.services.localHistory.record(result)
         store.lastTechnique = result
+        store.dataChanged()
         Task { await store.refreshRecommendation() }
         model.startOver()
         router.tab = .today

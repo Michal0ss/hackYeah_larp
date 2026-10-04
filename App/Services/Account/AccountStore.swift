@@ -28,7 +28,7 @@ final class AccountStore {
     private(set) var errorMessage: String?
 
     @ObservationIgnored private let sessions: AccountSessionStoring
-    @ObservationIgnored private let client: SupabaseAuthClient
+    @ObservationIgnored let client: SupabaseAuthClient
     @ObservationIgnored private let defaults: UserDefaults
     private static let skippedKey = "accountSkipped"
 
@@ -143,6 +143,25 @@ final class AccountStore {
         case "account_unavailable": return "Usuwanie konta nie jest teraz dostępne. Spróbuj ponownie za chwilę."
         default: return error.userMessage
         }
+    }
+
+    /// The saved session with a valid access token (refreshed when it is about to expire), nil when signed out or when
+    /// the service refused the refresh (the person is then signed out here). A lost connection keeps the session but
+    /// returns nil too: whatever needed it is tried again next time.
+    func freshSession() async -> AccountSession? {
+        guard var session = sessions.load() else { return nil }
+        if session.needsRefresh() {
+            do {
+                session = try await client.refresh(session)
+                sessions.save(session)
+            } catch SupabaseAuthClient.AuthError.server {
+                await signOut()
+                return nil
+            } catch {
+                return nil
+            }
+        }
+        return session
     }
 
     func signOut() async {
