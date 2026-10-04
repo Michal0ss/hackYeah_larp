@@ -154,7 +154,7 @@ public struct ProgressReport: Equatable, Sendable {
 
     // MARK: Technique
 
-    private static func techniqueProgress(_ results: [TechniqueResult]) -> TechniqueProgress? {
+    public static func techniqueProgress(_ results: [TechniqueResult]) -> TechniqueProgress? {
         let sorted = results.sorted { $0.date < $1.date }
         guard let first = sorted.first, let last = sorted.last else { return nil }
         let points = sorted.map { ScorePoint(date: $0.date, score: $0.score) }
