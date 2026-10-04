@@ -16,6 +16,10 @@ final class AppStore {
 
     var profile: UserProfile = SampleData.profile
     var plan: TrainingPlan = PlanScheduler.schedule(SampleData.plan, startingOn: Date())
+    /// Bumped whenever the plan store, the training log or the step goal changes on disk, from any screen or from the
+    /// coach. Those stores are not observable themselves: a view that shows what they hold (`resolvedPlan`, the
+    /// adjusted session, the Progress charts) reads this, so it redraws on its own.
+    private(set) var storesRevision = 0
     /// Bumped when newer content arrives from the backend, so screens that read `catalog` refresh.
     private(set) var contentRevision = 0
     var catalog: [ExerciseItem] { _ = contentRevision; return services.catalog.exercises }
@@ -54,6 +58,14 @@ final class AppStore {
 
     init(onboardingStorage: OnboardingStoring = FileOnboardingStorage.default) {
         self.onboardingStorage = onboardingStorage
+        services.planStore.onChange = { [weak self] in Task { @MainActor in self?.storesRevision += 1 } }
+        services.trainingLog.onChange = { [weak self] in Task { @MainActor in self?.storesRevision += 1 } }
+        services.stepGoalStore.onChange = { [weak self] in
+            Task { @MainActor in
+                self?.reloadStepGoal()
+                self?.storesRevision += 1
+            }
+        }
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-reset-onboarding") {
@@ -289,6 +301,7 @@ final class AppStore {
     /// The session the rule engine's decision applies to: today's, or the next one when today is free (the one the
     /// Today screen shows). Other sessions stay as planned.
     func adjustment(for session: PlannedSession) -> PlanAdjustment {
+        _ = storesRevision  // a finished session is not adjusted: redraw when the completions change
         guard session.id == todaySession?.session.id, session.status != .skipped, !restoredSessionIds.contains(session.id),
               !services.planStore.completedSessionIds().contains(session.id) else {
             return PlanAdjustment(original: session, session: session, changes: [], isRestDay: false)
@@ -408,7 +421,7 @@ final class AppStore {
     }
 
     /// The plan with `done` on the finished sessions (the saved plan itself never carries it).
-    var resolvedPlan: TrainingPlan { services.planStore.resolved(plan) }
+    var resolvedPlan: TrainingPlan { _ = storesRevision; return services.planStore.resolved(plan) }
 
     /// Today's session, or the next planned one. Nil when the plan has run out.
     var todaySession: (session: PlannedSession, isToday: Bool)? {

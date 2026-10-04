@@ -41,7 +41,7 @@ struct ProgressScreen: View {
             }
             .scrollIndicators(.hidden)
         }
-        .task { await model.load(services: store.services) }
+        .task(id: store.storesRevision) { await model.load(services: store.services) }
         .sheet(isPresented: $showCare) {
             if let care = model.care {
                 CareView(assessment: care, simulated: model.careSimulated)

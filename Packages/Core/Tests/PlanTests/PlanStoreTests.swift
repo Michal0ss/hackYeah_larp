@@ -255,4 +255,30 @@ final class PlanStoreTests: XCTestCase {
         XCTAssertEqual(s.completions.count, 25)
         XCTAssertEqual(s.templatePlan?.sessions.count, plan.sessions.count)
     }
+
+    /// The screens refresh on this: every change of the saved data is reported, once per change, after the lock is released.
+    func testEveryChangeIsReported() {
+        let store = store(nil)
+        let count = ChangeCounter()
+        store.onChange = { count.hit() }
+        let plan = SampleData.plan
+        store.save(plan)
+        XCTAssertEqual(count.value, 1)
+        let session = plan.sessions[0].id
+        store.recordCompletion(sessionId: session)
+        XCTAssertEqual(count.value, 2)
+        // Reading the store from the callback must not deadlock.
+        store.onChange = { _ = store.completedSessionIds(); count.hit() }
+        store.removeCompletion(sessionId: session)
+        XCTAssertEqual(count.value, 3)
+        store.clear()
+        XCTAssertEqual(count.value, 4)
+    }
+}
+
+private final class ChangeCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var hits = 0
+    func hit() { lock.lock(); hits += 1; lock.unlock() }
+    var value: Int { lock.lock(); defer { lock.unlock() }; return hits }
 }

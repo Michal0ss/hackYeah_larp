@@ -22,6 +22,18 @@ final class TrainingLogTests: XCTestCase {
         XCTAssertEqual(TrainingLogStore(fileURL: url).sets, [saved])
     }
 
+    func testEveryChangeOfTheLogIsReported() {
+        let log = TrainingLogStore(fileURL: nil)
+        let hits = HitCounter()
+        log.onChange = { hits.hit() }
+        let saved = set(reps: 6)
+        log.record(saved)
+        log.edit(saved.id, reps: 7)
+        log.remove(saved.id)
+        log.clear()
+        XCTAssertEqual(hits.value, 4)
+    }
+
     func testTheSameSetOfTheSameSessionIsReplaced() {
         let log = TrainingLogStore(fileURL: nil)
         log.record(set(reps: 6))
@@ -297,4 +309,11 @@ final class WorkoutRunTests: XCTestCase {
         run.skipRest(now: t0)
         XCTAssertEqual(run.rest?.isFinished(at: t0), true)
     }
+}
+
+private final class HitCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var hits = 0
+    func hit() { lock.lock(); hits += 1; lock.unlock() }
+    var value: Int { lock.lock(); defer { lock.unlock() }; return hits }
 }

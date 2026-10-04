@@ -72,6 +72,10 @@ public final class TrainingLogStore: @unchecked Sendable {
     private var stored: [LoggedSet] = []
     private let fileURL: URL?
 
+    /// Called after every change of the saved sets (from whatever thread made it), so the screens can refresh. Set
+    /// once at start-up.
+    public var onChange: (@Sendable () -> Void)?
+
     /// - Parameter fileURL: nil keeps the log in memory (tests, previews).
     public init(fileURL: URL?) {
         self.fileURL = fileURL
@@ -91,6 +95,7 @@ public final class TrainingLogStore: @unchecked Sendable {
     /// again does not leave two entries. Returns whether it reached the disk.
     @discardableResult
     public func record(_ set: LoggedSet) -> Bool {
+        defer { onChange?() }
         lock.lock(); defer { lock.unlock() }
         stored.removeAll { $0.id == set.id || ($0.sessionId == set.sessionId && $0.exerciseId == set.exerciseId && $0.setIndex == set.setIndex) }
         stored.insert(set, at: 0)
@@ -101,6 +106,7 @@ public final class TrainingLogStore: @unchecked Sendable {
     /// Changes the numbers of a set; what is left nil stays as it is. Marks the set as edited.
     @discardableResult
     public func edit(_ id: UUID, reps: Int? = nil, seconds: Int? = nil, weightKg: Double?? = nil) -> LoggedSet? {
+        defer { onChange?() }
         lock.lock(); defer { lock.unlock() }
         guard let index = stored.firstIndex(where: { $0.id == id }) else { return nil }
         var set = stored[index]
@@ -116,6 +122,7 @@ public final class TrainingLogStore: @unchecked Sendable {
 
     @discardableResult
     public func remove(_ id: UUID) -> Bool {
+        defer { onChange?() }
         lock.lock(); defer { lock.unlock() }
         stored.removeAll { $0.id == id }
         return persist()
@@ -124,6 +131,7 @@ public final class TrainingLogStore: @unchecked Sendable {
     /// Removes every set of one session (the user repeats the workout from scratch). Returns how many were removed.
     @discardableResult
     public func removeSets(forSession sessionId: UUID) -> Int {
+        defer { onChange?() }
         lock.lock(); defer { lock.unlock() }
         let before = stored.count
         stored.removeAll { $0.sessionId == sessionId }
@@ -136,6 +144,7 @@ public final class TrainingLogStore: @unchecked Sendable {
         lock.lock()
         stored = []
         lock.unlock()
+        onChange?()
         if let fileURL { try? FileManager.default.removeItem(at: fileURL) }
     }
 
