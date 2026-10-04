@@ -15,9 +15,13 @@ struct MovieCapturePicker: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.sourceType = .camera
-        picker.cameraCaptureMode = .video
-        picker.cameraDevice = .rear
+        // The media types come first: asking for the video mode while the picker still offers only photos is an
+        // exception ("cameraCaptureMode 1 not available because mediaTypes does contain public.movie") and kills the app.
         picker.mediaTypes = [UTType.movie.identifier]
+        if UIImagePickerController.availableCaptureModes(for: .rear)?.contains(NSNumber(value: UIImagePickerController.CameraCaptureMode.video.rawValue)) == true {
+            picker.cameraCaptureMode = .video
+        }
+        if UIImagePickerController.isCameraDeviceAvailable(.rear) { picker.cameraDevice = .rear }
         picker.videoQuality = .typeMedium
         picker.videoMaximumDuration = Self.maxDuration
         picker.delegate = context.coordinator
