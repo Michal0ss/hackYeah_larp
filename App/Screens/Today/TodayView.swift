@@ -33,6 +33,7 @@ struct TodayView: View {
                                     onStart: { workout = WorkoutLaunch(session: adjustment.session) },
                                     onRepeat: { repeating = entry.session },
                                     onToggle: { store.toggleOriginal(entry.session) })
+                        if adjustment.session.status != .skipped, !adjustment.isRestDay { MuscleMapCard(session: adjustment.session) }
                     }
                     RecommendationCard(recommendation: store.recommendation, text: store.recommendationText)
                     if let care = careModel.care {
