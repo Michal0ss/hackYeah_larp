@@ -24,6 +24,23 @@ public struct SimulatedSquat: Sendable {
         self.kind = kind
     }
 
+    /// A simulated person who moves exactly to the plan's tempo, starting with the first beep of the live coach
+    /// (`TempoMetronome`): the engine turns active at `activeAt` seconds of the stream and the first beep sounds
+    /// `beepLeadIn` seconds later. Every repetition is the same, one full cycle of the tempo after the other.
+    public static func following(_ spec: TempoSpec, kind: MovementKind = .squat, beepLeadIn: Double = 2,
+                                 activeAt: Double = 2.04) -> SimulatedSquat {
+        var sim = SimulatedSquat(kind: kind)
+        // For a pull-up the first part of the movement is the lifting, the way back is the lowering.
+        sim.eccentric = kind.isReversed ? spec.concentric : spec.eccentric
+        sim.concentric = kind.isReversed ? spec.eccentric : spec.concentric
+        sim.bottomPause = spec.bottomPause
+        sim.restBetweenReps = spec.topPause
+        sim.eccentricFactors = []
+        sim.depthFactors = []
+        sim.leadIn = activeAt + beepLeadIn
+        return sim
+    }
+
     private func eccentricDuration(_ rep: Int) -> Double {
         eccentric * (rep < eccentricFactors.count ? eccentricFactors[rep] : 1)
     }

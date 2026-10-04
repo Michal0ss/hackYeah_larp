@@ -64,6 +64,8 @@ public final class SpeechCoachVoice: NSObject, CoachVoice {
         try? session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
         try? session.setActive(true)
         #endif
+        // Both beeps are decoded now, so the first one does not sound late.
+        for phase in [RepPhase.eccentric, .concentric] { _ = beepPlayer(for: phase) }
     }
 
     public func speak(_ text: String, priority: VoicePriority) {
@@ -85,20 +87,24 @@ public final class SpeechCoachVoice: NSObject, CoachVoice {
     }
 
     public func playPhaseBeep(_ phase: RepPhase) {
+        guard let player = beepPlayer(for: phase) else { return }
+        player.currentTime = 0
+        player.play()
+    }
+
+    private func beepPlayer(for phase: RepPhase) -> AVAudioPlayer? {
         let frequency: Double
         switch phase {
         case .eccentric: frequency = 520
         case .concentric: frequency = 880
-        case .bottomPause, .topPause: return
+        case .bottomPause, .topPause: return nil
         }
         if beepPlayers[phase] == nil {
             let player = try? AVAudioPlayer(data: Self.beepWave(frequency: frequency))
             player?.prepareToPlay()
             beepPlayers[phase] = player
         }
-        guard let player = beepPlayers[phase] else { return }
-        player.currentTime = 0
-        player.play()
+        return beepPlayers[phase]
     }
 
     /// A short sine beep with a soft attack and release, as 16-bit mono WAV data.

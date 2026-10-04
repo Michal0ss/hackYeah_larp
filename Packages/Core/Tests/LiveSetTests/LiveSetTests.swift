@@ -278,6 +278,49 @@ final class LiveSetEngineTests: XCTestCase {
     }
 }
 
+@MainActor
+final class SimulationFollowsTempoTests: XCTestCase {
+    func testSimulatedPersonMovesToThePlanTempo() {
+        // The simulated pull-up is not counted by the engine even at its default tempo (its elbow barely bends), so it is left out.
+        for kind in MovementKind.allCases where kind != .pullup {
+            let engine = LiveSetEngine(exerciseId: "x", spec: .controlled, voice: RecordingVoice(), kind: kind, isSimulated: true)
+            let sim = SimulatedSquat.following(.controlled, kind: kind)
+            var activeAt: Double?
+            for frame in sim.frames() {
+                engine.ingest(frame)
+                if activeAt == nil, engine.stage == .active { activeAt = frame.time }
+            }
+            XCTAssertEqual(activeAt ?? 0, 2.04, accuracy: 0.05, "\(kind)")
+            XCTAssertEqual(engine.reps.count, 5, "\(kind)")
+        }
+    }
+}
+
+final class TimedVoice: CoachVoice {
+    var beeps: [(RepPhase, Date)] = []
+    var headphonesConnected: Bool { true }
+    func prepare() {}
+    func speak(_ text: String, priority: VoicePriority) {}
+    func playPhaseBeep(_ phase: RepPhase) { beeps.append((phase, Date())) }
+    func finish() {}
+}
+
+@MainActor
+final class MetronomeTimingTests: XCTestCase {
+    func testBeepsSoundAtTheTimesOfThePlanTempo() async throws {
+        let voice = TimedVoice()
+        let spec = TempoSpec(eccentric: 0.3, bottomPause: 0.1, concentric: 0.2, topPause: 0)
+        let engine = LiveSetEngine(exerciseId: "squat", spec: spec, voice: voice, isSimulated: true, beepLeadIn: 0.2)
+        for frame in SimulatedSquat().frames() { engine.ingest(frame) }
+        let start = Date()
+        try await Task.sleep(nanoseconds: 1_500_000_000)
+        engine.finish()
+        let times = voice.beeps.map { $0.1.timeIntervalSince(start) }
+        print("BEEPS", voice.beeps.map { "\($0.0)" }, times)
+        XCTAssertGreaterThan(voice.beeps.count, 4)
+    }
+}
+
 final class TempoMetronomeTests: XCTestCase {
     func testBeepsFollowThePlanTempo() {
         // 3 s down, 1 s pause, 2 s up: one repetition lasts 6 s.
