@@ -100,15 +100,17 @@ public final class CameraPoseSource: NSObject, @unchecked Sendable {
               let newInput = try? AVCaptureDeviceInput(device: device) else { throw CameraError.unavailable }
 
         session.beginConfiguration()
-        defer { session.commitConfiguration() }
         if let current = input { session.removeInput(current) }
         guard session.canAddInput(newInput) else {
             if let current = input, session.canAddInput(current) { session.addInput(current) }  // keep what worked
+            session.commitConfiguration()
             throw CameraError.unavailable
         }
         session.addInput(newInput)
         input = newInput
         self.position = position
+        session.commitConfiguration()
+        // The new input brought a new connection to the output: portrait and mirroring have to be set on that one.
         applyConnectionSettings(for: position)
     }
 
@@ -116,14 +118,26 @@ public final class CameraPoseSource: NSObject, @unchecked Sendable {
     /// mirror (the preview does the same), so the skeleton lines up with the picture.
     private func applyConnectionSettings(for position: Position) {
         guard let connection = output.connection(with: .video) else { return }
-        if connection.isVideoRotationAngleSupported(90) { connection.videoRotationAngle = 90 }
-        if connection.isVideoMirroringSupported { connection.isVideoMirrored = position == .front }
+        Self.portrait(connection, mirrored: position == .front)
+    }
+
+    /// Sets upright portrait buffers (and the selfie mirror) on a connection. Safe to call again and again.
+    private static func portrait(_ connection: AVCaptureConnection, mirrored: Bool) {
+        if connection.isVideoRotationAngleSupported(90), connection.videoRotationAngle != 90 { connection.videoRotationAngle = 90 }
+        if connection.isVideoMirroringSupported {
+            if connection.automaticallyAdjustsVideoMirroring { connection.automaticallyAdjustsVideoMirroring = false }
+            if connection.isVideoMirrored != mirrored { connection.isVideoMirrored = mirrored }
+        }
     }
 }
 
 extension CameraPoseSource: AVCaptureVideoDataOutputSampleBufferDelegate {
     public func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let buffer = CMSampleBufferGetImageBuffer(sampleBuffer), let continuation else { return }
+        // A connection that lost its portrait rotation (a switch to the selfie camera, an interruption) is put right
+        // for the next frames; a sideways frame is not analysed (its joints would be rotated by 90 degrees).
+        Self.portrait(connection, mirrored: position == .front)
+        if connection.isVideoRotationAngleSupported(90), CVPixelBufferGetWidth(buffer) > CVPixelBufferGetHeight(buffer) { return }
         let stamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
         let first = firstTimestamp ?? stamp
         firstTimestamp = first
