@@ -59,7 +59,7 @@ struct LiveSetView: View {
                     ProgressView().tint(FormaColor.voltText).onAppear { onFinished(summary) }
                 } else {
                     SetSummaryView(summary: summary, exerciseName: session.exercise.name, totalSets: totalSets,
-                                   onNextSet: onNextSet, onClose: onClose)
+                                   contextNotes: session.contextNotes, onNextSet: onNextSet, onClose: onClose)
                         .onAppear { store.recordSet(summary) }
                 }
             } else {

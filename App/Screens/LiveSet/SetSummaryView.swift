@@ -10,6 +10,9 @@ struct SetSummaryView: View {
     let totalSets: Int
     /// False when the summary is shown as details on top of the screen after a set (it has its own buttons).
     var showsActions = true
+    /// What the assessment adapted to the person. Nil when the summary is opened later from a stored set, where the
+    /// context of that moment is no longer known (nothing is shown then).
+    var contextNotes: [String]?
     let onNextSet: () -> Void
     let onClose: () -> Void
 
@@ -52,6 +55,7 @@ struct SetSummaryView: View {
             if let score = summary.techniqueScore {
                 scoreRow(score: score, caption: "z 100")
                 findings(summary.techniqueFindings)
+                if let contextNotes { ContextNoteView(notes: contextNotes) }
             } else {
                 Text("Nie udało się ocenić techniki. Sprawdź ustawienie telefonu.")
                     .formaStyle(.subheadline).foregroundStyle(FormaColor.ink2)

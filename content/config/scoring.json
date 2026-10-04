@@ -1,6 +1,6 @@
 {
-  "version": 2,
-  "note": "Wartości inżynierskie na demo (PROJECT.md 6.2 i 6.4), zakresy kątów z docs/ANALIZA_TECHNIKI.md. Do strojenia na prawdziwych nagraniach. Właściciel: Bartek.",
+  "version": 3,
+  "note": "Wartości inżynierskie na demo (PROJECT.md 6.2 i 6.4), zakresy kątów z docs/ANALIZA_TECHNIKI.md. Do strojenia na prawdziwych nagraniach. Sekcja \"context\": ile każdy powód (mobilność, poziom, kontuzja, proporcje) poszerza granice oceny; nigdy ich nie zawęża (docs/ANALIZA_TECHNIKI.md, „Kontekst osoby”). Właściciel: Bartek.",
   "quality": {
     "minVisibleRatio": 0.7,
     "minBodyHeight": 0.35,
@@ -47,5 +47,25 @@
     "minWidthSeconds": 0.3,
     "edgeShare": 0.1,
     "minAngleChange": 20
+  },
+  "context": {
+    "kneeExtraLimited": 12,
+    "kneeExtraCaution": 12,
+    "kneeExtraMax": 20,
+    "depthToleranceExtraLimited": 0.02,
+    "depthToleranceExtraCaution": 0.02,
+    "depthToleranceExtraBeginner": 0.01,
+    "depthToleranceExtraMax": 0.04,
+    "torsoLeanExtraLimited": 5,
+    "torsoLeanExtraBeginner": 3,
+    "torsoLeanExtraMax": 8,
+    "thighToTorsoReference": 0.85,
+    "torsoLeanPerRatio": 60,
+    "torsoLeanProportionMax": 8,
+    "elbowExtraBeginner": 5,
+    "elbowExtraCaution": 10,
+    "dipElbowExtraLimited": 10,
+    "elbowExtraMax": 15,
+    "repeatabilityExtraBeginner": 5
   }
 }
