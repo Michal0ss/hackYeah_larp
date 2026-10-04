@@ -7,9 +7,10 @@ import UniformTypeIdentifiers
 struct MovieCapturePicker: UIViewControllerRepresentable {
     let onFinish: (URL?) -> Void
 
-    static var isAvailable: Bool {
-        UIImagePickerController.isSourceTypeAvailable(.camera)
-    }
+    static let isAvailable: Bool = UIImagePickerController.isSourceTypeAvailable(.camera)
+
+    /// A longer clip only makes the reading slower; a set is a few repetitions.
+    static let maxDuration: TimeInterval = 60
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
@@ -18,6 +19,7 @@ struct MovieCapturePicker: UIViewControllerRepresentable {
         picker.cameraDevice = .rear
         picker.mediaTypes = [UTType.movie.identifier]
         picker.videoQuality = .typeMedium
+        picker.videoMaximumDuration = Self.maxDuration
         picker.delegate = context.coordinator
         return picker
     }
