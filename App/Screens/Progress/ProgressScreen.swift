@@ -4,8 +4,8 @@ import DesignSystem
 import Insights
 
 /// "Postępy": a GitHub-style training calendar with a short analysis of the last week, technique score over
-/// time (pick the exercise and what to follow), weight or repetitions over time (pick the exercise),
-/// and the way to care.
+/// time (pick the exercise and what to follow), recovery and mood over time, weight or repetitions over time
+/// (pick the exercise), and the way to care.
 /// Owner: Wiktor.
 struct ProgressScreen: View {
     @Environment(AppStore.self) private var store
@@ -31,6 +31,9 @@ struct ProgressScreen: View {
                         ActivityCard(activity: model.report.activity)
                         TechniqueCard(results: model.techniqueResults, simulated: model.isMixed && model.techniqueSimulated,
                                       onAnalyse: { router.tab = .analysis })
+                        RecoveryMoodCard(report: model.report,
+                                         simulated: model.isMixed && (model.recoverySimulated || model.moodSimulated),
+                                         onCheckIn: { showCheckIn = true })
                         LoadCard(sets: model.loads)
                         footer
                     }

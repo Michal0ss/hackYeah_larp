@@ -29,6 +29,8 @@ final class ProgressModel {
     private var presentFlags: [Bool] {
         var flags: [Bool] = []
         if report.technique != nil { flags.append(techniqueSimulated) }
+        if !report.recovery.isEmpty { flags.append(recoverySimulated) }
+        if !report.mood.isEmpty { flags.append(moodSimulated) }
         return flags
     }
 

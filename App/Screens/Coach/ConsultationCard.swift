@@ -3,8 +3,9 @@ import DesignSystem
 import Insights
 import SwiftUI
 
-/// Under the answer to a question that mentions pain or an injury (PROJECT.md 5.8). The app decides to show it (a
-/// fixed list of words), not the model. A signal to talk to a specialist, never a diagnosis.
+/// Under an answer in which the coach suggests talking to a specialist (PROJECT.md 5.8): the coach chooses the moment
+/// (the tool `suggest_consultation`), and the card also appears when the question has a plain word about pain or an
+/// injury, whatever the model does. A signal to talk to a specialist, never a diagnosis.
 struct ConsultationCard: View {
     @State private var showPhysio = false
 
@@ -15,7 +16,7 @@ struct ConsultationCard: View {
                     .foregroundStyle(FormaColor.restText).accessibilityHidden(true)
                 Text("Warto rozważyć konsultację").formaStyle(.caption).foregroundStyle(FormaColor.ink3)
             }
-            Text("W pytaniu pojawił się ból lub uraz. Trener nie ocenia jego przyczyny. Warto porozmawiać ze specjalistą, np. fizjoterapeutą, który oceni to na żywo.")
+            Text("Trener nie ocenia, co się dzieje. Warto porozmawiać ze specjalistą, np. fizjoterapeutą, który oceni to na żywo.")
                 .formaStyle(.subheadline).foregroundStyle(FormaColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
             Text(CarePathway.disclaimer)

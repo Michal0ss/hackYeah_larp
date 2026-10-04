@@ -20,7 +20,9 @@ public struct CoachReply: Equatable, Sendable {
     public var isTruncated: Bool
     /// Changes of the plan the coach proposed while answering. Nothing is changed until the user accepts one.
     public var proposals: [PlanChangeProposal] = []
-    /// The question mentioned pain or an injury: show the "Warto rozważyć konsultację" card under the answer.
+    /// Show the "Warto rozważyć konsultację" card under the answer: the coach chose to suggest a specialist (it decides
+    /// when), or the question has one of the plain words about pain or an injury (a safety net that does not depend on
+    /// the model).
     public var suggestsConsultation: Bool = false
 }
 
@@ -185,6 +187,7 @@ public struct CoachChat: Sendable {
             messages.append(.user(Self.clip(text)))
         }
         let painMentioned = PainSignal.mentions(text)
+        var coachSuggestsConsultation = false
         var answer = ""
         // The last set travels with the request, so the answer rests on it: say so under the answer.
         var sources: [String] = workout?.lastSet == nil ? [] : ["ostatnia seria"]
@@ -236,7 +239,7 @@ public struct CoachChat: Sendable {
                 guard !final.isEmpty else { throw CoachChatError.emptyAnswer }
                 continuation.yield(.finished(CoachReply(text: final, sources: sources, isSimulated: simulated,
                                                         isTruncated: stopReason == "max_tokens", proposals: proposals,
-                                                        suggestsConsultation: painMentioned)))
+                                                        suggestsConsultation: painMentioned || coachSuggestsConsultation)))
                 return
             }
             guard round < maxToolRounds else { throw CoachChatError.tooManyToolRounds }
@@ -256,6 +259,7 @@ public struct CoachChat: Sendable {
                                                  isError: true)
                     }
                 }
+                if output.suggestsConsultation { coachSuggestsConsultation = true }
                 if let label = output.sourceLabel {
                     if !sources.contains(label) { sources.append(label) }
                     continuation.yield(.checking(label))

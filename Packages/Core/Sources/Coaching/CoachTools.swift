@@ -14,14 +14,17 @@ public struct CoachToolOutput: Equatable, Sendable {
     public var isSimulated: Bool
     /// A change of the plan the coach proposed. Shown to the user as a card; the plan stays as it is until they accept.
     public var proposal: PlanChangeProposal?
+    /// The coach chose to suggest a talk with a specialist: the answer gets the "Warto rozważyć konsultację" card.
+    public var suggestsConsultation: Bool
 
     public init(content: String, isError: Bool = false, sourceLabel: String? = nil, isSimulated: Bool = false,
-                proposal: PlanChangeProposal? = nil) {
+                proposal: PlanChangeProposal? = nil, suggestsConsultation: Bool = false) {
         self.content = content
         self.isError = isError
         self.sourceLabel = sourceLabel
         self.isSimulated = isSimulated
         self.proposal = proposal
+        self.suggestsConsultation = suggestsConsultation
     }
 }
 
@@ -43,6 +46,9 @@ public enum CoachToolName {
     public static let proposePlanChange = "propose_plan_change"
     /// Sets the daily step goal shown in the health panel. A goal is a target, not health data, so it needs no consent.
     public static let setStepGoal = "set_step_goal"
+    /// The coach decides a talk with a specialist is worth considering: the app shows the card with the physiotherapist
+    /// search under the answer. It reads and writes nothing, so it needs no consent.
+    public static let suggestConsultation = "suggest_consultation"
 
     /// Tools that read health data: they answer only with the user's consent.
     public static let health: Set<String> = [todayRecommendation, recoverySummary, checkIns, sessionFeedback]
@@ -130,6 +136,10 @@ public struct CoachTools: CoachToolRunning {
             return await proposer?.propose(input) ?? CoachToolOutput(
                 content: Self.json(["error": .string("Zmiany w planie nie są teraz dostępne.")]), isError: true)
         case CoachToolName.setStepGoal: return setStepGoal(input)
+        case CoachToolName.suggestConsultation:
+            return CoachToolOutput(content: Self.json(["shown": .bool(true),
+                                                       "card": .string("Pod odpowiedzią pojawi się karta z wyszukiwarką fizjoterapeuty.")]),
+                                   suggestsConsultation: true)
         case CoachToolName.trainingLog: return await trainingLog(days: Self.clamp(input["days"]?.intValue ?? 14, 1, 30))
         case CoachToolName.sessionFeedback: return await recentSessionFeedback(limit: Self.clamp(input["limit"]?.intValue ?? 3, 1, 10))
         default:
