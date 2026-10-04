@@ -87,3 +87,58 @@ Dodane jako czwarte ćwiczenie z analizą (`MovementKind.dip`, katalog: `dip`). 
 - Testy regresji: pozy z trzech filmów (10 kl./s) są w `Packages/Core/Tests/AnalysisTests/Fixtures/dips/`, sprawdzamy liczbę powtórzeń, kąty i wynik.
 
 **Nie obsługujemy** (jeszcze): dipów na ławce lub krześle (inna geometria: ręce za plecami, stopy na podłodze), dipów z obciążeniem, widoku z przodu (kąt łokcia z 2D byłby zaniżony), oceny wymachu (kipping) i rozstawu łokci.
+
+## 8. Kontekst osoby: mobilność, poziom, kontuzje i proporcje
+
+Ocena nie jest taka sama dla każdego. Zakres ruchu, którego wymagamy, zależy od tego, co dana osoba może zrobić bezpiecznie i wygodnie, więc ocena bierze pod uwagę **kontekst**. Kod: `LiveSet/Tempo/TechniqueContext.swift` (reguły, pomiar proporcji, ocena z kontekstem w serii), `Analysis/ContextScoring.swift` (to samo dla nagrania), `App/Services/TechniqueContextStore.swift` (odpowiedzi o mobilności), konfiguracja: `content/config/scoring.json`, sekcja `context`.
+
+> **Stan sprawdzenia.** Mechanizm jest sprawdzony testami jednostkowymi i na symulatorze (symulowana seria). **Liczby w sekcji `context` to wartości startowe, nie wyniki badań ani pomiarów na ludziach**, tak jak progi z sekcji 3. Do skalibrowania na prawdziwych nagraniach (sekcja 6).
+
+**Zasada nadrzędna: kontekst tylko poszerza granice, nigdy ich nie zawęża.** Zakresy z sekcji 3 to kryteria pełnej oceny. Osoba, która ma powód, dostaje szersze pasmo; nikt nie dostaje ostrzejszego niż standard. Dzięki temu dopasowanie nie może „ukarać” kogoś za to, że coś podał o sobie.
+
+### Co jest kontekstem
+
+| Źródło | Skąd | Na co wpływa |
+|---|---|---|
+| Mobilność nóg i bioder | odpowiedź w Profilu (ograniczona / przeciętna / dobra) | przysiad: głębokość, kąt kolana, pochylenie tułowia |
+| Mobilność barków | odpowiedź w Profilu | dipy: zejście (łokieć na dole) |
+| Poziom | ankieta (początkujący / średni) | wszystkie ćwiczenia: nieco szersze granice dla początkujących |
+| Kontuzja kolana, biodra lub kostki (do roku temu) | historia zdrowia z ankiety, odczyt na telefonie | przysiad: nie wymagamy pełnej głębokości |
+| Kontuzja barku lub łokcia (do roku temu) | jw. | pompka, podciąganie, dipy: nie wymagamy pełnego zakresu łokcia |
+| Proporcje ciała | mierzone z pozy: długość uda / długość tułowia (szyja – biodro) | przysiad: dopuszczalne pochylenie tułowia |
+
+Odpowiedź „przeciętna” i „dobra” nic nie zmieniają. Kontuzja pleców nie poszerza niczego: większe pochylenie tułowia nie jest dla niej łatwiejsze, więc kontuzji pleców nie mapujemy na żaden zakres.
+
+### Dlaczego nie wzrost
+
+**Kąty w stawach nie zależą od wzrostu**: kąt kolana jest taki sam u osoby niskiej i wysokiej, a nasze progi to kąty albo stosunki długości w obrazie. Wzrost podany przez użytkownika nie zmieniłby więc żadnej oceny, a zbieranie danych, których nie używamy, jest sprzeczne z zasadą minimalizacji danych. Naprawdę wpływają **proporcje**: dłuższe udo względem tułowia wymaga większego pochylenia do przodu, żeby utrzymać równowagę nad stopami. Tę proporcję **mierzymy z samego nagrania** (mediana z klatek początku i dołu powtórzeń, minimum 3 klatki, odrzucamy stosunki poza 0,5–1,4 jako błędy śledzenia), więc nikt nie musi niczego wpisywać.
+
+### Reguły (wartości startowe, `scoring.json` → `context`)
+
+Wszystkie kwoty tylko **dodają** do zakresu z sekcji 3, z górnym limitem na sumę powodów.
+
+| Co | Powód | Dodatek | Limit sumy |
+|---|---|---|---|
+| Kąt kolana, pasmo równoległe i głębokie (przysiad) | mobilność nóg ograniczona / kontuzja | +12° / +12° | 20° |
+| Tolerancja głębokości (biodro nad kolanem, ułamek wysokości obrazu) | ograniczona / kontuzja / początkujący | +0,02 / +0,02 / +0,01 | 0,04 |
+| Granica pochylenia tułowia (przysiad) | ograniczona / początkujący | +5° / +3° | 8° |
+| Granica pochylenia z proporcji | (uda/tułów − 0,85) × 60° | tylko powyżej 0,85 | 8° (osobno) |
+| Łokieć na dole (pompka), na górze (podciąganie), na dole (dipy) | początkujący / kontuzja barku lub łokcia | +5° / +10° | 15° |
+| Łokieć na dole (dipy) | mobilność barków ograniczona | +10° | w limicie wyżej |
+| Rozrzut kąta kolana między powtórzeniami (powtarzalność przysiadu z nagrania) | początkujący | +5° | – |
+
+Wartość odniesienia proporcji (0,85) to **oszacowanie** z ogólnych tablic proporcji ciała, którego nie sprawdziliśmy w źródle ani na prawdziwych nagraniach (do zmierzenia: mediana ilorazu uda i tułowia z pozy na kilkunastu osobach), a nie ustalona norma. Współczynnik 60°/jednostkę i limit 8° to wartości inżynierskie.
+
+### Co użytkownik widzi
+
+W Profilu karta „Dopasowanie oceny techniki” z dwoma pytaniami (z opisem, jak odpowiedzieć) i informacją, że odpowiedzi zostają na telefonie i nie służą do diagnozy. W serii na żywo pasmo kąta w HUD-zie i granica w uwagach są już dopasowane (np. 52–82° zamiast 40–70°), a pod uwagami jest notatka „Dopasowano do Ciebie” z listą, co zmieniono. Gdy nic nie zmieniono, jest podpowiedź, że ocena jest według standardu i gdzie ją dopasować. Notatki **nie są zapisywane w wyniku** (nie trafiają do historii, konta ani czatu), a sam kontekst nie opuszcza telefonu.
+
+### Czego to jeszcze nie robi
+
+- **Nie jest skalibrowane na ludziach.** Wszystkie liczby wymagają strojenia (sekcja 6); zmiana jest w konfiguracji, bez nowej wersji aplikacji.
+- **Wzory na przysiad są dwa.** Seria na żywo ocenia przysiad `BasicSquatAssessor` (głębokość 0,55 + tułów 0,45), nagranie czteroskładnikowym wynikiem (sekcja 2). Kontekst jest stosowany w obu tak samo (te same dodatki), ale sam wynik nadal może się różnić między serią a nagraniem. To osobny problem, do ujednolicenia.
+- **Proporcje w serii na żywo** liczą się dopiero od drugiego powtórzenia (powtórzenie to dwie klatki, za mało do pomiaru; seria zapamiętuje proporcje całej serii), a notatka w podsumowaniu serii nie wymienia proporcji (nagranie ją wymienia, gdy dodatek wynosi co najmniej 1°).
+- **Mobilność to odpowiedź użytkownika**, nie pomiar. Można ją w przyszłości zastąpić krótkim testem w aplikacji.
+- **Tekst „czego unikać” i choroby stawów** nie wpływają na ocenę. Uwzględniamy wyłącznie kontuzje z listy w ankiecie.
+- Rozmowa o „głębokości przysiadu” z trenerem AI nie zna kontekstu (nie wysyłamy go na serwer).
+
