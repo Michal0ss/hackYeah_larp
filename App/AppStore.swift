@@ -417,6 +417,15 @@ final class AppStore {
         return (match, current.session(on: Date())?.id == match.id)
     }
 
+    /// Whole days from today to `session` (0 = today). A plan without dates counts to the next such weekday.
+    func daysUntil(_ session: PlannedSession) -> Int? {
+        let calendar = TrainingPlan.calendar
+        if let date = session.date {
+            return max(0, calendar.dateComponents([.day], from: calendar.startOfDay(for: Date()), to: calendar.startOfDay(for: date)).day ?? 0)
+        }
+        return (session.weekday - TrainingPlan.isoWeekday(of: Date()) + 7) % 7
+    }
+
     /// True when every session of the plan is in the past: time to build the next one.
     var planHasEnded: Bool { plan.hasEnded(on: Date()) }
 }

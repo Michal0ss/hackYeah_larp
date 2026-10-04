@@ -26,17 +26,17 @@ struct TodayView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: FormaSpacing.l) {
                     header
-                    RecommendationCard(recommendation: store.recommendation, text: store.recommendationText)
-                    if let care = careModel.care {
-                        CareTeaserCard(assessment: care, simulated: careModel.careSimulated) { showCare = true }
-                    }
                     if let entry = store.todaySession {
                         let adjustment = store.adjustment(for: entry.session)
-                        SessionCard(adjustment: adjustment, isToday: entry.isToday,
+                        SessionCard(adjustment: adjustment, isToday: entry.isToday, daysUntil: store.daysUntil(entry.session),
                                     restored: store.isRestored(entry.session),
                                     onStart: { workout = WorkoutLaunch(session: adjustment.session) },
                                     onRepeat: { repeating = entry.session },
                                     onToggle: { store.toggleOriginal(entry.session) })
+                    }
+                    RecommendationCard(recommendation: store.recommendation, text: store.recommendationText)
+                    if let care = careModel.care {
+                        CareTeaserCard(assessment: care, simulated: careModel.careSimulated) { showCare = true }
                     }
                     RecoveryStrip(health: store.health, steps: store.todaySteps, goal: store.stepGoal, loaded: store.healthLoaded, report: store.healthReport,
                                   accessGranted: store.healthAccess == .granted, checkIn: store.checkIn,
@@ -200,6 +200,8 @@ private struct SessionCard: View {
     @Environment(AppStore.self) private var store
     let adjustment: PlanAdjustment
     let isToday: Bool
+    /// Whole days from today to the session; nil when it cannot be told.
+    let daysUntil: Int?
     let restored: Bool
     let onStart: () -> Void
     let onRepeat: () -> Void
@@ -213,15 +215,16 @@ private struct SessionCard: View {
             HStack {
                 SectionLabel(isToday ? "Dzisiejsza sesja" : "Najbliższa sesja")
                 Spacer()
-                if adapted {
-                    Label("Zmieniona", systemImage: "slider.horizontal.3")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(FormaColor.moderateText)
-                }
+                if let daysUntil { CountdownChip(days: daysUntil) }
             }
             Text(session.title)
                 .formaStyle(.title2)
                 .foregroundStyle(FormaColor.ink)
+            if adapted {
+                Label("Zmieniona", systemImage: "slider.horizontal.3")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(FormaColor.moderateText)
+            }
 
             VStack(spacing: 0) {
                 ForEach(Array(session.exercises.enumerated()), id: \.element.id) { index, item in
@@ -263,6 +266,28 @@ private struct SessionCard: View {
         .padding(FormaSpacing.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
+    }
+}
+
+/// "Dziś", "Jutro" or "Za 3 dni": how far the next session is.
+private struct CountdownChip: View {
+    let days: Int
+
+    private var text: String {
+        switch days {
+        case ...0: return "Dziś"
+        case 1: return "Jutro"
+        default: return "Za \(days) dni"
+        }
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(days <= 0 ? FormaColor.onVolt : FormaColor.ink)
+            .padding(.horizontal, 12).frame(height: 30)
+            .background(days <= 0 ? FormaColor.volt : FormaColor.well, in: Capsule())
+            .accessibilityLabel(days <= 0 ? "Sesja dziś" : days == 1 ? "Sesja jutro" : "Sesja za \(days) dni")
     }
 }
 
