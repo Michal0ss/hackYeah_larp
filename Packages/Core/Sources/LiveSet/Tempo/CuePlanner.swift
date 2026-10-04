@@ -1,9 +1,8 @@
 import Foundation
 import Contracts
 
-/// Phase durations (for the UI's phase timer) and the one word said when each phase starts. The
-/// live coach no longer counts seconds out loud — only `label(of:)` for the lifting/lowering
-/// phases is ever spoken (see `LiveSetEngine.announcePhase`); pauses get no spoken cue.
+/// Phase durations (for the UI's phase timer) and the spoken name of a phase. The live coach does not
+/// count or name phases out loud: it says "zaczynaj" and beeps on the plan's tempo (`TempoMetronome`).
 public enum CuePlanner {
     public static func duration(of phase: RepPhase, in spec: TempoSpec) -> Double {
         switch phase {

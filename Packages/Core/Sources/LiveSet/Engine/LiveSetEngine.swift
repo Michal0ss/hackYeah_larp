@@ -69,6 +69,7 @@ public final class LiveSetEngine {
     private var signal: SquatSignal
     private var tracker = PhaseTracker()
     private var policy = CoachingPolicy()
+    private var metronomeTask: Task<Void, Never>?
 
     private var readySince: Double?
     private var unreadySince: Double?
@@ -134,6 +135,7 @@ public final class LiveSetEngine {
     /// repetitions keeps its view, so this does nothing then.
     public func restartSetup() {
         guard canRestartSetup else { return }
+        stopMetronome()
         currentPhase = nil
         phaseStartedAt = nil
         latestDepth = nil
@@ -178,6 +180,7 @@ public final class LiveSetEngine {
     /// End the set (button or long idle). Builds the summary.
     public func finish() {
         guard stage == .active || stage == .calibrating(progress: 0) || stage == .framing else { return }
+        stopMetronome()
         currentPhase = nil
 
         let tempo = TempoScoring.evaluate(reps: reps, spec: spec)
@@ -225,7 +228,7 @@ public final class LiveSetEngine {
             setStart = frame.time
             tracker.reset()
             stage = .active
-            voice.signalSetStart()
+            startMetronome()
         } else if case let .calibrating(progress) = signal.stage {
             stage = .calibrating(progress: progress)
         }
@@ -252,7 +255,6 @@ public final class LiveSetEngine {
                 let phase = kind.exercisePhase(tracked)
                 currentPhase = phase
                 phaseStartedAt = Date()
-                announcePhase(phase)
             case var .repCompleted(rep):
                 // The frames the technique is judged on: the working end and the start position of this repetition,
                 // each a robust pick near the moment (not one glitchy frame), the way a recorded clip does it. The
@@ -308,14 +310,27 @@ public final class LiveSetEngine {
 
     // MARK: - Voice
 
-    /// The only things said while a rep is in progress: the start of the lifting phase and the
-    /// start of the lowering phase, once each, right as they begin. No per-second counting and no
-    /// announcement for the pauses — a quiet coach is easier to work out to than a constant one.
-    private func announcePhase(_ phase: RepPhase) {
-        switch phase {
-        case .eccentric, .concentric: say(CuePlanner.label(of: phase))
-        case .bottomPause, .topPause: break
+    /// The command "zaczynaj", then beeps on the plan's tempo (`TempoMetronome`): fixed, independent of what the
+    /// person does. Nothing else is said while the set runs; corrections are only shown on screen.
+    private func startMetronome() {
+        let metronome = TempoMetronome(spec: spec, reversed: kind.isReversed)
+        say("zaczynaj")
+        let origin = ContinuousClock.now
+        metronomeTask?.cancel()
+        metronomeTask = Task { [weak self] in
+            var index = 0
+            while !Task.isCancelled, let beat = metronome.beat(at: index) {
+                try? await Task.sleep(until: origin + .seconds(beat.offset), clock: .continuous)
+                guard !Task.isCancelled, let self, self.stage == .active else { return }
+                self.voice.playPhaseBeep(beat.phase)
+                index += 1
+            }
         }
+    }
+
+    private func stopMetronome() {
+        metronomeTask?.cancel()
+        metronomeTask = nil
     }
 
     private func say(_ text: String) {
