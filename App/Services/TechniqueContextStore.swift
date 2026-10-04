@@ -53,7 +53,9 @@ final class TechniqueContextStore {
     /// storage, so deleting the health history takes its effect away too).
     func current() -> TechniqueContext {
         let saved = onboarding.load()
-        return TechniqueContext(lowerBodyMobility: lowerBody, shoulderMobility: shoulder,
+        // The mobility answers are not asked anywhere at the moment (the Profile card is gone), so an answer saved
+        // earlier does not keep changing the assessment: only the level and the injuries from onboarding count.
+        return TechniqueContext(lowerBodyMobility: .typical, shoulderMobility: .typical,
                                 level: saved?.profile.level ?? .intermediate,
                                 lowerBodyCaution: saved?.health.hasRecentLowerBodyInjury ?? false,
                                 upperBodyCaution: saved?.health.hasRecentUpperBodyInjury ?? false)
