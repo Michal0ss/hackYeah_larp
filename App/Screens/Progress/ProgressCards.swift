@@ -243,9 +243,8 @@ private struct ActivityGrid: View {
                     }
                 }
             }
-            // The newest weeks are on the right: start scrolled there.
-            .defaultScrollAnchor(.trailing)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityLabel("Dni treningowe w ostatnich \(weeks.count) tygodniach")
         .accessibilityValue("\(days.filter { ($0.setCount ?? 0) > 0 }.count) dni z treningiem")
     }
