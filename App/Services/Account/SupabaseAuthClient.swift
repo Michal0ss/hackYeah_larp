@@ -1,7 +1,7 @@
 import Foundation
 
 /// Talks to Supabase Auth (sign-in with Google through PKCE) and to the two account tables. Plain URLSession, no extra
-/// dependency. The language model and the Forma backend are not involved: this is the account service only.
+/// dependency. The language model and the hackGYM backend are not involved: this is the account service only.
 struct SupabaseAuthClient: Sendable {
     enum AuthError: Error, Equatable {
         /// The reply was not what the service sends.

@@ -1561,8 +1561,8 @@
     }
   },
   "info": {
-    "description": "\nBackend of the Forma app. Stateless: no database, no stored videos, no stored health data.\n\n* `GET /health`: liveness (no auth)\n* `/v1/*`: needs `Authorization: Bearer <app token>` when `FORMA_APP_TOKENS` is set; send a stable random\n  `X-Device-Id` (UUID) so rate limits are per device\n* every error is `{\"error\": {\"code\", \"message\", \"requestId\"}}`\n",
-    "title": "Forma API",
+    "description": "\nBackend of the hackGYM app. Stateless: no database, no stored videos, no stored health data.\n\n* `GET /health`: liveness (no auth)\n* `/v1/*`: needs `Authorization: Bearer <app token>` when `FORMA_APP_TOKENS` is set; send a stable random\n  `X-Device-Id` (UUID) so rate limits are per device\n* every error is `{\"error\": {\"code\", \"message\", \"requestId\"}}`\n",
+    "title": "hackGYM API",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",

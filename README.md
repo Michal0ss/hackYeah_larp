@@ -1,4 +1,4 @@
-# Forma (HackYeah, Sport & Healthcare)
+# hackGYM (HackYeah, Sport & Healthcare)
 
 Aplikacja na iPhone'a: trener, plan treningowy i doradca w jednym. Ocenia technikę ćwiczenia z filmu i na żywo (na telefonie), łączy ją z regeneracją i samopoczuciem w rekomendację dnia, układa plan i prowadzi trening z planu, ma czat i rozmowę głosową z trenerem AI.
 
@@ -81,6 +81,8 @@ docs/                 analiza techniki z filmu, materiały marki (docs/brand)
 Config/               ustawienia budowania (Local i Secrets są poza repo)
 project.yml           opis projektu dla XcodeGen
 ```
+
+Aplikacja nazywa się **hackGYM**. Nazwy techniczne zostają „Forma”: projekt i schemat Xcode (`Forma.xcodeproj`), typy w kodzie (`FormaColor`, `FormaAPI`), zmienne `FORMA_*`, folder danych na telefonie (`Application Support/Forma`), adres `forma-api-three.vercel.app` i bundle id. Zmiana któregokolwiek z nich wymagałaby migracji danych albo ponownej konfiguracji wszystkich osób.
 
 Nowe pliki dodajemy do `Packages/Core` (albo do `App/`), a nie do `.xcodeproj`. Właściciele modułów: [CLAUDE.md](CLAUDE.md).
 

@@ -53,7 +53,7 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: Forma
+        CFBundleDisplayName: hackGYM
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIApplicationSceneManifest:

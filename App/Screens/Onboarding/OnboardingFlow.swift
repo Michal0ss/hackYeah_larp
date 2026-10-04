@@ -77,12 +77,12 @@ struct OnboardingFlow: View {
                 .frame(width: 40, height: 40)
                 .background(LinearGradient(colors: [Color(hex: 0xDDFF70), FormaColor.volt], startPoint: .top, endPoint: .bottom),
                             in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            Text("Forma")
+            Text("hackGYM")
                 .font(.formaNumber(26))
                 .foregroundStyle(FormaColor.ink)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Forma")
+        .accessibilityLabel("hackGYM")
     }
 
     @ViewBuilder

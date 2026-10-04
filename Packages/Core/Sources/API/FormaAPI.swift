@@ -1,7 +1,7 @@
 import Contracts
 import Foundation
 
-/// Client of the Forma backend (backend/, see backend/README.md and backend/openapi.json).
+/// Client of the hackGYM backend (backend/, see backend/README.md and backend/openapi.json).
 /// Thin on purpose: no caching policy, no fallbacks. Callers (PlanGenerator, CoachChat, content sync) decide
 /// what to do on errors, usually "use the local template".
 public struct FormaAPI: Sendable {

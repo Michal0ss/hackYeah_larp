@@ -1,4 +1,4 @@
-# Forma backend (FastAPI)
+# hackGYM backend (FastAPI)
 
 One shared backend for the whole team. Stateless: it keeps no database of its own, no videos and no health data. It
 does five things: serves the shared content (`content/`), generates training plans, runs the AI trainer chat,
