@@ -252,12 +252,20 @@ private struct WorkoutFinishedView: View {
 
 /// Short Polish texts for sets.
 enum WorkoutFormat {
-    static func weight(_ kg: Double) -> String {
+    /// One formatter for all weights: building a `NumberFormatter` is expensive and these run while lists are drawn.
+    private static let weightFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.locale = Locale(identifier: "pl_PL")
         formatter.minimumFractionDigits = 0
         formatter.maximumFractionDigits = 2
-        return (formatter.string(from: NSNumber(value: kg)) ?? "\(kg)") + " kg"
+        return formatter
+    }()
+
+    /// "12,5" for 12.5, "12" for 12. Nil only if the formatter fails.
+    static func number(_ value: Double) -> String? { weightFormatter.string(from: NSNumber(value: value)) }
+
+    static func weight(_ kg: Double) -> String {
+        (number(kg) ?? "\(kg)") + " kg"
     }
 
     /// "3 z 4 serii · 8, 8, 7 powt. · 17,5 kg"
