@@ -26,6 +26,9 @@ final class AppStore {
     /// What the last Apple Health read found (counts per type, or the error), to explain "no data".
     private(set) var healthReport: HealthReadReport?
     var checkIn: CheckIn? = SampleData.checkIn
+    /// The daily step goal (the trainer's, or the starting one) and today's steps from Apple Health, for the card on Dziś.
+    private(set) var stepGoal = StepGoal.starting(for: SampleData.profile)
+    private(set) var todaySteps: Int?
     var lastTechnique: TechniqueResult? = SampleData.technique
     var recommendation: DailyRecommendation = SampleData.recommendation {
         didSet { recommendationText = EngineText.make(for: recommendation) }
@@ -55,6 +58,7 @@ final class AppStore {
             services.planStore.clear()
             services.trainingLog.clear()
             services.sessionFeedbackStore.clear()
+            services.stepGoalStore.clear()
         }
         #endif
         if let saved = onboardingStorage.load() {
@@ -248,6 +252,7 @@ final class AppStore {
         services.planStore.clear()
         services.trainingLog.clear()
         services.sessionFeedbackStore.clear()
+        services.stepGoalStore.clear()
         _ = try? await services.checkInStore.removeAll()
         services.localHistory.removeAll()
         services.consent.reset()
@@ -303,6 +308,21 @@ final class AppStore {
         return await services.healthKit.overview(days: 7)
     }
 
+    /// Re-reads the step goal: the trainer may have changed it in the chat since the card was last drawn.
+    func reloadStepGoal() {
+        stepGoal = services.stepGoalStore.goal(for: profile)
+    }
+
+    /// Everything the "Dane zdrowotne" panel shows: the Health numbers, the step goal (the trainer's, or the starting
+    /// one) and the mood from the check-ins.
+    @MainActor
+    func loadHealthPanel() async -> HealthPanelData {
+        let overview = await loadHealthOverview()
+        let checkIns = await services.checkIns.checkIns(days: 7)
+        return HealthPanelData(overview: overview, goal: services.stepGoalStore.goal(for: profile),
+                               mood: MoodSummary(checkIns: checkIns))
+    }
+
     /// Reads Apple Health (sleep, resting heart rate, HRV) for the "Dane zdrowotne" card and recomputes the
     /// recommendation, which reads the same data. Call at launch and whenever the app comes back to the foreground.
     @MainActor
@@ -313,6 +333,9 @@ final class AppStore {
         #endif
         health = await services.healthKit.summaries(days: 8).first
         healthReport = HealthReadLog.shared.last
+        // Today's steps for the card (a read only: the permission for the activity types is asked in the panel).
+        todaySteps = await services.healthKit.overview(days: 1).today?.value(for: .steps).map { Int($0.rounded()) }
+        reloadStepGoal()
         healthLoaded = true
         await refreshRecommendation()
     }

@@ -38,7 +38,7 @@ struct TodayView: View {
                                     onRepeat: { repeating = entry.session },
                                     onToggle: { store.toggleOriginal(entry.session) })
                     }
-                    RecoveryStrip(health: store.health, loaded: store.healthLoaded, report: store.healthReport,
+                    RecoveryStrip(health: store.health, steps: store.todaySteps, goal: store.stepGoal, loaded: store.healthLoaded, report: store.healthReport,
                                   accessGranted: store.healthAccess == .granted, checkIn: store.checkIn,
                                   onOpen: { showHealthData = true })
                     actions
@@ -56,12 +56,13 @@ struct TodayView: View {
             ProfileView()
         }
         .sheet(isPresented: $showHealthData) {
-            HealthDataView(load: { await store.loadHealthOverview() })
+            HealthDataView(load: { await store.loadHealthPanel() })
         }
         .sheet(isPresented: $showCare) {
             if let care = careModel.care { CareView(assessment: care, simulated: careModel.careSimulated) }
         }
         .task(id: store.recommendation) { await careModel.load(services: store.services) }
+        .onAppear { store.reloadStepGoal() }
         .confirmationDialog("Powtórzyć trening?", isPresented: Binding(get: { repeating != nil }, set: { if !$0 { repeating = nil } }),
                             titleVisibility: .visible) {
             Button("Usuń zapisane serie i zacznij od nowa", role: .destructive) {
@@ -268,6 +269,9 @@ private struct SessionCard: View {
 /// Sleep, resting heart rate and HRV from Apple Health (or flagged sample data), next to today's mood.
 private struct RecoveryStrip: View {
     let health: HealthDaySummary?
+    /// Today's steps from Apple Health, nil when Health has none.
+    let steps: Int?
+    let goal: StepGoal
     /// False until the first read finished (then the numbers are placeholders, not "missing").
     let loaded: Bool
     /// What the last read found: the reason behind "no data".
@@ -297,12 +301,10 @@ private struct RecoveryStrip: View {
             }
             HStack(alignment: .top, spacing: FormaSpacing.m) {
                 stat("Sen", sleepText, unit: nil, note: nil, spoken: nil)
-                stat("Tętno spocz.", health?.restingHeartRate.map { "\($0)" } ?? "–", unit: "bpm",
-                     note: health?.restingHeartRateDelta.map(signed),
-                     spoken: health?.restingHeartRateDelta.map { "\(abs($0)) uderzeń \($0 < 0 ? "poniżej" : "powyżej") średniej" })
-                stat("HRV", health?.hrvMs.map { "\($0)" } ?? "–", unit: "ms",
-                     note: health?.hrvDeltaPercent.map { signed($0) + "%" },
-                     spoken: health?.hrvDeltaPercent.map { "\(abs($0)) procent \($0 < 0 ? "poniżej" : "powyżej") średniej" })
+                stat("Kroki", steps.map(Self.number) ?? "–", unit: nil, note: nil, spoken: nil)
+                stat("Cel kroków", Self.number(goal.steps), unit: nil, note: nil,
+                     spoken: goal.source == .coach ? "ustalony przez trenera" : "cel startowy",
+                     caption: goal.source == .coach ? "od trenera" : "startowy")
                 stat("Nastrój", checkIn.map { "\($0.mood)/5" } ?? "–", unit: nil, note: nil, spoken: nil)
             }
             if let hint {
@@ -335,6 +337,10 @@ private struct RecoveryStrip: View {
                     .foregroundStyle(FormaColor.ink3)
             }
         }
+    }
+
+    private static func number(_ value: Int) -> String {
+        value.formatted(.number.grouping(.automatic).locale(Locale(identifier: "pl_PL")))
     }
 
     private var sleepText: String {
@@ -373,7 +379,9 @@ private struct RecoveryStrip: View {
 
     private func signed(_ value: Int) -> String { value > 0 ? "+\(value)" : value < 0 ? "−\(abs(value))" : "0" }
 
-    private func stat(_ label: String, _ value: String, unit: String?, note: String?, spoken: String?) -> some View {
+    /// `note` is a deviation from the average ("+3 od średniej"); `caption` is a plain line under the label.
+    private func stat(_ label: String, _ value: String, unit: String?, note: String?, spoken: String?,
+                      caption: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             NumberText(value, size: 20, unit: unit)
                 .minimumScaleFactor(0.7)
@@ -383,6 +391,13 @@ private struct RecoveryStrip: View {
                 .foregroundStyle(FormaColor.ink3)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
+            if let caption {
+                Text(caption)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(FormaColor.ink3)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
             if let note {
                 Text(note + " od średniej")
                     .font(.system(size: 11, weight: .semibold))

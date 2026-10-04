@@ -41,6 +41,8 @@ public enum CoachToolName {
     public static let trainingLog = "get_training_log"
     /// Not a health tool and not a writer: it only produces a proposal for the user to accept.
     public static let proposePlanChange = "propose_plan_change"
+    /// Sets the daily step goal shown in the health panel. A goal is a target, not health data, so it needs no consent.
+    public static let setStepGoal = "set_step_goal"
 
     /// Tools that read health data: they answer only with the user's consent.
     public static let health: Set<String> = [todayRecommendation, recoverySummary, checkIns, sessionFeedback]
@@ -62,6 +64,14 @@ public protocol LoggedSetProviding: Sendable {
 
 extension TrainingLogStore: LoggedSetProviding {}
 
+/// Where the daily step goal lives (implemented by the Health module's `StepGoalStore`).
+public protocol StepGoalSetting: Sendable {
+    /// Saves the goal the trainer chose. Returns what was saved (the number is limited to a sane range).
+    func setCoachGoal(steps: Int, reason: String?) -> (steps: Int, reason: String?)
+    /// The goal now, with whether the trainer set it.
+    func currentGoal() -> (steps: Int, setByCoach: Bool)
+}
+
 /// Runs the coach tools against the shared service protocols, so they work on sample data and on the real services.
 ///
 /// The consent rule is applied here as well as on the server: a health tool without consent returns an error and
@@ -77,6 +87,7 @@ public struct CoachTools: CoachToolRunning {
     private let proposer: PlanChangeProposer?
     private let log: SessionCompletionProviding?
     private let loggedSets: LoggedSetProviding?
+    private let stepGoals: StepGoalSetting?
     private let hasHealthConsent: @Sendable () -> Bool
     private let calendar: Calendar
     private let now: @Sendable () -> Date
@@ -85,7 +96,8 @@ public struct CoachTools: CoachToolRunning {
                 checkIns: CheckInProviding, technique: TechniqueHistoryProviding,
                 recommendation: RecommendationProviding, feedback: SessionFeedbackStoring? = nil,
                 proposer: PlanChangeProposer? = nil, log: SessionCompletionProviding? = nil,
-                loggedSets: LoggedSetProviding? = nil, hasHealthConsent: @escaping @Sendable () -> Bool,
+                loggedSets: LoggedSetProviding? = nil, stepGoals: StepGoalSetting? = nil,
+                hasHealthConsent: @escaping @Sendable () -> Bool,
                 calendar: Calendar = .current, now: @escaping @Sendable () -> Date = { Date() }) {
         self.plan = plan
         self.catalog = catalog
@@ -97,6 +109,7 @@ public struct CoachTools: CoachToolRunning {
         self.proposer = proposer
         self.log = log
         self.loggedSets = loggedSets
+        self.stepGoals = stepGoals
         self.hasHealthConsent = hasHealthConsent
         self.calendar = calendar
         self.now = now
@@ -116,11 +129,30 @@ public struct CoachTools: CoachToolRunning {
         case CoachToolName.proposePlanChange:
             return await proposer?.propose(input) ?? CoachToolOutput(
                 content: Self.json(["error": .string("Zmiany w planie nie są teraz dostępne.")]), isError: true)
+        case CoachToolName.setStepGoal: return setStepGoal(input)
         case CoachToolName.trainingLog: return await trainingLog(days: Self.clamp(input["days"]?.intValue ?? 14, 1, 30))
         case CoachToolName.sessionFeedback: return await recentSessionFeedback(limit: Self.clamp(input["limit"]?.intValue ?? 3, 1, 10))
         default:
             return CoachToolOutput(content: Self.json(["error": .string("Nieznane narzędzie.")]), isError: true)
         }
+    }
+
+    // MARK: step goal
+
+    /// The trainer sets the daily step goal. The number must be one the user can reach (limited to a sane range) and the
+    /// answer says what is now saved, so the trainer tells the user exactly that.
+    private func setStepGoal(_ input: JSONValue) -> CoachToolOutput {
+        guard let stepGoals else {
+            return CoachToolOutput(content: Self.json(["error": .string("Cel kroków nie jest teraz dostępny.")]), isError: true)
+        }
+        guard let raw = input["steps"]?.doubleValue, raw.isFinite else {
+            return CoachToolOutput(content: Self.json(["error": .string("Brakuje liczby kroków.")]), isError: true)
+        }
+        let steps = Int(min(max(raw, 0), 100_000))
+        let reason = input["reason"]?.stringValue
+        let saved = stepGoals.setCoachGoal(steps: steps, reason: reason)
+        return CoachToolOutput(content: Self.json(["saved": .bool(true), "dailySteps": .number(Double(saved.steps))]),
+                               sourceLabel: "cel kroków")
     }
 
     // MARK: plan

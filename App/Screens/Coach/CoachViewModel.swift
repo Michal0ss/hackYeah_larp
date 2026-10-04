@@ -65,6 +65,7 @@ final class CoachViewModel {
         let tools = CoachTools(plan: plan, catalog: services.catalog, recovery: services.recovery,
                                checkIns: services.checkIns, technique: services.technique, recommendation: recommendation,
                                feedback: services.sessionFeedback, proposer: proposer, log: services.planStore,
+                               stepGoals: services.stepGoalStore,
                                hasHealthConsent: { consent.isGranted })
         let chat = CoachChat(backend: services.api, tools: tools,
                              profile: { await MainActor.run { store.profile } },

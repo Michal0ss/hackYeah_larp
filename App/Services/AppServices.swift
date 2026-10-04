@@ -33,6 +33,8 @@ struct AppServices {
     /// Results of live sets and analyses (Michał). The app and Bartek write through `localHistory`.
     let localHistory = LocalTechniqueHistory.shared
     var technique: TechniqueHistoryProviding
+    /// The daily step goal the trainer sets (the coach tool `set_step_goal` writes it, the health panel shows it).
+    let stepGoalStore = StepGoalStore.standard
     /// Feedback after a workout (RPE, pain, a note), kept on the phone (Michał). The coach tool reads it after consent.
     let sessionFeedbackStore = SessionFeedbackStore(fileURL: SessionFeedbackStore.defaultFileURL())
     var sessionFeedback: SessionFeedbackStoring
@@ -64,5 +66,18 @@ struct AppServices {
         // The first launch after the update starts from the plan saved by onboarding.
         planStore = PlanStore(fileURL: PlanStore.defaultFileURL(), bootstrap: { FileOnboardingStorage.default.load()?.plan })
         plan = planStore
+    }
+}
+
+/// The coach tool writes the step goal through this; the Health module owns where it is kept.
+extension StepGoalStore: StepGoalSetting {
+    public func setCoachGoal(steps: Int, reason: String?) -> (steps: Int, reason: String?) {
+        let saved = set(StepGoal(steps: steps, source: .coach, reason: reason))
+        return (saved.steps, saved.reason)
+    }
+
+    public func currentGoal() -> (steps: Int, setByCoach: Bool) {
+        let goal = current
+        return (goal?.steps ?? 0, goal?.source == .coach)
     }
 }

@@ -42,6 +42,8 @@ PLAN_CHANGE_KINDS = (
     "remove_exercise",
     "edit_exercise",
 )
+# The daily step goal the coach may set (the app clamps to the same range).
+_STEP_GOAL = (2000, 30000)
 # Same limits as the app (Plan.PlanLimits): a number outside them is dropped, never clamped into a different change.
 _SETS = (1, 8)
 _REPS = (1, 100)
@@ -131,6 +133,24 @@ TOOLS: dict[str, CoachTool] = {
             input_schema={
                 "type": "object",
                 "properties": {"days": {"type": "integer", "description": "How many days back, 1 to 30."}},
+            },
+        ),
+        CoachTool(
+            name="set_step_goal",
+            description=(
+                "Sets the user's daily step goal, which the app shows in its health panel next to today's steps. "
+                "Use it only when the user asks for a goal or agrees to your suggestion, and choose a number they can "
+                "reach: a small next step (for example 500 to 1500 more than now), never a jump. A goal is a target, "
+                "not a medical recommendation, and it is never a reaction to pain or an injury. Afterwards tell the "
+                "user in one sentence the number you set and why."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "steps": {"type": "integer", "description": "Daily steps, 2000 to 30000."},
+                    "reason": {"type": "string", "description": "One short sentence in Polish: why this number."},
+                },
+                "required": ["steps"],
             },
         ),
         CoachTool(
@@ -265,6 +285,17 @@ def normalise_tool_input(
         return _normalise_plan_change(raw, content, profile)
     if name in ("get_recovery_summary", "get_checkins"):
         return {"days": _clamped_int(raw.get("days"), 1, 14, 7)}
+    if name == "set_step_goal":
+        cleaned_goal: dict[str, Any] = {}
+        steps = _whole_number(raw.get("steps"))
+        if steps is not None and _STEP_GOAL[0] <= steps <= _STEP_GOAL[1]:
+            cleaned_goal["steps"] = steps
+        reason = raw.get("reason")
+        if isinstance(reason, str):
+            text = sanitize_free_text(reason, 160)
+            if text and not check_generated_text(text, max_total=160):
+                cleaned_goal["reason"] = text
+        return cleaned_goal
     if name == "get_training_log":
         return {"days": _clamped_int(raw.get("days"), 1, 30, 14)}
     if name == "get_session_feedback":
