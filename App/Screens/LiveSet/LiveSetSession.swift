@@ -55,7 +55,7 @@ final class LiveSetSession {
         self.contextNotes = adjustment.notes
         let reference = adjustment.reference
         self.engine = LiveSetEngine(exerciseId: exercise.id, spec: spec, setIndex: setIndex,
-                                    voice: BankedCoachVoice(), kind: kind,
+                                    voice: SpeechCoachVoice(), kind: kind,
                                     assessor: ContextualAssessor(kind: kind, base: base, context: context, rules: rules),
                                     isSimulated: source == .simulation,
                                     trackerConfig: PhaseTrackerConfig(values: ContentRepository.shared.numbers("tempo", "phaseTracker")),
