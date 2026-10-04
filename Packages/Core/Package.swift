@@ -37,8 +37,7 @@ let package = Package(
         // Maciek: exercise catalog and texts.
         .target(name: "Content", dependencies: ["Contracts", "API"], resources: [.process("Resources")]),
         // Michał: live set coaching (camera pose, tempo engine, voice cues, set summary).
-        // resources: voice_manifest.json + pre-recorded coach clips (scripts/generate_voice_bank.py).
-        .target(name: "LiveSet", dependencies: ["Contracts"], resources: [.process("Resources")]),
+        .target(name: "LiveSet", dependencies: ["Contracts"]),
         // Bartek: pure logic for the coach voice chat (App/Screens/Coach/Voice/) — sentence
         // segmentation and markdown cleanup for speaking a streamed reply aloud. No AVFoundation/
         // Speech here on purpose, so it's testable; the App target does the live mic/TTS glue.

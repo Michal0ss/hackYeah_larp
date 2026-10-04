@@ -55,7 +55,7 @@ Na symulatorze wystarczy `Cmd+R`. Kamera, HealthKit z prawdziwymi danymi i podpi
 
 Zamrożenie funkcji i oddanie: **4.10, zgłoszenie z zapasem przed 23:00.** Aktualny stan zadań i uwag: [WORKINGPLAN.md](WORKINGPLAN.md), sekcja 9.
 
-W `main` działa wszystko z tabeli wyżej oraz: seria na żywo i analiza z filmu dla czterech ćwiczeń (przysiad, pompka, podciąganie, dipy) z kątami liczonymi z poprawką proporcji obrazu, plan od AI z kontrolą po stronie serwera i planem z szablonu jako zapasem, czat z narzędziami (w tym ustawianiem celu kroków), głos trenera tempa z banku nagrań, historia treningów w koncie, usuwanie konta, wspólne limity zapytań w Supabase.
+W `main` działa wszystko z tabeli wyżej oraz: seria na żywo i analiza z filmu dla czterech ćwiczeń (przysiad, pompka, podciąganie, dipy) z kątami liczonymi z poprawką proporcji obrazu, plan od AI z kontrolą po stronie serwera i planem z szablonu jako zapasem, czat z narzędziami (w tym ustawianiem celu kroków), głos trenera tempa (systemowy), historia treningów w koncie, usuwanie konta, wspólne limity zapytań w Supabase.
 
 Czego **nikt jeszcze nie sprawdził na prawdziwym iPhonie**: kamera, seria na żywo i analiza na prawdziwych nagraniach (logika jest sprawdzona na syntetycznych pozach i na trzech nagraniach dipów), HealthKit z danymi z zegarka, synchronizacja konta na dwóch telefonach z prawdziwym kontem Google, przyciski i wczytywanie filmu w Analizie po ostatnim refaktorze, głos w słuchawkach. Migracja `user_records` w Supabase musi być zastosowana przez osobę z dostępem do projektu (Wiktor), inaczej synchronizacja historii nie zapisze nic.
 
@@ -76,7 +76,7 @@ Packages/Core/        cała logika w modułach (jedna biblioteka = jeden właśc
 backend/              wspólny backend (FastAPI): plan, czat trenera, teksty, konto, treść; patrz backend/README.md
 content/              wspólna treść: katalog ćwiczeń, szablony planów, progi, baza wiedzy trenera (serwowana przez backend, kopia w aplikacji)
 api/, vercel.json     wejście i ustawienia wdrożenia backendu na Vercelu
-scripts/              sync_content.py (kopia treści do aplikacji), generate_voice_bank.py (nagrania trenera tempa)
+scripts/              sync_content.py (kopia treści do aplikacji)
 docs/                 analiza techniki z filmu, materiały marki (docs/brand)
 Config/               ustawienia budowania (Local i Secrets są poza repo)
 project.yml           opis projektu dla XcodeGen
