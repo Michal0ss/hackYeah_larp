@@ -19,13 +19,13 @@ final class ProgressReportTests: XCTestCase {
 
     private func checkIn(ago: Int, mood: Int) -> CheckIn { CheckIn(date: day(ago), mood: mood, stress: 3, energy: 3) }
 
-    private func weighted(ago: Int, exerciseId: String = "squat", kg: Double) -> WeightedSet {
-        WeightedSet(exerciseId: exerciseId, date: day(ago), weightKg: kg)
+    private func set(ago: Int, exerciseId: String = "squat") -> LoggedActivity {
+        LoggedActivity(exerciseId: exerciseId, date: day(ago))
     }
 
     private func make(results: [TechniqueResult] = [], snapshots: [RecoverySnapshot] = [], checkIns: [CheckIn] = [],
-                      weightedSets: [WeightedSet] = []) -> ProgressReport {
-        ProgressReport.make(results: results, snapshots: snapshots, checkIns: checkIns, weightedSets: weightedSets,
+                      activitySets: [LoggedActivity] = []) -> ProgressReport {
+        ProgressReport.make(results: results, snapshots: snapshots, checkIns: checkIns, activitySets: activitySets,
                             now: now, calendar: calendar)
     }
 
@@ -135,55 +135,64 @@ final class ProgressReportTests: XCTestCase {
         XCTAssertEqual(make(snapshots: (0..<10).map { snapshot(ago: $0) }).trendSentence, "Regeneracja i nastrój są stabilne.")
     }
 
-    // MARK: Strength
+    // MARK: Activity
 
-    func testNoWeightedSetsMeansNoStrengthProgress() {
-        XCTAssertNil(make().strength)
+    func testActivityGridIsWholeMondayToSundayWeeksEndingThisWeek() throws {
+        let a = ActivityLog.make(sets: [], weeks: 12, now: now, calendar: calendar)
+        XCTAssertEqual(a.days.count, 12 * 7)
+        let first = try XCTUnwrap(a.days.first)
+        XCTAssertEqual(calendar.component(.weekday, from: first.date), 2, "the grid starts on a Monday")
+        let today = calendar.startOfDay(for: now)
+        XCTAssertTrue(a.days.contains { $0.date == today && $0.setCount == 0 })
+        // Days after today keep the rectangle full but carry no data.
+        XCTAssertTrue(a.days.filter { $0.date > today }.allSatisfy { $0.setCount == nil })
+        XCTAssertTrue(a.days.filter { $0.date <= today }.allSatisfy { $0.setCount != nil })
     }
 
-    func testStrengthIsOldestFirstWithDeltaFromStart() throws {
-        let r = make(weightedSets: [weighted(ago: 10, kg: 40), weighted(ago: 5, kg: 45), weighted(ago: 0, kg: 50)])
-        let s = try XCTUnwrap(r.strength)
-        XCTAssertEqual(s.exerciseId, "squat")
-        XCTAssertEqual(s.points.map(\.weightKg), [40, 45, 50])
-        XCTAssertEqual(s.latest, 50)
-        XCTAssertEqual(s.deltaFromStart, 10)
-        XCTAssertTrue(s.summary.hasPrefix("Ciężar rośnie"))
+    func testActivityCountsSetsPerDayAndIgnoresOlderThanTheWindow() throws {
+        let sets = [set(ago: 0), set(ago: 0), set(ago: 0), set(ago: 2), set(ago: 400)]
+        let a = make(activitySets: sets).activity
+        XCTAssertEqual(a.days.first { $0.date == calendar.startOfDay(for: day(0)) }?.setCount, 3)
+        XCTAssertEqual(a.days.first { $0.date == calendar.startOfDay(for: day(2)) }?.setCount, 1)
+        XCTAssertEqual(a.days.compactMap(\.setCount).reduce(0, +), 4, "the set from 400 days ago is outside the grid")
     }
 
-    func testSameDayTakesTheHeaviestSet() throws {
-        // A warm-up followed by the working weight on the same day should not look like two separate days.
-        let r = make(weightedSets: [weighted(ago: 0, kg: 20), weighted(ago: 0, kg: 50), weighted(ago: 0, kg: 45)])
-        let s = try XCTUnwrap(r.strength)
-        XCTAssertEqual(s.points.count, 1)
-        XCTAssertEqual(s.points.first?.weightKg, 50)
+    func testEmptyLogHasNoActivityAndSaysSo() {
+        let r = make()
+        XCTAssertFalse(r.activity.hasAnyActivity)
+        XCTAssertEqual(r.activity.currentStreakDays, 0)
+        XCTAssertNil(r.activity.topExerciseId)
+        XCTAssertEqual(r.activity.summary, "Brak treningów w ostatnich 14 dniach.")
     }
 
-    func testPicksTheExerciseLoggedOnTheMostDays() throws {
-        let sets = [weighted(ago: 10, exerciseId: "deadlift", kg: 80)]
-            + (0..<3).map { weighted(ago: $0, exerciseId: "squat", kg: 40) }
-        let s = try XCTUnwrap(make(weightedSets: sets).strength)
-        XCTAssertEqual(s.exerciseId, "squat")
-        XCTAssertEqual(s.points.count, 3)
+    func testAnyLoggedSetMakesTheReportNonEmpty() {
+        XCTAssertFalse(make(activitySets: [set(ago: 1)]).isEmpty)
     }
 
-    func testSingleWeightHasNoTrendClaim() throws {
-        let s = try XCTUnwrap(make(weightedSets: [weighted(ago: 0, kg: 40)]).strength)
-        XCTAssertEqual(s.deltaFromStart, 0)
-        XCTAssertTrue(s.summary.hasPrefix("To pierwszy zapisany ciężar."))
+    func testStreakCountsConsecutiveDaysEndingToday() {
+        XCTAssertEqual(make(activitySets: [set(ago: 0), set(ago: 1), set(ago: 2), set(ago: 4)]).activity.currentStreakDays, 3)
+        // No set today: the streak is broken, even with a set yesterday.
+        XCTAssertEqual(make(activitySets: [set(ago: 1), set(ago: 2)]).activity.currentStreakDays, 0)
     }
 
-    func testFallingAndStableWeightWording() throws {
-        let falling = make(weightedSets: [weighted(ago: 5, kg: 50), weighted(ago: 0, kg: 45)])
-        XCTAssertTrue(try XCTUnwrap(falling.strength).summary.hasPrefix("Ostatni ciężar jest niższy"))
-        let stable = make(weightedSets: [weighted(ago: 5, kg: 50), weighted(ago: 0, kg: 50.25)])
-        XCTAssertTrue(try XCTUnwrap(stable.strength).summary.hasPrefix("Ciężar jest stabilny"))
+    func testSummaryCountsTrainingDaysAndSetsWithPolishPlurals() {
+        let sets = [set(ago: 0), set(ago: 0), set(ago: 3), set(ago: 5), set(ago: 5)]
+        XCTAssertEqual(make(activitySets: sets).activity.summary, "W ostatnim tygodniu: 3 treningi, 5 serii.")
+        XCTAssertEqual(make(activitySets: [set(ago: 0)]).activity.summary, "W ostatnim tygodniu: 1 trening, 1 seria.")
     }
 
-    func testStrengthIsNotLimitedToTheRecoveryWindow() throws {
-        // Strength is a trend across sessions, like technique, not a daily health signal like recovery/mood.
-        let s = try XCTUnwrap(make(weightedSets: [weighted(ago: 60, kg: 40), weighted(ago: 0, kg: 50)]).strength)
-        XCTAssertEqual(s.points.count, 2)
+    func testSummaryComparesWithTheWeekBefore() {
+        let more = [set(ago: 0), set(ago: 2), set(ago: 9)]
+        XCTAssertTrue(make(activitySets: more).activity.summary.hasSuffix("Więcej treningów niż tydzień wcześniej."))
+        let fewer = [set(ago: 0), set(ago: 8), set(ago: 10)]
+        XCTAssertTrue(make(activitySets: fewer).activity.summary.hasSuffix("Mniej treningów niż tydzień wcześniej."))
+        XCTAssertEqual(make(activitySets: [set(ago: 9)]).activity.summary, "W tym tygodniu bez treningu. W poprzednim: 1 trening.")
+    }
+
+    func testTopExerciseIsTheMostLoggedInTheLastWeek() {
+        let sets = [set(ago: 0, exerciseId: "pushup"), set(ago: 1, exerciseId: "squat"), set(ago: 2, exerciseId: "squat"),
+                    set(ago: 20, exerciseId: "pushup"), set(ago: 21, exerciseId: "pushup"), set(ago: 22, exerciseId: "pushup")]
+        XCTAssertEqual(make(activitySets: sets).activity.topExerciseId, "squat", "older sets don't count toward this week")
     }
 
     // MARK: Sample data
