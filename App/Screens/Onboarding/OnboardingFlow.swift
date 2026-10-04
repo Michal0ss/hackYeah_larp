@@ -106,13 +106,10 @@ struct OnboardingFlow: View {
         if hasActions {
             content
                 .padding(.horizontal, 16)
-                .padding(.top, 28)
+                .padding(.top, 12)
                 .padding(.bottom, 12)
-                .background(
-                    LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: FormaColor.background, location: 0.5)],
-                                   startPoint: .top, endPoint: .bottom)
-                        .ignoresSafeArea()
-                )
+                // Solid, so text scrolling underneath is cut cleanly at the bar instead of showing through a fade.
+                .background(FormaColor.background.ignoresSafeArea(edges: .bottom))
         }
     }
 
