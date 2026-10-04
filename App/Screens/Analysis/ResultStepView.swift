@@ -29,6 +29,7 @@ struct ResultStepView: View {
                 repsCard
                 if !result.componentScores.isEmpty { componentScoresCard(result) }
                 findingsCard(result)
+                ContextNoteView(notes: model.contextNotes)
                 substituteCard(result)
                 if let care = careModel.care {
                     careCard(care)

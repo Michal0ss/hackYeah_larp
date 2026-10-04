@@ -1,6 +1,7 @@
 import SwiftUI
 import Contracts
 import DesignSystem
+import LiveSet
 import Onboarding
 
 /// What the app knows about you, what stays on the phone, and how to delete it.
@@ -25,6 +26,7 @@ struct ProfileView: View {
                     header
                     accountCard
                     planCard
+                    contextCard
                     liveTestCard
                     healthCard
                     dataCard
@@ -172,6 +174,41 @@ struct ProfileView: View {
     }
 
     /// Starts the live coach on any supported exercise without going through the plan, for testing on a phone.
+    /// How mobile the person says they are, so the technique assessment can widen its ranges for them. Stays on the
+    /// phone; the level and an earlier injury from onboarding count too.
+    private var contextCard: some View {
+        let context = TechniqueContextStore.shared
+        return card {
+            SectionLabel("Dopasowanie oceny techniki")
+            Label("Zostaje na telefonie. Odpowiedzi tylko poszerzają granice oceny i nie służą do diagnozy.", systemImage: "lock.fill")
+                .formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
+            mobilityPicker(title: "Nogi i biodra", selection: context.lowerBody,
+                           help: "Ograniczona: pięty odrywają się od podłogi w głębokim przysiadzie albo nie schodzisz do równoległej. Dobra: schodzisz głęboko z piętami na podłodze i prostym tułowiem.",
+                           onSelect: context.setLowerBody)
+            mobilityPicker(title: "Barki", selection: context.shoulder,
+                           help: "Ograniczona: trudno unieść wyprostowane ręce nad głowę bez wyginania pleców. Dobra: robisz to bez trudu. Wpływa na ocenę dipów.",
+                           onSelect: context.setShoulder)
+            Text("Uwzględniamy też poziom z ankiety oraz historię kontuzji, jeśli ją podałeś. Wzrost nie wpływa na ocenę: kąty w stawach nie zależą od wzrostu, a proporcje ciała mierzymy z samego nagrania.")
+                .formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func mobilityPicker(title: String, selection: Mobility, help: String,
+                                onSelect: @escaping (Mobility) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: FormaSpacing.s) {
+            Text(title).formaStyle(.callout).fontWeight(.semibold).foregroundStyle(FormaColor.ink)
+            HStack(spacing: FormaSpacing.s) {
+                ForEach(Mobility.allCases, id: \.self) { option in
+                    MobilityPill(title: option.title, isSelected: option == selection) { onSelect(option) }
+                }
+            }
+            Text(help).formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .contain)
+    }
+
     private var liveTestCard: some View {
         card {
             SectionLabel("Test analizy na żywo")
@@ -258,5 +295,28 @@ struct ProfileView: View {
         case .dumbbells: return "Hantle"
         case .gym: return "Siłownia"
         }
+    }
+}
+
+/// One of the three answers about mobility. Smaller than `PillOption` so "Ograniczona" fits three to a row.
+private struct MobilityPill: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(.subheadline, weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(isSelected ? FormaColor.onVolt : FormaColor.ink)
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(isSelected ? FormaColor.volt : FormaColor.well, in: Capsule())
+                .overlay { Capsule().strokeBorder(isSelected ? .clear : FormaColor.wellLine, lineWidth: 1) }
+        }
+        .buttonStyle(.formaPress)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

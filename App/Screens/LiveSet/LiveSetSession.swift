@@ -19,6 +19,8 @@ final class LiveSetSession {
     let kind: MovementKind
     let spec: TempoSpec
     let setIndex: Int
+    /// What the assessment adapted to the person (mobility, level, an earlier injury), shown on the summary.
+    let contextNotes: [String]
     private(set) var source: Source
     private(set) var cameraError: String?
     /// Which camera is used. The choice is remembered for the next set (every set is a new session).
@@ -45,10 +47,16 @@ final class LiveSetSession {
         #endif
         self.source = source
         self.isFrontCamera = UserDefaults.standard.bool(forKey: Self.frontCameraKey)
-        let reference = AngleReference(values: ContentRepository.shared.numbers("scoring", "angles"))
+        let base = AngleReference(values: ContentRepository.shared.numbers("scoring", "angles"))
+        // The same context and rules as a recorded clip is scored with, so a set and a clip are judged alike.
+        let context = TechniqueContextStore.shared.current()
+        let rules = ContextRules(values: ContentRepository.shared.numbers("scoring", "context"))
+        let adjustment = context.adjustment(for: kind, base: base, rules: rules)
+        self.contextNotes = adjustment.notes
+        let reference = adjustment.reference
         self.engine = LiveSetEngine(exerciseId: exercise.id, spec: spec, setIndex: setIndex,
                                     voice: BankedCoachVoice(), kind: kind,
-                                    assessor: kind.assessor(reference: reference),
+                                    assessor: ContextualAssessor(kind: kind, base: base, context: context, rules: rules),
                                     isSimulated: source == .simulation,
                                     trackerConfig: PhaseTrackerConfig(values: ContentRepository.shared.numbers("tempo", "phaseTracker")),
                                     cooldownReps: ContentRepository.shared.numbers("tempo", "policy")["cooldownReps"].map(Int.init),

@@ -260,6 +260,7 @@ final class AppStore {
         services.trainingLog.clear()
         services.sessionFeedbackStore.clear()
         services.stepGoalStore.clear()
+        await TechniqueContextStore.shared.clear()
         _ = try? await services.checkInStore.removeAll()
         services.localHistory.removeAll()
         services.consent.reset()

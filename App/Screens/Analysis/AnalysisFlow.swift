@@ -48,6 +48,8 @@ final class AnalysisModel {
     /// angle over time and the angle at the working end of every repetition (by repetition number).
     private(set) var angleSeries: [(time: Double, angle: Double)] = []
     private(set) var repAngles: [Int: Double] = [:]
+    /// What the assessment adapted to the person (mobility, level, an earlier injury, proportions from the clip).
+    private(set) var contextNotes: [String] = []
 
     private func loadConfig() {
         angleReference = AngleReference(values: ContentRepository.shared.numbers("scoring", "angles"))
@@ -108,8 +110,16 @@ final class AnalysisModel {
         analysedDespiteWarnings = anyway && !(qualityReport?.passed ?? true)
         Task {
             let weights = TechniqueScorer.Weights.from(ContentRepository.shared.numbers("scoring", "weights"))
+            let clip = clipConfig
+            // The person's context widens the standard ranges (never narrows them); for a squat the proportions are
+            // measured from this clip.
+            let adjustment = ContextScoring.adjustment(
+                for: TechniqueContextStore.shared.current(), kind: kind, frames: frames, reference: angleReference,
+                rules: ContextRules(values: ContentRepository.shared.numbers("scoring", "context")), clip: clip)
+            contextNotes = adjustment.notes
+            let reference = adjustment.reference
             let thresholds = TechniqueScorer.Thresholds.from(ContentRepository.shared.numbers("scoring", "thresholds"))
-            let reference = angleReference, clip = clipConfig
+                .adjusted(by: adjustment)
             let analysis = RepAnalyzer.analyze(frames: frames, kind: kind, config: clip, depthTolerance: reference.squatDepthTolerance)
             self.analysis = analysis
             angleSeries = RepAnalyzer.angleSeries(in: frames, kind: kind)
