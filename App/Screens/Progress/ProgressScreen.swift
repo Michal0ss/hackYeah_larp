@@ -4,7 +4,7 @@ import DesignSystem
 import Insights
 
 /// "Postępy": a GitHub-style training calendar with a short analysis of the last week, technique score over
-/// time (pick the exercise and what to follow), weight or repetitions over time (pick the exercise), recent sets,
+/// time (pick the exercise and what to follow), weight or repetitions over time (pick the exercise),
 /// and the way to care.
 /// Owner: Wiktor.
 struct ProgressScreen: View {
@@ -32,9 +32,6 @@ struct ProgressScreen: View {
                         TechniqueCard(results: model.techniqueResults, simulated: model.isMixed && model.techniqueSimulated,
                                       onAnalyse: { router.tab = .analysis })
                         LoadCard(sets: model.loads)
-                        if !model.recentSets.isEmpty {
-                            RecentSetsCard(sets: model.recentSets)
-                        }
                         footer
                     }
                 }

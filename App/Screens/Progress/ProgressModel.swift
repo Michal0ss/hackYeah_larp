@@ -15,7 +15,6 @@ final class ProgressModel {
     private(set) var techniqueSimulated = false
     private(set) var recoverySimulated = false
     private(set) var moodSimulated = false
-    private(set) var recentSets: [SetSummary] = []
     /// What the technique chart draws from (analyses, or the sample ones in demo mode).
     private(set) var techniqueResults: [TechniqueResult] = []
     /// Every logged set with its weight and reps, for the load chart.
@@ -24,7 +23,7 @@ final class ProgressModel {
     private(set) var careSimulated = false
     private(set) var loaded = false
 
-    var isFullyEmpty: Bool { loaded && report.isEmpty && recentSets.isEmpty }
+    var isFullyEmpty: Bool { loaded && report.isEmpty }
 
     /// Simulation flags of the sections that have data.
     private var presentFlags: [Bool] {
@@ -43,7 +42,6 @@ final class ProgressModel {
         let snapshots = await services.recovery.snapshots(days: 14)
         let storedCheckIns = await services.checkIns.checkIns(days: 14)
         let storedResults = await services.technique.results(limit: 50)
-        recentSets = await services.technique.setSummaries(limit: 4)
         let loggedSets = services.trainingLog.sets
         let activitySets = loggedSets.map { LoggedActivity(exerciseId: $0.exerciseId, date: $0.date) }
         loads = loggedSets.map { LoggedLoad(exerciseId: $0.exerciseId, date: $0.date, weightKg: $0.weightKg, reps: $0.reps) }

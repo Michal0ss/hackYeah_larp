@@ -21,6 +21,13 @@ final class ProgressSeriesTests: XCTestCase {
         XCTAssertEqual(TechniqueSeries.exerciseIds(in: results), ["squat", "pullup", "pushup"])
     }
 
+    func testPlanExercisesAreOfferedForTechniqueEvenWithoutAnalysis() {
+        let results = [result("pushup", ago: 1, score: 70)]
+        XCTAssertEqual(TechniqueSeries.exerciseIds(in: results, planned: ["squat", "pushup", "row"]), ["squat", "pushup", "row"])
+        XCTAssertEqual(TechniqueSeries.exerciseIds(in: results + [result("pullup", ago: 2, score: 50)], planned: ["squat"]),
+                       ["squat", "pullup", "pushup"].sorted { $0 == "squat" ? true : $1 == "squat" ? false : $0 < $1 })
+    }
+
     func testPointsAreOneExerciseOldestFirst() {
         let results = [result("squat", ago: 0, score: 72), result("pushup", ago: 1, score: 90), result("squat", ago: 8, score: 58)]
         let points = TechniqueSeries.points(results, exerciseId: "squat")

@@ -18,10 +18,14 @@ public enum TechniqueSeries {
     /// Parts of the score, in the order they are offered. Only those present in the results are shown.
     public static let componentOrder = ["depth", "torso", "repeatability", "tempo"]
 
-    /// Exercises that have an analysis, the most analysed first (ties by id).
-    public static func exerciseIds(in results: [TechniqueResult]) -> [String] {
-        let counts = Dictionary(grouping: results, by: \.exerciseId).mapValues(\.count)
-        return counts.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }.map(\.key)
+    /// The exercises to offer: those of the plan in plan order (also ones never analysed, so the chart can say so),
+    /// then any other analysed exercise, the most analysed first (ties by id).
+    public static func exerciseIds(in results: [TechniqueResult], planned: [String] = []) -> [String] {
+        var seen = Set<String>()
+        let fromPlan = planned.filter { seen.insert($0).inserted }
+        let counts = Dictionary(grouping: results.filter { !seen.contains($0.exerciseId) }, by: \.exerciseId).mapValues(\.count)
+        let others = counts.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }.map(\.key)
+        return fromPlan + others
     }
 
     /// Score parts that at least one analysis of the exercise has, in `componentOrder`.

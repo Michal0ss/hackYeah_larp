@@ -114,7 +114,8 @@ struct TechniqueCard: View {
     @State private var chosenExercise = ""
     @State private var chosenComponent = ""
 
-    private var exercises: [String] { TechniqueSeries.exerciseIds(in: results) }
+    private var plannedIds: [String] { store.plan.sessions.flatMap(\.exercises).map(\.exerciseId) }
+    private var exercises: [String] { TechniqueSeries.exerciseIds(in: results, planned: plannedIds) }
     private var exerciseId: String? { exercises.contains(chosenExercise) ? chosenExercise : exercises.first }
     private var components: [String] { exerciseId.map { TechniqueSeries.components(in: results, exerciseId: $0) } ?? [] }
     private var component: String? { components.contains(chosenComponent) ? chosenComponent : nil }
@@ -145,6 +146,16 @@ struct TechniqueCard: View {
                     }
                     TechniqueChart(points: points)
                         .frame(height: 150)
+                } else {
+                    Text(component == nil ? "Brak analizy techniki tego ćwiczenia. Nagraj je w zakładce Analiza, a pojawi się tu wykres."
+                                          : "Brak tej składowej w analizach tego ćwiczenia.")
+                        .formaStyle(.subheadline)
+                        .foregroundStyle(FormaColor.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(action: onAnalyse) {
+                        Label("Nagraj analizę", systemImage: "video.fill")
+                    }
+                    .buttonStyle(.formaGlass)
                 }
                 if component == nil,
                    let summary = ProgressReport.techniqueProgress(results.filter { $0.exerciseId == exerciseId })?.summary {
@@ -331,7 +342,7 @@ struct LoadCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.m) {
-            SectionLabel(metric == .weight ? "Ciężar w czasie" : "Powtórzenia w czasie")
+            SectionLabel(metric == .weight ? "Ciężar" : "Powtórzenia")
             if let exerciseId {
                 let points = LoadSeries.points(sets, exerciseId: exerciseId, metric: metric)
                 HStack(spacing: FormaSpacing.s) {
@@ -348,12 +359,9 @@ struct LoadCard: View {
                             DeltaChip(delta: last.value - first.value, format: format)
                         }
                     }
-                    if points.count > 1 {
-                        LoadChart(points: points, metric: metric)
-                            .frame(height: 150)
-                    }
-                    Text(points.count > 1 ? "Najlepsza seria każdego dnia treningowego."
-                                          : "Pierwszy zapis. Kolejne treningi narysują wykres.")
+                    LoadChart(points: points, metric: metric)
+                        .frame(height: 150)
+                    Text("Najlepsza seria każdego dnia treningowego.")
                         .formaStyle(.footnote)
                         .foregroundStyle(FormaColor.ink3)
                 } else {
@@ -412,61 +420,5 @@ private struct LoadChart: View {
         }
         .accessibilityLabel(metric == .weight ? "Ciężar w czasie" : "Powtórzenia w czasie")
         .accessibilityValue(points.map { "\(Int($0.value.rounded()))" }.joined(separator: ", "))
-    }
-}
-
-// MARK: Recent sets
-
-/// Sets done with the live coach, newest first. Real data only (the app records sets, not whole sessions).
-struct RecentSetsCard: View {
-    @Environment(AppStore.self) private var store
-    let sets: [SetSummary]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: FormaSpacing.m) {
-            HStack {
-                SectionLabel("Ostatnie serie z trenerem")
-                Spacer()
-                Text("ostatnie \(sets.count)")
-                    .formaStyle(.footnote)
-                    .foregroundStyle(FormaColor.ink3)
-            }
-            VStack(spacing: 0) {
-                ForEach(Array(sets.enumerated()), id: \.element.id) { index, set in
-                    row(set)
-                    if index < sets.count - 1 { Divider().overlay(FormaColor.line) }
-                }
-            }
-        }
-        .padding(FormaSpacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard()
-    }
-
-    private func row(_ set: SetSummary) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(store.exercise(id: set.exerciseId)?.name ?? "Ćwiczenie") · seria \(set.setIndex)")
-                    .formaStyle(.body)
-                    .foregroundStyle(FormaColor.ink)
-                if set.isSimulated { SimulatedBadge() }
-                Text(set.date, format: .dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute())
-                    .formaStyle(.footnote)
-                    .foregroundStyle(FormaColor.ink3)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("Tempo \(set.tempoScore)")
-                    .formaStyle(.subheadline)
-                    .foregroundStyle(FormaColor.ink2)
-                if let technique = set.techniqueScore {
-                    Text("Technika \(technique)")
-                        .formaStyle(.subheadline)
-                        .foregroundStyle(FormaColor.ink2)
-                }
-            }
-        }
-        .padding(.vertical, FormaSpacing.s)
-        .accessibilityElement(children: .combine)
     }
 }
