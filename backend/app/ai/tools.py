@@ -154,6 +154,22 @@ TOOLS: dict[str, CoachTool] = {
             },
         ),
         CoachTool(
+            name="suggest_consultation",
+            description=(
+                "Shows the user a card under your answer with a button that finds a physiotherapist nearby. It "
+                "changes nothing and it is not a diagnosis. Call it yourself, once, when a conversation with a "
+                "specialist is worth considering: the user describes pain in a joint or the spine, an injury, "
+                "numbness, a problem that keeps coming back, gets worse or does not go away after workouts, or "
+                "asks whether they should see someone; also when what you see in their data (pain reported after "
+                "workouts, the same complaint again and again) points that way. Do not call it for ordinary muscle "
+                "soreness, tiredness or training questions. Afterwards write one or two sentences in your own "
+                "words that a consultation is worth considering and that the card below has the search; never name "
+                "a cause and never say what is wrong. For sudden, dangerous symptoms (chest pain, fainting, severe "
+                "shortness of breath) do not use it: point to the emergency number 112 as the health rules say."
+            ),
+            input_schema={"type": "object", "properties": {}},
+        ),
+        CoachTool(
             name="propose_plan_change",
             description=(
                 "Proposes ONE change to the user's weekly plan. It does not change the plan: the app shows the "

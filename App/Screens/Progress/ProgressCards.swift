@@ -303,6 +303,133 @@ private struct ActivityGrid: View {
     }
 }
 
+// MARK: Recovery and mood
+
+struct RecoveryMoodCard: View {
+    let report: ProgressReport
+    let simulated: Bool
+    let onCheckIn: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FormaSpacing.m) {
+            HStack {
+                SectionLabel("Regeneracja i nastrój")
+                Spacer()
+                if simulated { SimulatedBadge() }
+            }
+            if report.recovery.isEmpty && report.mood.isEmpty {
+                Text("Sen, tętno i HRV z Apple Health oraz check-iny pojawią się tu, gdy będzie z czego policzyć wykres.")
+                    .formaStyle(.body)
+                    .foregroundStyle(FormaColor.ink2)
+                Button(action: onCheckIn) {
+                    Label("Zrób check-in", systemImage: "face.smiling")
+                }
+                .buttonStyle(.formaGlass)
+            } else {
+                RecoveryMoodChart(recovery: report.recovery, mood: report.mood)
+                    .frame(height: 170)
+                HStack(spacing: FormaSpacing.l) {
+                    if !report.recovery.isEmpty {
+                        LegendItem(title: "Regeneracja (sen, HRV, tętno)", color: FormaColor.volt, dashed: false)
+                    }
+                    if !report.mood.isEmpty {
+                        LegendItem(title: "Nastrój", color: FormaColor.rest, dashed: true)
+                    }
+                }
+                if report.recovery.isEmpty {
+                    Text("Brak danych regeneracji. Sen, tętno i HRV pojawią się tu, gdy Apple Health je zapisze.")
+                        .formaStyle(.subheadline)
+                        .foregroundStyle(FormaColor.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if report.mood.isEmpty {
+                    Button(action: onCheckIn) {
+                        Label("Zrób check-in, żeby zobaczyć nastrój", systemImage: "face.smiling")
+                    }
+                    .buttonStyle(.formaGlass)
+                }
+                if let sentence = report.trendSentence {
+                    Text(sentence)
+                        .formaStyle(.subheadline)
+                        .foregroundStyle(FormaColor.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Text("Wskaźnik regeneracji to pomocnicze podsumowanie snu, HRV i tętna na wykres, a nie ocena zdrowia.")
+                    .formaStyle(.footnote)
+                    .foregroundStyle(FormaColor.ink3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(FormaSpacing.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+    }
+}
+
+/// Two lines on one 0...100 axis. They differ in color *and* in dash, so the chart reads without color.
+private struct RecoveryMoodChart: View {
+    let recovery: [DayValue]
+    let mood: [DayValue]
+
+    private static let recoveryName = "Regeneracja"
+    private static let moodName = "Nastrój"
+
+    var body: some View {
+        Chart {
+            ForEach(recovery) { d in
+                LineMark(x: .value("Dzień", d.date), y: .value("Wartość", d.value),
+                         series: .value("Wskaźnik", Self.recoveryName))
+                    .interpolationMethod(.monotone)
+                    .foregroundStyle(FormaColor.volt)
+                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
+            }
+            ForEach(mood) { d in
+                LineMark(x: .value("Dzień", d.date), y: .value("Wartość", d.value),
+                         series: .value("Wskaźnik", Self.moodName))
+                    .interpolationMethod(.monotone)
+                    .foregroundStyle(FormaColor.rest)
+                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, dash: [6, 5]))
+                PointMark(x: .value("Dzień", d.date), y: .value("Wartość", d.value))
+                    .foregroundStyle(FormaColor.rest)
+                    .symbolSize(22)
+            }
+        }
+        .chartYScale(domain: 0...100)
+        .chartYAxis {
+            AxisMarks(values: [0, 50, 100]) { _ in
+                AxisGridLine().foregroundStyle(FormaColor.line)
+                AxisValueLabel().foregroundStyle(FormaColor.ink3)
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+                AxisValueLabel(format: .dateTime.day().month(.abbreviated)).foregroundStyle(FormaColor.ink3)
+            }
+        }
+        .accessibilityLabel("Regeneracja i nastrój w ostatnich 14 dniach")
+        .accessibilityValue("Regeneracja: \(recovery.map { "\($0.value)" }.joined(separator: ", ")). Nastrój: \(mood.map { "\($0.value)" }.joined(separator: ", "))")
+    }
+}
+
+private struct LegendItem: View {
+    let title: String
+    let color: Color
+    let dashed: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Capsule()
+                .stroke(color, style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: dashed ? [4, 3] : []))
+                .frame(width: 22, height: 3)
+                .accessibilityHidden(true)
+            Text(title)
+                .formaStyle(.footnote)
+                .foregroundStyle(FormaColor.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
 // MARK: Load
 
 /// Weight or repetitions over time for one exercise. Two menus, like the technique chart: the exercise (everything in
