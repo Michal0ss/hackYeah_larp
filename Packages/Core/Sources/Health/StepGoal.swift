@@ -52,6 +52,9 @@ public final class StepGoalStore: @unchecked Sendable {
     private let key = "forma.stepGoal"
     private let lock = NSLock()
 
+    /// Called after the goal changed (from whatever thread made it), so the screens can refresh. Set once at start-up.
+    public var onChange: (@Sendable () -> Void)?
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
     }
@@ -70,6 +73,7 @@ public final class StepGoalStore: @unchecked Sendable {
 
     @discardableResult
     public func set(_ goal: StepGoal) -> StepGoal {
+        defer { onChange?() }
         lock.lock(); defer { lock.unlock() }
         if let data = try? JSONEncoder().encode(goal) { defaults.set(data, forKey: key) }
         return goal
@@ -77,6 +81,7 @@ public final class StepGoalStore: @unchecked Sendable {
 
     /// Forgets the goal (the user deleted all data).
     public func clear() {
+        defer { onChange?() }
         lock.lock(); defer { lock.unlock() }
         defaults.removeObject(forKey: key)
     }

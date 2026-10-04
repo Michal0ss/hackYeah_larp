@@ -63,6 +63,7 @@ struct TodayView: View {
             if let care = careModel.care { CareView(assessment: care, simulated: careModel.careSimulated) }
         }
         .task(id: store.recommendation) { await careModel.load(services: store.services) }
+        .task(id: store.storesRevision) { await careModel.load(services: store.services) }
         .onAppear { store.reloadStepGoal() }
         .confirmationDialog("Powtórzyć trening?", isPresented: Binding(get: { repeating != nil }, set: { if !$0 { repeating = nil } }),
                             titleVisibility: .visible) {

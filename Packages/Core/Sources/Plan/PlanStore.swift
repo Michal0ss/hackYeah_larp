@@ -45,6 +45,10 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
     private let calendar: Calendar
     private let now: @Sendable () -> Date
 
+    /// Called after every change of the saved data (from whatever thread made it), so the screens can refresh. Set
+    /// once at start-up.
+    public var onChange: (@Sendable () -> Void)?
+
     /// - Parameters:
     ///   - fileURL: nil keeps everything in memory (tests, previews).
     ///   - bootstrap: the plan to start from when nothing is saved yet (the one from onboarding).
@@ -86,6 +90,7 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
     /// Replaces the plan. Returns whether it reached the disk (it is kept in memory either way).
     @discardableResult
     public func save(_ plan: TrainingPlan) -> Bool {
+        defer { onChange?() }
         lock.lock(); defer { lock.unlock() }
         stored.plan = Self.normalized(plan.isDated ? plan : PlanScheduler.schedule(plan, startingOn: now(), calendar: calendar))
         return persist()
@@ -96,6 +101,7 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
         lock.lock()
         stored = Stored()
         lock.unlock()
+        onChange?()
         if let fileURL { try? FileManager.default.removeItem(at: fileURL) }
     }
 
@@ -106,6 +112,7 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
     @discardableResult
     public func recordCompletion(sessionId: UUID, date: Date? = nil, completedSets: Int? = nil,
                                  plannedSets: Int? = nil) -> Bool {
+        defer { onChange?() }
         lock.lock(); defer { lock.unlock() }
         stored.completions.removeAll { $0.sessionId == sessionId }
         stored.completions.insert(SessionCompletion(sessionId: sessionId, date: date ?? now(), completedSets: completedSets,
@@ -120,6 +127,7 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
     /// done here keeps the entry it has. Returns how many were added.
     @discardableResult
     public func restore(completions restored: [SessionCompletion]) -> Int {
+        defer { onChange?() }
         lock.lock(); defer { lock.unlock() }
         let known = Set(stored.completions.map(\.sessionId))
         let added = restored.filter { !known.contains($0.sessionId) }
@@ -135,6 +143,7 @@ public final class PlanStore: PlanProviding, @unchecked Sendable {
     /// Takes back "done" for a session (the user marked it by mistake).
     @discardableResult
     public func removeCompletion(sessionId: UUID) -> Bool {
+        defer { onChange?() }
         lock.lock(); defer { lock.unlock() }
         stored.completions.removeAll { $0.sessionId == sessionId }
         return persist()
