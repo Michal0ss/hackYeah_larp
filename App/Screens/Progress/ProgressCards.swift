@@ -79,31 +79,91 @@ struct CareTeaserCard: View {
 
 // MARK: Technique
 
+/// What to follow in a chart: a few named options, picked from a compact menu.
+private struct ChoiceMenu: View {
+    let options: [(id: String, name: String)]
+    @Binding var selection: String
+
+    var body: some View {
+        Menu {
+            ForEach(options, id: \.id) { option in
+                Button(option.name) { selection = option.id }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(options.first { $0.id == selection }?.name ?? "")
+                    .font(.system(size: 14, weight: .semibold))
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 10, weight: .bold))
+            }
+            .foregroundStyle(FormaColor.ink)
+            .padding(.horizontal, 12)
+            .frame(height: 34)
+            .background(FormaColor.well, in: Capsule())
+        }
+    }
+}
+
+/// Technique over time for one exercise: the person picks the exercise and the overall score or one part of it.
 struct TechniqueCard: View {
-    let progress: TechniqueProgress?
+    @Environment(AppStore.self) private var store
+    let results: [TechniqueResult]
     let simulated: Bool
     let onAnalyse: () -> Void
+
+    @State private var chosenExercise = ""
+    @State private var chosenComponent = ""
+
+    private var plannedIds: [String] { store.plan.sessions.flatMap(\.exercises).map(\.exerciseId) }
+    private var exercises: [String] { TechniqueSeries.exerciseIds(in: results, planned: plannedIds) }
+    private var exerciseId: String? { exercises.contains(chosenExercise) ? chosenExercise : exercises.first }
+    private var components: [String] { exerciseId.map { TechniqueSeries.components(in: results, exerciseId: $0) } ?? [] }
+    private var component: String? { components.contains(chosenComponent) ? chosenComponent : nil }
+
+    private func name(_ id: String) -> String { store.exercise(id: id)?.name ?? "Ćwiczenie" }
 
     var body: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.m) {
             HStack {
-                SectionLabel("Wynik techniki · przysiad")
+                SectionLabel("Technika")
                 Spacer()
                 if simulated { SimulatedBadge() }
             }
-            if let progress {
-                HStack(alignment: .firstTextBaseline, spacing: FormaSpacing.m) {
-                    NumberText("\(progress.latest)", size: 52, unit: "/100", color: FormaColor.voltText)
-                    if progress.points.count > 1 {
-                        DeltaChip(delta: progress.deltaFromStart)
-                    }
+            if let exerciseId {
+                let points = TechniqueSeries.points(results, exerciseId: exerciseId, component: component)
+                HStack(spacing: FormaSpacing.s) {
+                    ChoiceMenu(options: exercises.map { (id: $0, name: name($0)) },
+                               selection: Binding(get: { exerciseId }, set: { chosenExercise = $0 }))
+                    ChoiceMenu(options: [(id: "", name: "Wynik ogólny")] + components.map { (id: $0, name: Self.partName($0)) },
+                               selection: Binding(get: { component ?? "" }, set: { chosenComponent = $0 }))
                 }
-                TechniqueChart(points: progress.points)
-                    .frame(height: 150)
-                Text(progress.summary)
-                    .formaStyle(.subheadline)
-                    .foregroundStyle(FormaColor.ink2)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let first = points.first, let last = points.last {
+                    HStack(alignment: .firstTextBaseline, spacing: FormaSpacing.m) {
+                        NumberText("\(Int(last.value))", size: 52, unit: "/100", color: FormaColor.voltText)
+                        if points.count > 1 {
+                            DeltaChip(delta: last.value - first.value) { "\(Int($0.rounded()))" }
+                        }
+                    }
+                    TechniqueChart(points: points)
+                        .frame(height: 150)
+                } else {
+                    Text(component == nil ? "Brak analizy techniki tego ćwiczenia. Nagraj je w zakładce Analiza, a pojawi się tu wykres."
+                                          : "Brak tej składowej w analizach tego ćwiczenia.")
+                        .formaStyle(.subheadline)
+                        .foregroundStyle(FormaColor.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(action: onAnalyse) {
+                        Label("Nagraj analizę", systemImage: "video.fill")
+                    }
+                    .buttonStyle(.formaGlass)
+                }
+                if component == nil,
+                   let summary = ProgressReport.techniqueProgress(results.filter { $0.exerciseId == exerciseId })?.summary {
+                    Text(summary)
+                        .formaStyle(.subheadline)
+                        .foregroundStyle(FormaColor.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             } else {
                 Text("Nagraj przysiad, a pokażemy, jak zmienia się wynik techniki.")
                     .formaStyle(.body)
@@ -118,19 +178,25 @@ struct TechniqueCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
     }
+
+    private static func partName(_ key: String) -> String {
+        let name = ProgressReport.componentNames[key] ?? key
+        return name.prefix(1).uppercased() + name.dropFirst()
+    }
 }
 
 /// "+14 od startu". Never color alone: arrow and sign carry the meaning too.
 private struct DeltaChip: View {
-    let delta: Int
+    let delta: Double
+    let format: (Double) -> String
 
     var body: some View {
-        let up = delta > 0, down = delta < 0
+        let up = delta > 0.01, down = delta < -0.01
         let color = up ? FormaColor.goText : down ? FormaColor.moderateText : FormaColor.ink2
         HStack(spacing: 4) {
             Image(systemName: up ? "arrow.up.right" : down ? "arrow.down.right" : "equal")
                 .font(.system(size: 12, weight: .bold))
-            Text(up ? "+\(delta) od startu" : down ? "\(delta) od startu" : "bez zmian")
+            Text(up ? "+\(format(abs(delta))) od startu" : down ? "−\(format(abs(delta))) od startu" : "bez zmian")
                 .font(.system(size: 13, weight: .bold))
         }
         .foregroundStyle(color)
@@ -143,15 +209,15 @@ private struct DeltaChip: View {
 }
 
 private struct TechniqueChart: View {
-    let points: [ScorePoint]
+    let points: [SeriesPoint]
 
     var body: some View {
         Chart(points) { p in
-            LineMark(x: .value("Data", p.date), y: .value("Wynik", p.score))
+            LineMark(x: .value("Data", p.date), y: .value("Wynik", p.value))
                 .interpolationMethod(.monotone)
                 .foregroundStyle(FormaColor.volt)
                 .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
-            PointMark(x: .value("Data", p.date), y: .value("Wynik", p.score))
+            PointMark(x: .value("Data", p.date), y: .value("Wynik", p.value))
                 .foregroundStyle(FormaColor.volt)
                 .symbolSize(p.id == points.last?.id ? 90 : 36)
         }
@@ -168,7 +234,7 @@ private struct TechniqueChart: View {
             }
         }
         .accessibilityLabel("Wynik techniki w czasie")
-        .accessibilityValue(points.map { "\($0.score)" }.joined(separator: ", "))
+        .accessibilityValue(points.map { "\(Int($0.value))" }.joined(separator: ", "))
     }
 }
 
@@ -251,60 +317,64 @@ private struct ActivityGrid: View {
     }
 }
 
-// MARK: Recovery and mood
+// MARK: Load
 
-struct RecoveryMoodCard: View {
-    let report: ProgressReport
-    let simulated: Bool
-    let onCheckIn: () -> Void
+/// Weight or repetitions over time for one exercise. Two menus, like the technique chart: the exercise (everything in
+/// the plan, plus anything else that was logged) and what to follow. Real data only: an exercise with nothing logged
+/// yet says what is missing.
+struct LoadCard: View {
+    @Environment(AppStore.self) private var store
+    let sets: [LoggedLoad]
+
+    @State private var chosenMetric = LoadMetric.weight.rawValue
+    @State private var chosenExercise = ""
+
+    private var metric: LoadMetric { LoadMetric(rawValue: chosenMetric) ?? .weight }
+    private var plannedIds: [String] { store.plan.sessions.flatMap(\.exercises).map(\.exerciseId) }
+    private var exercises: [String] { LoadSeries.exerciseIds(in: sets, planned: plannedIds) }
+    private var exerciseId: String? { exercises.contains(chosenExercise) ? chosenExercise : exercises.first }
+
+    private func name(_ id: String) -> String { store.exercise(id: id)?.name ?? "Ćwiczenie" }
+
+    private func format(_ value: Double) -> String {
+        metric == .weight ? WorkoutFormat.weight(value) : "\(Int(value.rounded())) powt."
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: FormaSpacing.m) {
-            HStack {
-                SectionLabel("Regeneracja i nastrój")
-                Spacer()
-                if simulated { SimulatedBadge() }
-            }
-            if report.recovery.isEmpty && report.mood.isEmpty {
-                Text("Sen, tętno i HRV z Apple Health oraz check-iny pojawią się tu, gdy będzie z czego policzyć wykres.")
-                    .formaStyle(.body)
-                    .foregroundStyle(FormaColor.ink2)
-                Button(action: onCheckIn) {
-                    Label("Zrób check-in", systemImage: "face.smiling")
+            SectionLabel(metric == .weight ? "Ciężar" : "Powtórzenia")
+            if let exerciseId {
+                let points = LoadSeries.points(sets, exerciseId: exerciseId, metric: metric)
+                HStack(spacing: FormaSpacing.s) {
+                    ChoiceMenu(options: exercises.map { (id: $0, name: name($0)) },
+                               selection: Binding(get: { exerciseId }, set: { chosenExercise = $0 }))
+                    ChoiceMenu(options: [(id: LoadMetric.weight.rawValue, name: "Ciężar"),
+                                         (id: LoadMetric.reps.rawValue, name: "Powtórzenia")],
+                               selection: $chosenMetric)
                 }
-                .buttonStyle(.formaGlass)
+                if let first = points.first, let last = points.last {
+                    HStack(alignment: .firstTextBaseline, spacing: FormaSpacing.m) {
+                        NumberText(format(last.value), size: 36, color: FormaColor.voltText)
+                        if points.count > 1 {
+                            DeltaChip(delta: last.value - first.value, format: format)
+                        }
+                    }
+                    LoadChart(points: points, metric: metric)
+                        .frame(height: 150)
+                    Text("Najlepsza seria każdego dnia treningowego.")
+                        .formaStyle(.footnote)
+                        .foregroundStyle(FormaColor.ink3)
+                } else {
+                    Text(metric == .weight ? "Brak zapisanego ciężaru dla tego ćwiczenia. Wpisz go po serii (Edytuj wynik) albo po treningu."
+                                           : "Brak zapisanych powtórzeń dla tego ćwiczenia. Pojawią się po pierwszej serii.")
+                        .formaStyle(.subheadline)
+                        .foregroundStyle(FormaColor.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             } else {
-                RecoveryMoodChart(recovery: report.recovery, mood: report.mood)
-                    .frame(height: 170)
-                HStack(spacing: FormaSpacing.l) {
-                    if !report.recovery.isEmpty {
-                        LegendItem(title: "Regeneracja (sen, HRV, tętno)", color: FormaColor.volt, dashed: false)
-                    }
-                    if !report.mood.isEmpty {
-                        LegendItem(title: "Nastrój", color: FormaColor.rest, dashed: true)
-                    }
-                }
-                if report.recovery.isEmpty {
-                    Text("Brak danych regeneracji. Sen, tętno i HRV pojawią się tu, gdy Apple Health je zapisze.")
-                        .formaStyle(.subheadline)
-                        .foregroundStyle(FormaColor.ink2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if report.mood.isEmpty {
-                    Button(action: onCheckIn) {
-                        Label("Zrób check-in, żeby zobaczyć nastrój", systemImage: "face.smiling")
-                    }
-                    .buttonStyle(.formaGlass)
-                }
-                if let sentence = report.trendSentence {
-                    Text(sentence)
-                        .formaStyle(.subheadline)
-                        .foregroundStyle(FormaColor.ink2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Text("Wskaźnik regeneracji to pomocnicze podsumowanie snu, HRV i tętna na wykres, a nie ocena zdrowia.")
-                    .formaStyle(.footnote)
-                    .foregroundStyle(FormaColor.ink3)
+                Text("Plan nie ma jeszcze ćwiczeń. Gdy je dostaniesz i zrobisz serie, pojawi się tu wykres ciężaru i powtórzeń.")
+                    .formaStyle(.subheadline)
+                    .foregroundStyle(FormaColor.ink2)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -314,37 +384,31 @@ struct RecoveryMoodCard: View {
     }
 }
 
-/// Two lines on one 0...100 axis. They differ in color *and* in dash, so the chart reads without color.
-private struct RecoveryMoodChart: View {
-    let recovery: [DayValue]
-    let mood: [DayValue]
+private struct LoadChart: View {
+    let points: [SeriesPoint]
+    let metric: LoadMetric
 
-    private static let recoveryName = "Regeneracja"
-    private static let moodName = "Nastrój"
+    private var range: ClosedRange<Double> {
+        let values = points.map(\.value)
+        let top = values.max() ?? 0
+        if metric == .reps { return 0...(top + 2) }
+        let bottom = max(0, (values.min() ?? 0) - 5)
+        return bottom...(top + 5)
+    }
 
     var body: some View {
-        Chart {
-            ForEach(recovery) { d in
-                LineMark(x: .value("Dzień", d.date), y: .value("Wartość", d.value),
-                         series: .value("Wskaźnik", Self.recoveryName))
-                    .interpolationMethod(.monotone)
-                    .foregroundStyle(FormaColor.volt)
-                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
-            }
-            ForEach(mood) { d in
-                LineMark(x: .value("Dzień", d.date), y: .value("Wartość", d.value),
-                         series: .value("Wskaźnik", Self.moodName))
-                    .interpolationMethod(.monotone)
-                    .foregroundStyle(FormaColor.rest)
-                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, dash: [6, 5]))
-                PointMark(x: .value("Dzień", d.date), y: .value("Wartość", d.value))
-                    .foregroundStyle(FormaColor.rest)
-                    .symbolSize(22)
-            }
+        Chart(points) { p in
+            LineMark(x: .value("Data", p.date), y: .value("Wartość", p.value))
+                .interpolationMethod(.monotone)
+                .foregroundStyle(FormaColor.volt)
+                .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
+            PointMark(x: .value("Data", p.date), y: .value("Wartość", p.value))
+                .foregroundStyle(FormaColor.volt)
+                .symbolSize(p.id == points.last?.id ? 90 : 36)
         }
-        .chartYScale(domain: 0...100)
+        .chartYScale(domain: range)
         .chartYAxis {
-            AxisMarks(values: [0, 50, 100]) { _ in
+            AxisMarks(position: .leading) { _ in
                 AxisGridLine().foregroundStyle(FormaColor.line)
                 AxisValueLabel().foregroundStyle(FormaColor.ink3)
             }
@@ -354,82 +418,7 @@ private struct RecoveryMoodChart: View {
                 AxisValueLabel(format: .dateTime.day().month(.abbreviated)).foregroundStyle(FormaColor.ink3)
             }
         }
-        .accessibilityLabel("Regeneracja i nastrój w ostatnich 14 dniach")
-        .accessibilityValue("Regeneracja: \(recovery.map { "\($0.value)" }.joined(separator: ", ")). Nastrój: \(mood.map { "\($0.value)" }.joined(separator: ", "))")
-    }
-}
-
-private struct LegendItem: View {
-    let title: String
-    let color: Color
-    let dashed: Bool
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Capsule()
-                .stroke(color, style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: dashed ? [4, 3] : []))
-                .frame(width: 22, height: 3)
-                .accessibilityHidden(true)
-            Text(title)
-                .formaStyle(.footnote)
-                .foregroundStyle(FormaColor.ink2)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-}
-
-// MARK: Recent sets
-
-/// Sets done with the live coach, newest first. Real data only (the app records sets, not whole sessions).
-struct RecentSetsCard: View {
-    @Environment(AppStore.self) private var store
-    let sets: [SetSummary]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: FormaSpacing.m) {
-            HStack {
-                SectionLabel("Ostatnie serie z trenerem")
-                Spacer()
-                Text("ostatnie \(sets.count)")
-                    .formaStyle(.footnote)
-                    .foregroundStyle(FormaColor.ink3)
-            }
-            VStack(spacing: 0) {
-                ForEach(Array(sets.enumerated()), id: \.element.id) { index, set in
-                    row(set)
-                    if index < sets.count - 1 { Divider().overlay(FormaColor.line) }
-                }
-            }
-        }
-        .padding(FormaSpacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard()
-    }
-
-    private func row(_ set: SetSummary) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(store.exercise(id: set.exerciseId)?.name ?? "Ćwiczenie") · seria \(set.setIndex)")
-                    .formaStyle(.body)
-                    .foregroundStyle(FormaColor.ink)
-                if set.isSimulated { SimulatedBadge() }
-                Text(set.date, format: .dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute())
-                    .formaStyle(.footnote)
-                    .foregroundStyle(FormaColor.ink3)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("Tempo \(set.tempoScore)")
-                    .formaStyle(.subheadline)
-                    .foregroundStyle(FormaColor.ink2)
-                if let technique = set.techniqueScore {
-                    Text("Technika \(technique)")
-                        .formaStyle(.subheadline)
-                        .foregroundStyle(FormaColor.ink2)
-                }
-            }
-        }
-        .padding(.vertical, FormaSpacing.s)
-        .accessibilityElement(children: .combine)
+        .accessibilityLabel(metric == .weight ? "Ciężar w czasie" : "Powtórzenia w czasie")
+        .accessibilityValue(points.map { "\(Int($0.value.rounded()))" }.joined(separator: ", "))
     }
 }
