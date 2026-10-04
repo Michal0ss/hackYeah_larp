@@ -61,6 +61,8 @@ public struct PoseFrame: Codable, Equatable, Sendable {
 
     /// The joint if it was detected with at least `minConfidence`.
     public func joint(_ name: JointName, minConfidence: Double = 0.3) -> Joint? {
-        joints.first { $0.name == name && $0.confidence >= minConfidence }
+        // A plain loop: this is called dozens of times per frame, at 30 frames per second.
+        for joint in joints where joint.name == name && joint.confidence >= minConfidence { return joint }
+        return nil
     }
 }

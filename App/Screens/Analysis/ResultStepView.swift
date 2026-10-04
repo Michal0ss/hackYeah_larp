@@ -109,7 +109,7 @@ struct ResultStepView: View {
     @ViewBuilder
     private var chartCard: some View {
         let kind = model.kind
-        let series = RepAnalyzer.angleSeries(in: model.frames, kind: kind)
+        let series = model.angleSeries
         if let first = series.first, let last = series.last {
             let band = kind.targetBand(model.angleReference)
             let reps = model.analysis?.clipReps ?? []
@@ -125,7 +125,7 @@ struct ResultStepView: View {
                             .interpolationMethod(.catmullRom)
                     }
                     ForEach(reps) { rep in
-                        if let angle = kind.primaryAngle(in: rep.bottomFrame, minConfidence: 0.15) {
+                        if let angle = model.repAngles[rep.index] {
                             PointMark(x: .value("Czas", rep.bottomTime), y: .value("Kąt", angle))
                                 .foregroundStyle(FormaColor.ember)
                                 .annotation(position: .top) {
@@ -167,7 +167,7 @@ struct ResultStepView: View {
                                 .frame(width: 170 * rep.bottomFrame.aspectRatio, height: 170)
                                 .clipShape(RoundedRectangle(cornerRadius: FormaRadius.sm, style: .continuous))
                                 Text("Powt. \(rep.index)").formaStyle(.footnote).fontWeight(.semibold).foregroundStyle(FormaColor.ink)
-                                if let angle = kind.primaryAngle(in: rep.bottomFrame, minConfidence: 0.15) {
+                                if let angle = model.repAngles[rep.index] {
                                     Text("\(Int(angle.rounded()))°").formaStyle(.headline).foregroundStyle(FormaColor.ink)
                                     Text(kind == .squat ? "kolano" : "łokieć").formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
                                 } else {

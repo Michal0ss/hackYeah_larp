@@ -39,9 +39,20 @@ final class AnalysisModel {
     private(set) var framesAnalysed = 0
     private var extractionTask: Task<Void, Never>?
 
-    /// Ranges of joint angles and the rep detector's limits, from `content/config/scoring.json`.
-    var angleReference: AngleReference { AngleReference(values: ContentRepository.shared.numbers("scoring", "angles")) }
-    private var clipConfig: ClipRepDetector.Config { ClipRepDetector.Config(values: ContentRepository.shared.numbers("scoring", "clip")) }
+    /// Ranges of joint angles and the rep detector's limits, from `content/config/scoring.json`. Read once when a clip
+    /// is picked, not on every screen redraw.
+    private(set) var angleReference = AngleReference()
+    private var clipConfig = ClipRepDetector.Config()
+
+    /// What the result screen draws, worked out once when the clip is scored instead of on every redraw: the smoothed
+    /// angle over time and the angle at the working end of every repetition (by repetition number).
+    private(set) var angleSeries: [(time: Double, angle: Double)] = []
+    private(set) var repAngles: [Int: Double] = [:]
+
+    private func loadConfig() {
+        angleReference = AngleReference(values: ContentRepository.shared.numbers("scoring", "angles"))
+        clipConfig = ClipRepDetector.Config(values: ContentRepository.shared.numbers("scoring", "clip"))
+    }
 
     /// Which live-set movement this exercise maps to; defaults to squat (shouldn't happen since
     /// the exercise picker only lists catalog items `MovementKind.kind(for:)` can resolve).
@@ -77,6 +88,7 @@ final class AnalysisModel {
     func use(video url: URL) {
         videoURL = url
         step = .quality
+        loadConfig()
         extractionTask?.cancel()
         extractionTask = Task { await runQualityCheck() }
     }
@@ -98,7 +110,12 @@ final class AnalysisModel {
             let weights = TechniqueScorer.Weights.from(ContentRepository.shared.numbers("scoring", "weights"))
             let thresholds = TechniqueScorer.Thresholds.from(ContentRepository.shared.numbers("scoring", "thresholds"))
             let reference = angleReference, clip = clipConfig
-            analysis = RepAnalyzer.analyze(frames: frames, kind: kind, config: clip, depthTolerance: reference.squatDepthTolerance)
+            let analysis = RepAnalyzer.analyze(frames: frames, kind: kind, config: clip, depthTolerance: reference.squatDepthTolerance)
+            self.analysis = analysis
+            angleSeries = RepAnalyzer.angleSeries(in: frames, kind: kind)
+            repAngles = Dictionary(uniqueKeysWithValues: analysis.clipReps.compactMap { rep in
+                kind.primaryAngle(in: rep.bottomFrame, minConfidence: 0.15).map { (rep.index, $0) }
+            })
             result = TechniqueScorer.score(exerciseId: exercise.id, kind: kind, frames: frames,
                                            weights: weights, thresholds: thresholds, reference: reference, clip: clip)
             step = .result
@@ -120,6 +137,8 @@ final class AnalysisModel {
         qualityReport = nil
         canAnalyzeAnyway = false
         analysis = nil
+        angleSeries = []
+        repAngles = [:]
         analysedDespiteWarnings = false
         errorMessage = nil
         extractionFraction = 0

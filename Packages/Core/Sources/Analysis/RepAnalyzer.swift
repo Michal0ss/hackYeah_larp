@@ -77,15 +77,4 @@ public enum RepAnalyzer {
         angles = ClipRepDetector.movingAverage(angles, times: times, window: 0.2)
         return zip(times, angles).map { (time: $0, angle: $1) }
     }
-
-    /// Knee angle at every frame where hip/knee/ankle are all visible, for charting over time (squat).
-    public static func kneeAngleSeries(in frames: [PoseFrame]) -> [(time: Double, angle: Double)] {
-        angleSeries(in: frames, kind: .squat)
-    }
-
-    /// The frame across the whole clip with the smallest knee angle: a representative "bottom of a squat" shot.
-    public static func deepestFrame(in frames: [PoseFrame]) -> PoseFrame? {
-        frames.compactMap { frame in MovementKind.squat.primaryAngle(in: frame, minConfidence: 0.15).map { (frame, $0) } }
-            .min { $0.1 < $1.1 }?.0
-    }
 }

@@ -239,7 +239,8 @@ public final class LiveSetEngine {
 
         liveAngle = kind.primaryAngle(in: frame, minConfidence: 0.2)
         recentFrames.append(frame)
-        if recentFrames.count > Self.maxRecentFrames { recentFrames.removeFirst(recentFrames.count - Self.maxRecentFrames) }
+        // Trimmed in chunks (down to the cap when it is twice exceeded), so the buffer is not shifted on every frame.
+        if recentFrames.count > Self.maxRecentFrames * 2 { recentFrames.removeFirst(recentFrames.count - Self.maxRecentFrames) }
 
         guard let depth = signal.depth(for: frame) else { return }
         latestDepth = depth

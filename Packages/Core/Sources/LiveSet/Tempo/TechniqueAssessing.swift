@@ -29,7 +29,6 @@ public extension TechniqueAssessing {
     }
 }
 
-func degrees(_ value: Double) -> String { "\(Int(value.rounded()))°" }
 
 /// Simple squat assessment from a side view: depth and torso lean, with the knee angle reported next to the depth.
 /// Depth follows the powerlifting rule (the hip down to the level of the knee); the knee angle is shown against the
@@ -97,4 +96,3 @@ public struct BasicSquatAssessor: TechniqueAssessing {
     }
 }
 
-func average(_ values: [Double]) -> Double { values.isEmpty ? 0 : values.reduce(0, +) / Double(values.count) }

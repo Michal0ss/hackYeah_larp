@@ -111,7 +111,7 @@ struct LiveSetView: View {
                 } else {
                     AmbientBackground()
                 }
-                SkeletonOverlay(frame: engine.latestFrame, debug: diagnostics)
+                LiveSkeletonLayer(engine: engine, debug: diagnostics)
                     // The camera mirrors the front picture itself; the simulated skeleton is mirrored to match.
                     .scaleEffect(x: session.source == .simulation && session.isFrontCamera ? -1 : 1, y: 1)
                     .frame(width: video.width, height: video.height)
@@ -301,16 +301,8 @@ struct LiveSetView: View {
 
     /// The joint angle now, the band expected at the working end, and the verdict on the last repetition.
     private var angleRow: some View {
-        let band = engine.targetBand
-        return VStack(alignment: .leading, spacing: FormaSpacing.xs) {
-            HStack(alignment: .firstTextBaseline, spacing: FormaSpacing.s) {
-                Text(session.kind.primaryAngleTitle).formaStyle(.caption).foregroundStyle(FormaColor.ink3)
-                Text(engine.liveAngle.map { "\(Int($0.rounded()))°" } ?? "–")
-                    .font(.formaNumber(22)).monospacedDigit().foregroundStyle(FormaColor.ink)
-                Spacer()
-                Text("cel \(session.kind == .pullup ? "na górze" : "na dole"): \(Int(band.lowerBound))–\(Int(band.upperBound))°")
-                    .formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
-            }
+        VStack(alignment: .leading, spacing: FormaSpacing.xs) {
+            LiveAngleReadout(engine: engine, kind: session.kind)
             if let verdict = engine.lastVerdict {
                 Label("Powt. \(verdict.index): " + (verdict.angle.map { "\(Int($0.rounded()))° · " } ?? "") + verdict.text,
                       systemImage: verdict.isGood ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
@@ -341,5 +333,36 @@ struct LiveSetView: View {
             }
         }
         .frame(width: 96, height: 96)
+    }
+}
+
+// MARK: - Per-frame views
+
+/// The skeleton changes on every camera frame. Reading `latestFrame` here, in a view of its own, redraws only the
+/// skeleton; if the parent read it, the whole screen (panel, buttons, texts) would be rebuilt 30 times a second.
+private struct LiveSkeletonLayer: View {
+    let engine: LiveSetEngine
+    let debug: Bool
+
+    var body: some View {
+        SkeletonOverlay(frame: engine.latestFrame, debug: debug)
+    }
+}
+
+/// The joint angle also changes on every frame, for the same reason it has its own view.
+private struct LiveAngleReadout: View {
+    let engine: LiveSetEngine
+    let kind: MovementKind
+
+    var body: some View {
+        let band = engine.targetBand
+        HStack(alignment: .firstTextBaseline, spacing: FormaSpacing.s) {
+            Text(kind.primaryAngleTitle).formaStyle(.caption).foregroundStyle(FormaColor.ink3)
+            Text(engine.liveAngle.map { "\(Int($0.rounded()))°" } ?? "–")
+                .font(.formaNumber(22)).monospacedDigit().foregroundStyle(FormaColor.ink)
+            Spacer()
+            Text("cel \(kind == .pullup ? "na górze" : "na dole"): \(Int(band.lowerBound))–\(Int(band.upperBound))°")
+                .formaStyle(.footnote).foregroundStyle(FormaColor.ink3)
+        }
     }
 }

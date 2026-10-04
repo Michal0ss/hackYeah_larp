@@ -233,11 +233,7 @@ struct SetNumbersEditor: View {
     /// "12,5" for 12.5, "12" for 12, "" for none.
     static func text(_ weight: Double?) -> String {
         guard let weight else { return "" }
-        let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: "pl_PL")
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: weight)) ?? ""
+        return WorkoutFormat.number(weight) ?? ""
     }
 
     /// Accepts a comma or a dot; nil for anything that is not a number above zero.
